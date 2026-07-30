@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <title>VisioOne Map</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000000;
+      overflow: hidden;
+    }
+    #container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <!--
+    Bundle UMD (pas le build ESM `visioone.js`) : chargé comme script classique,
+    il fonctionne aussi bien servi en https:// (Android) qu'en file:// (iOS),
+    contrairement au build ESM dont les `import()` dynamiques échouent sous
+    file:// à cause des restrictions CORS de WebKit. C'est la même leçon que
+    VisioOneMeetIos (voir docs/INTEGRATION.md de ce dépôt) et le même problème
+    que VisioOneMeetRN a rencontré en chargeant l'ESM depuis un CDN.
+  -->
+  <script src="visioone.umd.cjs"></script>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    (function () {
+      var visioOne = null;
+      var venue = null;
+      var view = null;
+      var container = document.getElementById('container');
+
+      // ---------------------------------------------------------------
+      // JS -> Native : un seul canal, un contrat de messages {type, data}.
+      // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
+      // ---------------------------------------------------------------
+      function sendToNative(type, data) {
+        var bridge = window.VisioOneBridge;
+        if (!bridge) {
+          // Pas dans la WebView Flutter (ex. test dans un navigateur classique).
+          console.log('[VisioOne:web]', type, data);
+          return;
+        }
+        bridge.postMessage(JSON.stringify({ type: type, data: data }));
+      }
+
+      function forwardViewEvents(v) {
+        v.addEventListener('poiclick', function (event) {
+          var poi = event.pois && event.pois[0];
+          if (!poi) return;
+          sendToNative('poiSelected', {
+            id: poi.id,
+            name: poi.labels && poi.labels[0] ? poi.labels[0].text : null,
+          });
+        });
+
+        v.addEventListener('currentfloorchanged', function (event) {
+          sendToNative('floorChanged', {
+            buildingId: event.floor && event.floor.building ? event.floor.building.id : null,
+            floorId: event.floor ? event.floor.id : null,
+          });
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // Native -> JS : window.MapBridge, une méthode par commande.
+      //
+      // Chaque appel est généré côté Dart via `jsonEncode(valeur)` interpolé
+      // dans le script (ex. `window.MapBridge.goToPOI("B1-UL00-01")`) : c'est
+      // du texte JSON, mais il est *évalué comme code JS* par le moteur qui
+      // exécute le script, pas relu comme texte par la fonction appelée.
+      // Les paramètres ci-dessous reçoivent donc déjà de vraies valeurs JS
+      // (string, boolean, objet...), jamais du texte JSON à re-parser —
+      // ne PAS appeler `JSON.parse()` dessus (ce fut un bug réel de ce
+      // squelette : voir l'historique de `map.html`, ça produisait un
+      // `SyntaxError` silencieux qui bloquait `setup()` indéfiniment).
+      // ---------------------------------------------------------------
+      window.onerror = function (message, source, lineno, colno, error) {
+        console.error('[MapBridge] erreur non interceptée:', message, 'at', lineno + ':' + colno);
+        sendToNative('error', { message: 'Erreur JS non interceptée: ' + message });
+      };
+
+      window.MapBridge = {
+        setup: function (hash) {
+          try {
+            console.log('[MapBridge] setup, hash =', hash, ', typeof VisioOne =', typeof VisioOne);
+
+            if (visioOne) {
+              // setup() déjà appelé : on repart d'un état propre avant de recharger.
+              if (view) { visioOne.destroyView(view); view = null; }
+              if (venue) { visioOne.unloadVenue(venue); venue = null; }
+            }
+
+            visioOne = VisioOne.createVisioOne();
+            sendToNative('loading', { hash: hash });
+
+            console.log('[MapBridge] appel loadVenue...');
+            visioOne
+              .loadVenue({ hash: hash }, container)
+              .then(function (v) {
+                console.log('[MapBridge] loadVenue résolu, appel createView...');
+                venue = v;
+                return visioOne.createView(container, venue);
+              })
+              .then(function (createdView) {
+                console.log('[MapBridge] createView résolu, carte prête.');
+                view = createdView;
+                forwardViewEvents(view);
+                sendToNative('ready', null);
+              })
+              .catch(function (error) {
+                console.error('[MapBridge] échec loadVenue/createView:', error);
+                visioOne.showError(error, container);
+                sendToNative('error', {
+                  message: error && error.message ? error.message : String(error),
+                });
+              });
+          } catch (error) {
+            console.error('[MapBridge] erreur synchrone dans setup():', error);
+            sendToNative('error', {
+              message: error && error.message ? error.message : String(error),
+            });
+          }
+        },
+
+        goToGlobal: function () {
+          if (view) view.goToGlobal();
+        },
+
+        goToPOI: function (poiId) {
+          if (!venue || !view) return;
+          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          if (!poi) return;
+          view.goToFloor(poi.floor).then(function () {
+            view.goToPOI(poi);
+          });
+        },
+
+        goToFloor: function (buildingId, floorId) {
+          if (!venue || !view) return;
+          var building = venue.venueLayout.buildings.find(function (b) { return b.id === buildingId; });
+          if (!building) return;
+          if (floorId) {
+            var floor = building.floors.find(function (f) { return f.id === floorId; });
+            if (floor) view.goToFloor(floor);
+          } else {
+            view.goToBuilding(building);
+          }
+        },
+
+        clearSelection: function () {
+          if (!venue) return;
+          venue.pois.forEach(function (poi) {
+            poi.surfaces.forEach(function (surface) {
+              venue.updateSurface(surface, { selectionColor: undefined });
+            });
+          });
+        },
+
+        startItinerary: function (args) {
+          if (!venue || !view) return;
+          var navigation = venue.computeNavigation({
+            origin: args.origin,
+            destination: args.destination,
+            isAccessible: !!args.isAccessible,
+            type: 'fastest',
+            firstNodeAsIntersection: false,
+            mergeFloorChangeInstructions: false,
+          });
+          var trace = venue.createNavigationTrace(navigation);
+          view.setCurrentNavigationTrace(trace);
+          sendToNative('itineraryComputed', { instructions: navigation.instructions });
+        },
+
+        setUIPartVisible: function (part, visible) {
+          if (!view) return;
+          view.setUIPartVisible(part, visible);
+        },
+      };
+
+      // Permet de tester map.html directement dans un navigateur (npm run dev)
+      // sans passer par la WebView Flutter.
+      window.addEventListener('DOMContentLoaded', function () {
+        sendToNative('pageReady', null);
+      });
+    })();
+  </script>
+</body>
+</html>
