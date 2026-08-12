@@ -39,6 +39,9 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
   Timer? _occupancyTimer;
   bool _simulateOccupancy = false;
   int _occupancyColorIndex = 0;
+  // The place ID actually targeted by the running timer — captured at start,
+  // deliberately not re-read from the text field on stop (see _stopOccupancySimulation).
+  String? _simulatingPlaceId;
 
   @override
   void initState() {
@@ -102,6 +105,7 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
     if (placeId.isEmpty || controller == null) return;
 
     setState(() => _simulateOccupancy = true);
+    _simulatingPlaceId = placeId;
     _occupancyColorIndex = 0;
     controller.updateOccupancy([
       {'planId': placeId, 'color': _occupancyColors[_occupancyColorIndex]},
@@ -117,8 +121,11 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
   void _stopOccupancySimulation() {
     _occupancyTimer?.cancel();
     _occupancyTimer = null;
-    final placeId = _placeIdController.text.trim();
-    if (placeId.isNotEmpty) {
+    // Reset the POI that was actually being simulated — not whatever the text
+    // field currently holds, which may have been edited since simulation started.
+    final placeId = _simulatingPlaceId;
+    _simulatingPlaceId = null;
+    if (placeId != null && placeId.isNotEmpty) {
       // Reset the surface rather than leaving it stuck on the last simulated color.
       _controller?.updateOccupancy([{'planId': placeId, 'color': null}]);
     }
