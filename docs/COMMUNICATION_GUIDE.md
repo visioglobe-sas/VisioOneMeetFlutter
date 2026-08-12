@@ -1,6 +1,6 @@
 # Pont de communication Dart ↔ SDK VisioOne
 
-Ce document se concentre sur **le pont de communication** entre le code Dart et le SDK JavaScript VisioOne exécuté dans la `WebView`. Il complète [`ARCHITECTURE.md`](ARCHITECTURE.md) (vue d'ensemble) et [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md) (installer et configurer l'app). Il est le pendant Flutter de `GUIDE_COMMUNICATION_SDK.md` (Android) et `APP_SDK_COMMUNICATION.md` (iOS) du dépôt — mêmes principes, adaptés à `webview_flutter`.
+Ce document se concentre sur **le pont de communication** entre le code Dart et le SDK JavaScript VisioOne exécuté dans la `WebView`. Il complète [`ARCHITECTURE.md`](ARCHITECTURE.md) (vue d'ensemble) et [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md) (installer et configurer l'app). Il applique les mêmes principes que les guides de communication équivalents sur les implémentations natives Android et iOS du SDK, adaptés ici à `webview_flutter`.
 
 **Public visé :** développeur Flutter qui doit ajouter, modifier ou déboguer une communication entre l'UI Dart et le SDK VisioOne.
 
@@ -43,7 +43,7 @@ graph LR
   J -->|2| P2 --> C
 ```
 
-Contrairement au canal ① (query param à l'URL) utilisé par `VisioOneMeetAndroid`, `runJavaScript()` peut être appelé **à tout moment**, pas seulement au chargement : c'est pour cela que `VisioOneController.setup(hash)` est un appel JS explicite après `onPageFinished`, plutôt qu'un paramètre encodé dans l'URL de `loadFlutterAsset`. Cela permet aussi de rappeler `setup()` avec un nouveau hash sans recharger toute la page (voir `map.html`, `window.MapBridge.setup`, qui détruit proprement l'ancienne vue/venue avant d'en recréer une).
+Contrairement au canal ① (query param à l'URL) utilisé par l'implémentation Android native, `runJavaScript()` peut être appelé **à tout moment**, pas seulement au chargement : c'est pour cela que `VisioOneController.setup(hash)` est un appel JS explicite après `onPageFinished`, plutôt qu'un paramètre encodé dans l'URL de `loadFlutterAsset`. Cela permet aussi de rappeler `setup()` avec un nouveau hash sans recharger toute la page (voir `map.html`, `window.MapBridge.setup`, qui détruit proprement l'ancienne vue/venue avant d'en recréer une).
 
 ## 2. Les deux canaux
 
@@ -52,7 +52,7 @@ Contrairement au canal ① (query param à l'URL) utilisé par `VisioOneMeetAndr
 | ① | Dart → JS | `WebViewController.runJavaScript(script)` | À tout moment | Appeler `window.MapBridge.<methode>(...)` |
 | ② | JS → Dart | `WebViewController.addJavaScriptChannel('VisioOneBridge', onMessageReceived: ...)` | À tout moment, déclenché par le JS | Recevoir les événements du SDK (`ready`, `error`, `poiSelected`, ...) |
 
-Les deux canaux sont bidirectionnels et réutilisables (contrairement au query param d'URL, à usage unique) : c'est une différence volontaire avec `VisioOneMeetAndroid`, rendue possible par le fait que `webview_flutter` expose `evaluateJavascript`-like (`runJavaScript`) comme mécanisme *principal*, alors que `WebView.addJavascriptInterface` seul (utilisé nativement sur Android) ne permet pas nativement l'inverse sans `evaluateJavascript` en plus.
+Les deux canaux sont bidirectionnels et réutilisables (contrairement au query param d'URL, à usage unique) : c'est une différence volontaire avec l'implémentation Android native, rendue possible par le fait que `webview_flutter` expose `evaluateJavascript`-like (`runJavaScript`) comme mécanisme *principal*, alors que `WebView.addJavascriptInterface` seul (utilisé nativement sur Android) ne permet pas nativement l'inverse sans `evaluateJavascript` en plus.
 
 ## 3. Contrat de messages
 
@@ -181,7 +181,7 @@ case 'selectionChanged':
 
 ## 8. Le threading
 
-Contrairement à l'implémentation Android **native** (Kotlin, `@JavascriptInterface`), où les callbacks JS → natif arrivent sur un thread d'arrière-plan et nécessitent un repost explicite (`Handler(Looper.getMainLooper()).post { ... }` — voir `GUIDE_COMMUNICATION_SDK.md`, section 8), le callback `onMessageReceived` d'un `JavaScriptChannel` Flutter est délivré **sur l'isolate Dart racine**, au même titre que n'importe quel autre événement asynchrone (`Future`, `Stream`). Appeler `setState()` directement dans `_handleRawMessage`/`_onMessage` est donc sûr, **sans** repost manuel — `webview_flutter` absorbe ce détail de plateforme pour vous, sur Android comme sur iOS.
+Contrairement à l'implémentation Android **native** (Kotlin, `@JavascriptInterface`), où les callbacks JS → natif arrivent sur un thread d'arrière-plan et nécessitent un repost explicite (`Handler(Looper.getMainLooper()).post { ... }` — même leçon documentée sur le guide de communication équivalent côté Android natif), le callback `onMessageReceived` d'un `JavaScriptChannel` Flutter est délivré **sur l'isolate Dart racine**, au même titre que n'importe quel autre événement asynchrone (`Future`, `Stream`). Appeler `setState()` directement dans `_handleRawMessage`/`_onMessage` est donc sûr, **sans** repost manuel — `webview_flutter` absorbe ce détail de plateforme pour vous, sur Android comme sur iOS.
 
 Le seul threading à garder en tête concerne `runJavaScript()` : c'est un appel asynchrone (`Future<void>`/`Future<Object?>`) qui traverse un platform channel — ne jamais supposer que le script s'est exécuté avant d'avoir `await` le futur (ou, pour les cas où le résultat n'est pas nécessaire, avant le prochain tick).
 
@@ -203,7 +203,7 @@ En mode debug, `VisioOneController._initialize` appelle `WebViewController.setOn
 # Rien à activer côté Dart : AndroidWebViewController.enableDebugging(true)
 # est déjà appelé automatiquement en mode debug, voir VisioOneController.create().
 ```
-Puis, sur l'ordinateur : Chrome → `chrome://inspect#devices` → la WebView de l'app apparaît dans la liste (voir `GUIDE_COMMUNICATION_SDK.md` section 10 pour le détail, identique côté Flutter).
+Puis, sur l'ordinateur : Chrome → `chrome://inspect#devices` → la WebView de l'app apparaît dans la liste (le détail est identique côté Flutter).
 
 ### iOS
 

@@ -1,6 +1,8 @@
 # VisioOne Meet Flutter
 
-App Flutter (Dart) qui affiche une carte [VisioOne](https://www.npmjs.com/package/@visioglobe/visioone) dans une `WebView`, sur le même principe que [`VisioOneMeetAndroid`](../VisioOneMeetAndroid), [`VisioOneMeetIos`](../VisioOneMeetIos) et [`VisioOneMeetRN`](../VisioOneMeetRN).
+App Flutter (Dart) qui affiche une carte [VisioOne](https://www.npmjs.com/package/@visioglobe/visioone) dans une `WebView`.
+
+Ce projet fait partie d'une série d'exemples d'intégration du SDK VisioOne sur différentes plateformes (natif Android, natif iOS, React Native, Flutter).
 
 ## Comment ça marche
 
@@ -10,7 +12,7 @@ Le SDK VisioOne (`@visioglobe/visioone` sur npm) est un SDK **JS/WebGL** : il n'
 - une page hôte (`assets/www/map.html`) qui charge ce bundle en `<script>` classique et expose un pont JS,
 - affichés dans une `WebView` plein écran via le package [`webview_flutter`](https://pub.dev/packages/webview_flutter).
 
-Le bundle **UMD** est utilisé volontairement, et pas le build ESM (`visioone.js`) : c'est la même leçon tirée de `VisioOneMeetIos` (voir son `docs/INTEGRATION.md`) et du problème rencontré par `VisioOneMeetRN` en chargeant l'ESM depuis un CDN — les `import()` dynamiques d'un module ES échouent sous `file://` (restrictions CORS de WebKit), alors qu'un `<script>` classique fonctionne aussi bien en `file://` (iOS) qu'en origine `https://` interne (Android via `loadFlutterAsset`).
+Le bundle **UMD** est utilisé volontairement, et pas le build ESM (`visioone.js`) : c'est la même leçon tirée d'autres intégrations natives du SDK VisioOne (voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)) — les `import()` dynamiques d'un module ES échouent sous `file://` (restrictions CORS de WebKit), alors qu'un `<script>` classique fonctionne aussi bien en `file://` (iOS) qu'en origine `https://` interne (Android via `loadFlutterAsset`).
 
 La communication native ↔ SDK passe par un pont bidirectionnel :
 

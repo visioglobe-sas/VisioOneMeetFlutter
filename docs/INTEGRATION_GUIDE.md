@@ -57,7 +57,7 @@ flutter doctor
 
 ### B2. Android Studio (pour cibler Android)
 
-Identique à `VisioOneMeetAndroid` — voir son `GUIDE_INTEGRATEUR.md`, Partie B1. En résumé : installez Android Studio, ouvrez **Tools → SDK Manager**, cochez une plateforme récente (API 34+).
+Identique aux autres intégrations natives du SDK VisioOne. En résumé : installez Android Studio, ouvrez **Tools → SDK Manager**, cochez une plateforme récente (API 34+).
 
 ### B3. Xcode (pour cibler iOS, macOS uniquement)
 
@@ -97,7 +97,7 @@ ls
 
 ## Partie D — Obtenir le hash de votre carte
 
-Identique à `VisioOneMeetAndroid` (`GUIDE_INTEGRATEUR.md`, Partie D) : connectez-vous sur [my.visioglobe.com](https://my.visioglobe.com), ouvrez votre carte (déjà « buildée »), et copiez le **hash** — une chaîne de 41 caractères alphanumériques, ex. :
+Comme pour les autres intégrations du SDK : connectez-vous sur [my.visioglobe.com](https://my.visioglobe.com), ouvrez votre carte (déjà « buildée »), et copiez le **hash** — une chaîne de 41 caractères alphanumériques, ex. :
 
 ```
 k5f59b8615f0379390e03e4cbe893ff813b9ac94a
@@ -143,7 +143,7 @@ rm -rf package visioglobe-visioone-*.tgz
 
 ✅ **Vérification :** `assets/www/visioone.umd.cjs` existe et pèse plusieurs Mo (≈5 Mo pour la version 1.0.5).
 
-> **Pourquoi `npm pack` et pas `npm install` ?** On ne construit rien avec un bundler (pas de Vite/Webpack ici, contrairement à `VisioOneMeetAndroid`) : on récupère juste le fichier UMD déjà construit par Visioglobe, tel quel. Voir [`ARCHITECTURE.md`, section 2](ARCHITECTURE.md#2-pourquoi-le-bundle-umd-pas-lesm) pour pourquoi ce fichier précis (et pas `dist/visioone.js`).
+> **Pourquoi `npm pack` et pas `npm install` ?** On ne construit rien avec un bundler (pas de Vite/Webpack ici, contrairement à une intégration native Android) : on récupère juste le fichier UMD déjà construit par Visioglobe, tel quel. Voir [`ARCHITECTURE.md`, section 2](ARCHITECTURE.md#2-pourquoi-le-bundle-umd-pas-lesm) pour pourquoi ce fichier précis (et pas `dist/visioone.js`).
 
 Pour choisir une version précise plutôt que la dernière :
 
