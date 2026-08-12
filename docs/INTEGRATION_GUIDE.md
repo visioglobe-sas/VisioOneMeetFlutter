@@ -100,7 +100,7 @@ ls
 Comme pour les autres intégrations du SDK : connectez-vous sur [my.visioglobe.com](https://my.visioglobe.com), ouvrez votre carte (déjà « buildée »), et copiez le **hash** — une chaîne de 41 caractères alphanumériques, ex. :
 
 ```
-k5f59b8615f0379390e03e4cbe893ff813b9ac94a
+kbae8e6c066cca4b02c2afac2bc963a643d87437a
 ```
 
 > **Vous ne trouvez pas le hash ?** Demandez explicitement « le hash de build de la carte » à votre contact Visioglobe, pas juste « le lien de la carte ».
@@ -113,7 +113,7 @@ k5f59b8615f0379390e03e4cbe893ff813b9ac94a
 2. Repérez cette ligne, tout en haut du fichier :
 
    ```dart
-   const String kDefaultMapHash = 'k5f59b8615f0379390e03e4cbe893ff813b9ac94a';
+   const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';
    ```
 
 3. Remplacez la chaîne entre guillemets par votre hash (Partie D), guillemets simples conservés :

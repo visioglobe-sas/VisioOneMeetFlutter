@@ -8,7 +8,7 @@ import 'visio_one/visio_one_map_screen.dart';
 ///
 /// Voir docs/INTEGRATION_GUIDE.md, partie D, pour obtenir le hash de VOTRE
 /// carte depuis my.visioglobe.com.
-const String kDefaultMapHash = 'k5f59b8615f0379390e03e4cbe893ff813b9ac94a';
+const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';
 
 void main() {
   runApp(const VisioOneMeetApp());
