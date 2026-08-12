@@ -190,6 +190,17 @@
           if (!view) return;
           view.setUIPartVisible(part, visible);
         },
+
+        updateOccupancy: function (occupancy) {
+          if (!venue) return;
+          occupancy.forEach(function (entry) {
+            var poi = venue.pois.find(function (p) { return p.id === entry.planId; });
+            if (!poi) return;
+            poi.surfaces.forEach(function (surface) {
+              venue.updateSurface(surface, { color: entry.color });
+            });
+          });
+        },
       };
 
       // Permet de tester map.html directement dans un navigateur (npm run dev)

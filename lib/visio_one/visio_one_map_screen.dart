@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -5,6 +7,11 @@ import 'visio_one_controller.dart';
 import 'visio_one_message.dart';
 
 enum _MapLoadState { loading, ready, error }
+
+// Stand-in for a real occupancy sensor feed: cycles a POI's surface through
+// these colors on a timer. See docs/features/occupancy-simulated.md.
+const List<String> _occupancyColors = ['#2ECC71', '#F1C40F', '#E74C3C'];
+const Duration _occupancyInterval = Duration(milliseconds: 2500);
 
 /// Écran plein écran affichant une carte VisioOne pour le hash donné.
 ///
@@ -27,6 +34,14 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
   VisioOneController? _controller;
   _MapLoadState _state = _MapLoadState.loading;
   String? _errorMessage;
+
+  final TextEditingController _placeIdController = TextEditingController();
+  Timer? _occupancyTimer;
+  bool _simulateOccupancy = false;
+  int _occupancyColorIndex = 0;
+  // The place ID actually targeted by the running timer — captured at start,
+  // deliberately not re-read from the text field on stop (see _stopOccupancySimulation).
+  String? _simulatingPlaceId;
 
   @override
   void initState() {
@@ -70,8 +85,51 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
 
   @override
   void dispose() {
+    _occupancyTimer?.cancel();
+    _placeIdController.dispose();
     _controller?.dispose();
     super.dispose();
+  }
+
+  void _toggleOccupancySimulation() {
+    if (_simulateOccupancy) {
+      _stopOccupancySimulation();
+    } else {
+      _startOccupancySimulation();
+    }
+  }
+
+  void _startOccupancySimulation() {
+    final placeId = _placeIdController.text.trim();
+    final controller = _controller;
+    if (placeId.isEmpty || controller == null) return;
+
+    setState(() => _simulateOccupancy = true);
+    _simulatingPlaceId = placeId;
+    _occupancyColorIndex = 0;
+    controller.updateOccupancy([
+      {'planId': placeId, 'color': _occupancyColors[_occupancyColorIndex]},
+    ]);
+    _occupancyTimer = Timer.periodic(_occupancyInterval, (_) {
+      _occupancyColorIndex = (_occupancyColorIndex + 1) % _occupancyColors.length;
+      controller.updateOccupancy([
+        {'planId': placeId, 'color': _occupancyColors[_occupancyColorIndex]},
+      ]);
+    });
+  }
+
+  void _stopOccupancySimulation() {
+    _occupancyTimer?.cancel();
+    _occupancyTimer = null;
+    // Reset the POI that was actually being simulated — not whatever the text
+    // field currently holds, which may have been edited since simulation started.
+    final placeId = _simulatingPlaceId;
+    _simulatingPlaceId = null;
+    if (placeId != null && placeId.isNotEmpty) {
+      // Reset the surface rather than leaving it stuck on the last simulated color.
+      _controller?.updateOccupancy([{'planId': placeId, 'color': null}]);
+    }
+    setState(() => _simulateOccupancy = false);
   }
 
   void _retry() {
@@ -93,7 +151,61 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
           if (_state == _MapLoadState.loading)
             const Center(child: CircularProgressIndicator(color: Colors.white)),
           if (_state == _MapLoadState.error) _ErrorOverlay(message: _errorMessage!, onRetry: _retry),
+          if (controller != null && _state == _MapLoadState.ready)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _OccupancySimulationPanel(
+                placeIdController: _placeIdController,
+                simulating: _simulateOccupancy,
+                onToggle: _toggleOccupancySimulation,
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _OccupancySimulationPanel extends StatelessWidget {
+  const _OccupancySimulationPanel({
+    required this.placeIdController,
+    required this.simulating,
+    required this.onToggle,
+  });
+
+  final TextEditingController placeIdController;
+  final bool simulating;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black87,
+      padding: const EdgeInsets.all(12),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: placeIdController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Place ID',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onToggle,
+              child: Text(simulating ? 'Stop occupancy simulation' : 'Simulate occupancy'),
+            ),
+          ],
+        ),
       ),
     );
   }
