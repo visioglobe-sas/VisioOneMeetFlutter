@@ -122,6 +122,12 @@ class VisioOneController {
   Future<void> setUIPartVisible(String part, bool visible) =>
       _call('setUIPartVisible', [part, visible]);
 
+  /// Met à jour l'apparence d'un ou plusieurs POI pour refléter un statut
+  /// d'occupation (ex. `{'planId': 'B1-UL00-01', 'color': '#E74C3C'}').
+  /// `color: null` réinitialise la surface à son apparence normale.
+  Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
+      _call('updateOccupancy', [occupancy]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
