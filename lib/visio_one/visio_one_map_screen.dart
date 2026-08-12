@@ -162,6 +162,20 @@ class _VisioOneMapScreenState extends State<VisioOneMapScreen> {
                 onToggle: _toggleOccupancySimulation,
               ),
             ),
+          if (controller != null && _state == _MapLoadState.ready)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: FilledButton(
+                    onPressed: controller.goToGlobal,
+                    child: const Text('Reset view'),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
