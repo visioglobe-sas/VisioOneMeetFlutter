@@ -9,9 +9,10 @@ import '../visio_one/visio_one_controller.dart';
 const List<String> _occupancyColors = ['#2ECC71', '#F1C40F', '#E74C3C'];
 const Duration _occupancyInterval = Duration(milliseconds: 2500);
 
-/// Overlay de la feature `occupancy-simulated` : un panneau en bas d'écran
-/// (champ Place ID + bouton toggle) qui fait tourner la couleur d'occupation
-/// d'un POI sur un `Timer.periodic`, en lieu et place d'un vrai capteur.
+/// Overlay de la feature `occupancy-simulated` : un contrôle (champ Place ID
+/// + bouton toggle), affiché dans le bottom sheet de l'écran de feature, qui
+/// fait tourner la couleur d'occupation d'un POI sur un `Timer.periodic`, en
+/// lieu et place d'un vrai capteur.
 class OccupancySimulationOverlay extends StatefulWidget {
   const OccupancySimulationOverlay({super.key, required this.controller});
 
@@ -79,37 +80,20 @@ class _OccupancySimulationOverlayState extends State<OccupancySimulationOverlay>
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        color: Colors.black87,
-        padding: const EdgeInsets.all(12),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _placeIdController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Place ID',
-                    hintStyle: TextStyle(color: Colors.white54),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _toggleOccupancySimulation,
-                child: Text(_simulateOccupancy ? 'Stop occupancy simulation' : 'Simulate occupancy'),
-              ),
-            ],
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _placeIdController,
+            decoration: const InputDecoration(hintText: 'Place ID', isDense: true),
           ),
         ),
-      ),
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: _toggleOccupancySimulation,
+          child: Text(_simulateOccupancy ? 'Stop occupancy simulation' : 'Simulate occupancy'),
+        ),
+      ],
     );
   }
 }

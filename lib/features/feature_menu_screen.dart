@@ -12,7 +12,15 @@ class FeatureMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('VisioOne Meet')),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Image.asset('assets/icon/app_icon.png', width: 32, height: 32),
+            const SizedBox(width: 12),
+            const Text('VisioOne Meet by VisioGlobe'),
+          ],
+        ),
+      ),
       body: ListView.separated(
         itemCount: Feature.values.length,
         separatorBuilder: (context, index) => const Divider(height: 1),
