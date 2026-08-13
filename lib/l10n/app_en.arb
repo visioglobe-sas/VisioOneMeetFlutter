@@ -7,5 +7,7 @@
   "poiClickTitle": "React to POI tap",
   "poiClickDescription": "Tap a POI on the map to show its details in a panel.",
   "gotoPoiTitle": "Go to a place",
-  "gotoPoiDescription": "Center the camera on a place ID and select it."
+  "gotoPoiDescription": "Center the camera on a place ID and select it.",
+  "floorSelectorTitle": "Floor / building selector",
+  "floorSelectorDescription": "Switch buildings and floors from a native panel."
 }

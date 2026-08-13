@@ -102,6 +102,15 @@ class VisioOneController {
   /// Efface la sélection visuelle courante (surlignage de POI).
   Future<void> clearSelection() => _run('window.MapBridge.clearSelection()');
 
+  /// Demande la liste des bâtiments/étages de la venue courante.
+  ///
+  /// Fire-and-forget comme le reste du pont Native -> JS : la réponse
+  /// arrive de façon asynchrone sur [messages] sous la forme d'un message
+  /// `venueLayout` (même schéma requête/réponse que [startItinerary], qui
+  /// répond via `itineraryComputed`), pas comme valeur de retour de cet
+  /// appel. Voir `assets/www/map.html`, `window.MapBridge.getVenueLayout`.
+  Future<void> getVenueLayout() => _run('window.MapBridge.getVenueLayout()');
+
   /// Calcule et affiche un itinéraire entre deux POI.
   Future<void> startItinerary({
     required String origin,

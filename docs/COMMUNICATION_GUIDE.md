@@ -67,6 +67,8 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `clearSelection()` | — | Efface la sélection visuelle courante. |
 | `startItinerary(args)` | `{origin, destination, isAccessible}` | Calcule et affiche un itinéraire. |
 | `setUIPartVisible(part, visible)` | `String`, `bool` | Affiche/masque un élément de l'UI overlay du SDK. |
+| `updateOccupancy(occupancy)` | `[{planId, color}]` | Met à jour la couleur d'occupation d'un ou plusieurs POI. |
+| `getVenueLayout()` | — | Demande la liste bâtiments/étages ; répond en asynchrone via `venueLayout` (voir ci-dessous). |
 
 ### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
 
@@ -79,6 +81,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `poiSelected` | `{id, name}` | L'utilisateur a tapé un POI dans la carte (`view` event `poiclick`). |
 | `floorChanged` | `{buildingId, floorId}` | Changement d'étage courant (`view` event `currentfloorchanged`). |
 | `itineraryComputed` | `{instructions}` | `startItinerary()` a terminé son calcul. |
+| `venueLayout` | `{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}` | Réponse à `getVenueLayout()`. |
 
 Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
 

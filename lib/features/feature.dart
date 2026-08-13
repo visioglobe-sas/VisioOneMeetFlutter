@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
@@ -17,7 +18,8 @@ enum Feature {
   resetView('reset-view'),
   occupancySimulated('occupancy-simulated'),
   poiClick('poi-click'),
-  gotoPoi('goto-poi');
+  gotoPoi('goto-poi'),
+  floorSelector('floor-selector');
 
   const Feature(this.slug);
 
@@ -28,6 +30,7 @@ enum Feature {
     Feature.occupancySimulated => l10n.occupancySimulatedTitle,
     Feature.poiClick => l10n.poiClickTitle,
     Feature.gotoPoi => l10n.gotoPoiTitle,
+    Feature.floorSelector => l10n.floorSelectorTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -35,6 +38,7 @@ enum Feature {
     Feature.occupancySimulated => l10n.occupancySimulatedDescription,
     Feature.poiClick => l10n.poiClickDescription,
     Feature.gotoPoi => l10n.gotoPoiDescription,
+    Feature.floorSelector => l10n.floorSelectorDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -42,6 +46,7 @@ enum Feature {
     Feature.occupancySimulated => OccupancySimulationOverlay(controller: controller),
     Feature.poiClick => const PoiClickOverlay(),
     Feature.gotoPoi => GotoPoiOverlay(controller: controller),
+    Feature.floorSelector => FloorSelectorOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -49,6 +54,11 @@ enum Feature {
   /// l'instant (`poiSelected` -> panneau d'info du POI tapé) ; les autres
   /// features n'ont rien à faire ici, tant que `map.html` ne diffuse ces
   /// événements que sur `view` (donc identiquement sur tous les écrans).
+  ///
+  /// `floor-selector` n'en a pas besoin non plus : son overlay écoute
+  /// directement `controller.messages` (`venueLayout`, `floorChanged`) tant
+  /// qu'il est monté dans le bottom sheet, plutôt que de passer par ce
+  /// routage — voir [FloorSelectorOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -56,6 +66,7 @@ enum Feature {
       case Feature.resetView:
       case Feature.occupancySimulated:
       case Feature.gotoPoi:
+      case Feature.floorSelector:
         break;
     }
   }
