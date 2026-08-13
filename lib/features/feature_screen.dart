@@ -20,6 +20,7 @@ class FeatureScreen extends StatelessWidget {
         child: VisioOneMapShell(
           hash: kDefaultMapHash,
           overlayBuilder: (context, controller) => feature.buildOverlay(context, controller),
+          onMessage: (context, message) => feature.onMapMessage(context, message),
         ),
       ),
     );
