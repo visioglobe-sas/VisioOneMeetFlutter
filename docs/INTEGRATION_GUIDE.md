@@ -233,7 +233,7 @@ Ne nécessitent **pas** de rebuild du bundle web (Partie F) :
 - **Changer de carte** : reprenez la Partie E avec un nouveau hash.
 - **Nom de l'application** : `CFBundleName` dans `ios/Runner/Info.plist` (iOS) et `android:label` dans `android/app/src/main/AndroidManifest.xml` (Android).
 - **Icône de l'application** : remplacez les fichiers sous `ios/Runner/Assets.xcassets/AppIcon.appiconset/` et `android/app/src/main/res/mipmap-*/`, ou utilisez un package comme [`flutter_launcher_icons`](https://pub.dev/packages/flutter_launcher_icons).
-- **Couleur de fond pendant le chargement** : `Colors.black` dans `lib/visio_one/visio_one_map_screen.dart`.
+- **Couleur de fond pendant le chargement** : `Colors.black` dans `lib/visio_one/visio_one_map_shell.dart`.
 - **Éléments de l'UI overlay du SDK visibles** (recherche, sélecteur d'étage...) : appelez `controller.setUIPartVisible('search', false)` (voir [`COMMUNICATION_GUIDE.md`](COMMUNICATION_GUIDE.md)).
 
 Nécessitent de refaire la Partie F **avant** de relancer l'app :

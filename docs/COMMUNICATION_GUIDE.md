@@ -171,7 +171,7 @@ view.addEventListener('selectedpoischange', function (event) {
 });
 ```
 
-**Étape 3 — Ajouter un `case` dans le consommateur Dart** (`visio_one_map_screen.dart`, méthode `_onMessage`), ou dans tout autre widget qui écoute `controller.messages` :
+**Étape 3 — Ajouter un `case` dans le consommateur Dart** (`lib/visio_one/visio_one_map_shell.dart`, méthode `_onMessage`), ou dans tout autre widget qui écoute `controller.messages` :
 
 ```dart
 case 'selectionChanged':

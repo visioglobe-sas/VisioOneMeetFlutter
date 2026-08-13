@@ -1,0 +1,7 @@
+{
+  "@@locale": "fr",
+  "resetViewTitle": "Réinitialiser la vue",
+  "resetViewDescription": "Recentre la caméra sur la vue par défaut du lieu.",
+  "occupancySimulatedTitle": "Occupation simulée",
+  "occupancySimulatedDescription": "Bascule la couleur d'occupation d'un lieu avec des données simulées."
+}
