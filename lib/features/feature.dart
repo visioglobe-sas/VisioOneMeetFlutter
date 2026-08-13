@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
@@ -15,7 +16,8 @@ import 'reset_view_overlay.dart';
 enum Feature {
   resetView('reset-view'),
   occupancySimulated('occupancy-simulated'),
-  poiClick('poi-click');
+  poiClick('poi-click'),
+  gotoPoi('goto-poi');
 
   const Feature(this.slug);
 
@@ -25,18 +27,21 @@ enum Feature {
     Feature.resetView => l10n.resetViewTitle,
     Feature.occupancySimulated => l10n.occupancySimulatedTitle,
     Feature.poiClick => l10n.poiClickTitle,
+    Feature.gotoPoi => l10n.gotoPoiTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
     Feature.resetView => l10n.resetViewDescription,
     Feature.occupancySimulated => l10n.occupancySimulatedDescription,
     Feature.poiClick => l10n.poiClickDescription,
+    Feature.gotoPoi => l10n.gotoPoiDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
     Feature.resetView => ResetViewOverlay(controller: controller),
     Feature.occupancySimulated => OccupancySimulationOverlay(controller: controller),
     Feature.poiClick => const PoiClickOverlay(),
+    Feature.gotoPoi => GotoPoiOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -50,6 +55,7 @@ enum Feature {
         handlePoiSelectedMessage(context, message);
       case Feature.resetView:
       case Feature.occupancySimulated:
+      case Feature.gotoPoi:
         break;
     }
   }

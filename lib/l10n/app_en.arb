@@ -5,5 +5,7 @@
   "occupancySimulatedTitle": "Simulated occupancy",
   "occupancySimulatedDescription": "Toggle a place's occupancy color with simulated data.",
   "poiClickTitle": "React to POI tap",
-  "poiClickDescription": "Tap a POI on the map to show its details in a panel."
+  "poiClickDescription": "Tap a POI on the map to show its details in a panel.",
+  "gotoPoiTitle": "Go to a place",
+  "gotoPoiDescription": "Center the camera on a place ID and select it."
 }
