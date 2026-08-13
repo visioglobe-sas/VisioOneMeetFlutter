@@ -96,70 +96,39 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
     _controller?.setup(widget.hash);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final controller = _controller;
-    return ColoredBox(
-      color: Colors.black,
-      child: Stack(
-        children: [
-          if (controller != null) WebViewWidget(controller: controller.webViewController),
-          if (_state == _MapLoadState.loading)
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-          if (_state == _MapLoadState.error) _ErrorOverlay(message: _errorMessage!, onRetry: _retry),
-          if (controller != null && _state == _MapLoadState.ready)
-            _FeatureBottomSheet(child: widget.overlayBuilder(context, controller)),
-        ],
+  void _showFeatureControls(BuildContext context, VisioOneController controller) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: widget.overlayBuilder(context, controller),
       ),
     );
   }
-}
-
-/// Bottom sheet persistant et rétractable (jamais totalement caché,
-/// `minChildSize` = `initialChildSize`) qui héberge le contrôle de la feature
-/// courante, à la place de l'ancien overlay flottant par-dessus la carte.
-class _FeatureBottomSheet extends StatelessWidget {
-  const _FeatureBottomSheet({required this.child});
-
-  final Widget child;
-
-  static const double _peekSize = 0.16;
-  static const double _expandedSize = 0.45;
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: _peekSize,
-      minChildSize: _peekSize,
-      maxChildSize: _expandedSize,
-      snap: true,
-      snapSizes: const [_peekSize, _expandedSize],
-      builder: (context, scrollController) {
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: EdgeInsets.zero,
-            children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: child),
-            ],
-          ),
-        );
-      },
+    final controller = _controller;
+    return Scaffold(
+      body: ColoredBox(
+        color: Colors.black,
+        child: Stack(
+          children: [
+            if (controller != null) WebViewWidget(controller: controller.webViewController),
+            if (_state == _MapLoadState.loading)
+              const Center(child: CircularProgressIndicator(color: Colors.white)),
+            if (_state == _MapLoadState.error) _ErrorOverlay(message: _errorMessage!, onRetry: _retry),
+          ],
+        ),
+      ),
+      floatingActionButton: controller != null && _state == _MapLoadState.ready
+          ? FloatingActionButton(
+              onPressed: () => _showFeatureControls(context, controller),
+              child: const Icon(Icons.tune),
+            )
+          : null,
     );
   }
 }
