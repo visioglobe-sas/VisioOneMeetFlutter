@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "resetViewTitle": "Reset view",
+  "resetViewDescription": "Return the camera to the venue's default view.",
+  "occupancySimulatedTitle": "Simulated occupancy",
+  "occupancySimulatedDescription": "Toggle a place's occupancy color with simulated data."
+}

@@ -26,7 +26,7 @@ Il n'y a pas de vrai capteur derrière : un `Timer.periodic` côté Dart fait to
    Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
        _call('updateOccupancy', [occupancy]);
    ```
-3. **Piloter un timer depuis l'écran hôte** (`lib/visio_one/visio_one_map_screen.dart`) : démarrer un `Timer.periodic` qui appelle `controller.updateOccupancy([{'planId': placeId, 'color': nextColor}])` à chaque tick, et l'annuler (`Timer.cancel()`) quand la simulation s'arrête ou que l'écran est disposé.
+3. **Piloter un timer depuis l'overlay de feature** (`lib/features/occupancy_simulation_overlay.dart`, widget `OccupancySimulationOverlay`) : démarrer un `Timer.periodic` qui appelle `controller.updateOccupancy([{'planId': placeId, 'color': nextColor}])` à chaque tick, et l'annuler (`Timer.cancel()`) quand la simulation s'arrête ou que l'overlay est disposé.
 4. **Toujours remettre `color: null` en arrêtant la simulation** — sinon la surface reste bloquée sur la dernière couleur simulée.
 5. Exposer un contrôle utilisateur (ici, un champ "Place ID" + un bouton toggle) — une feature du catalogue doit être démontrable via une interaction, pas seulement câblée en silence.
 

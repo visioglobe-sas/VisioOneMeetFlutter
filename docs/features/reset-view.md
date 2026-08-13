@@ -20,7 +20,7 @@ Point notable : la commande `goToGlobal` existait déjà de bout en bout dans ce
    Future<void> goToGlobal() => _run('window.MapBridge.goToGlobal()');
    ```
    Les deux étaient déjà là — rien à ajouter côté pont.
-2. **Ajouter le bouton natif** (`lib/visio_one/visio_one_map_screen.dart`), dans le même `Stack` que le panneau de simulation d'occupation, visible sous la même condition (`controller != null && _state == _MapLoadState.ready`) :
+2. **Ajouter le bouton natif** en tant qu'overlay de feature (`lib/features/reset_view_overlay.dart`, widget `ResetViewOverlay`), branché sur `VisioOneMapShell.overlayBuilder` (`lib/visio_one/visio_one_map_shell.dart`), qui ne l'affiche que lorsque la carte est prête :
    ```dart
    if (controller != null && _state == _MapLoadState.ready)
      Positioned(
@@ -42,8 +42,8 @@ Point notable : la commande `goToGlobal` existait déjà de bout en bout dans ce
 ## Points d'attention
 
 - **Le tracking checklist du hub (`VisioOneHub/CHECKLIST.md`) avait cette feature marquée ❌ sur cette plateforme** — pas même 🟡 ("câblé mais non relié à l'UI") — alors que le pont natif↔JS était déjà entièrement fonctionnel. Rappel que l'exactitude d'un checklist dépend de la lecture réelle du code, pas seulement de l'absence d'un contrôle UI visible : un ❌ peut cacher un 🟡 non détecté si personne n'a rouvert le fichier.
-- `view.goToGlobal()` ne fait rien de visible si `view` n'est pas encore initialisé (carte pas encore `ready`) — d'où la garde `if (view) ...` côté JS et la condition d'affichage du bouton côté écran (`_state == _MapLoadState.ready`).
-- Bouton placé en haut à droite, dans un `SafeArea`, pour ne pas chevaucher les encoches/barres système ni le panneau de simulation d'occupation en bas de l'écran.
+- `view.goToGlobal()` ne fait rien de visible si `view` n'est pas encore initialisé (carte pas encore `ready`) — d'où la garde `if (view) ...` côté JS et le fait que `VisioOneMapShell` n'invoque `overlayBuilder` qu'une fois l'état `ready` atteint.
+- Bouton placé en haut à droite, dans un `SafeArea`, pour ne pas chevaucher les encoches/barres système.
 
 ## Pour aller plus loin
 
