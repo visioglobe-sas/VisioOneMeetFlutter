@@ -25,13 +25,26 @@ enum _MapLoadState { loading, ready, error }
 /// 3. `onPageFinished` déclenche [VisioOneController.setup] avec [hash].
 /// 4. Le message JS `ready`/`error` fait sortir l'écran de l'état "loading".
 class VisioOneMapShell extends StatefulWidget {
-  const VisioOneMapShell({super.key, required this.hash, required this.overlayBuilder});
+  const VisioOneMapShell({
+    super.key,
+    required this.hash,
+    required this.overlayBuilder,
+    this.onMessage,
+  });
 
   /// Hash à 41 caractères d'une carte publiée sur my.visioglobe.com.
   final String hash;
 
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
+
+  /// Callback optionnel pour les messages JS -> Native que ce squelette
+  /// partagé ne gère pas lui-même (tout sauf `ready`/`error`, ex.
+  /// `poiSelected`, `floorChanged`...). Laissé à `null` par défaut : seule la
+  /// feature concernée (ex. `poi-click`) le renseigne, pour ne pas faire
+  /// réagir les autres écrans de feature à un événement qui ne les concerne
+  /// pas alors que `map.html` émet les mêmes événements sur toutes les cartes.
+  final void Function(BuildContext context, VisioOneMessage message)? onMessage;
 
   @override
   State<VisioOneMapShell> createState() => _VisioOneMapShellState();
@@ -76,9 +89,11 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         });
       default:
         // Les autres types (poiSelected, floorChanged, itineraryComputed...)
-        // sont à router vers l'UI native de l'app hôte. Rien à faire ici
-        // dans ce squelette d'intégration.
-        break;
+        // sont routés vers l'UI native de l'app hôte via [onMessage], propre
+        // à la feature affichée (voir `lib/features/poi_click_overlay.dart`
+        // pour `poiSelected`) — ce squelette partagé n'a pas à les connaître
+        // individuellement.
+        if (mounted) widget.onMessage?.call(context, message);
     }
   }
 

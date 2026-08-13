@@ -3,5 +3,7 @@
   "resetViewTitle": "Réinitialiser la vue",
   "resetViewDescription": "Recentre la caméra sur la vue par défaut du lieu.",
   "occupancySimulatedTitle": "Occupation simulée",
-  "occupancySimulatedDescription": "Bascule la couleur d'occupation d'un lieu avec des données simulées."
+  "occupancySimulatedDescription": "Bascule la couleur d'occupation d'un lieu avec des données simulées.",
+  "poiClickTitle": "Réagir au clic sur un POI",
+  "poiClickDescription": "Tapez un POI sur la carte pour afficher ses infos dans un panneau."
 }
