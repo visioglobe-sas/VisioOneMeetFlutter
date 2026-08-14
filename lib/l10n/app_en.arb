@@ -9,5 +9,7 @@
   "gotoPoiTitle": "Go to a place",
   "gotoPoiDescription": "Center the camera on a place ID and select it.",
   "floorSelectorTitle": "Floor / building selector",
-  "floorSelectorDescription": "Switch buildings and floors from a native panel."
+  "floorSelectorDescription": "Switch buildings and floors from a native panel.",
+  "computeNavigationTitle": "Itinerary",
+  "computeNavigationDescription": "Compute and display a route between two place IDs."
 }

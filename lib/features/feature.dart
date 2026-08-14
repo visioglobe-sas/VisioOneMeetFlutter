@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'compute_navigation_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
@@ -19,7 +20,8 @@ enum Feature {
   occupancySimulated('occupancy-simulated'),
   poiClick('poi-click'),
   gotoPoi('goto-poi'),
-  floorSelector('floor-selector');
+  floorSelector('floor-selector'),
+  computeNavigation('compute-navigation');
 
   const Feature(this.slug);
 
@@ -31,6 +33,7 @@ enum Feature {
     Feature.poiClick => l10n.poiClickTitle,
     Feature.gotoPoi => l10n.gotoPoiTitle,
     Feature.floorSelector => l10n.floorSelectorTitle,
+    Feature.computeNavigation => l10n.computeNavigationTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -39,6 +42,7 @@ enum Feature {
     Feature.poiClick => l10n.poiClickDescription,
     Feature.gotoPoi => l10n.gotoPoiDescription,
     Feature.floorSelector => l10n.floorSelectorDescription,
+    Feature.computeNavigation => l10n.computeNavigationDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -47,6 +51,7 @@ enum Feature {
     Feature.poiClick => const PoiClickOverlay(),
     Feature.gotoPoi => GotoPoiOverlay(controller: controller),
     Feature.floorSelector => FloorSelectorOverlay(controller: controller),
+    Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -67,6 +72,7 @@ enum Feature {
       case Feature.occupancySimulated:
       case Feature.gotoPoi:
       case Feature.floorSelector:
+      case Feature.computeNavigation:
         break;
     }
   }
