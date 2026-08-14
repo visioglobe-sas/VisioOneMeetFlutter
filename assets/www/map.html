@@ -162,6 +162,37 @@
           }
         },
 
+        // Requête/réponse (même schéma que startItinerary / itineraryComputed) :
+        // Building/Floor n'exposent ni nom ni libellé côté SDK (voir
+        // Building.d.ts/Floor.d.ts du package @visioglobe/visioone — seulement
+        // `id`, `floors`, `defaultFloorID` pour Building, `id`, `altitude`,
+        // `levelIndex` pour Floor), exactement comme le floor-selector natif du
+        // SDK lui-même, qui affiche `levelIndex.toString()` faute de mieux
+        // (vu dans visioone.umd.cjs). On renvoie donc `levelIndex`, à charge du
+        // natif de l'afficher (ex. "Floor 2", "Floor -1"), triés du plus haut
+        // au plus bas comme un panneau d'ascenseur. `currentBuildingId`/
+        // `currentFloorId` permettent de présélectionner le bon bouton dès
+        // l'ouverture du panneau, sans attendre un `floorChanged`.
+        getVenueLayout: function () {
+          if (!venue || !view) return;
+          sendToNative('venueLayout', {
+            currentBuildingId: view.currentBuilding ? view.currentBuilding.id : null,
+            currentFloorId: view.currentFloor ? view.currentFloor.id : null,
+            buildings: venue.venueLayout.buildings.map(function (building) {
+              return {
+                id: building.id,
+                defaultFloorId: building.defaultFloorID,
+                floors: building.floors
+                  .slice()
+                  .sort(function (a, b) { return b.levelIndex - a.levelIndex; })
+                  .map(function (floor) {
+                    return { id: floor.id, levelIndex: floor.levelIndex };
+                  }),
+              };
+            }),
+          });
+        },
+
         clearSelection: function () {
           if (!venue) return;
           venue.pois.forEach(function (poi) {

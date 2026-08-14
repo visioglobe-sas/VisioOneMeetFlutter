@@ -7,5 +7,7 @@
   "poiClickTitle": "Réagir au clic sur un POI",
   "poiClickDescription": "Tapez un POI sur la carte pour afficher ses infos dans un panneau.",
   "gotoPoiTitle": "Aller à un lieu",
-  "gotoPoiDescription": "Centre la caméra sur un identifiant de lieu et le sélectionne."
+  "gotoPoiDescription": "Centre la caméra sur un identifiant de lieu et le sélectionne.",
+  "floorSelectorTitle": "Sélection d'étage / bâtiment",
+  "floorSelectorDescription": "Change de bâtiment et d'étage depuis un panneau natif."
 }
