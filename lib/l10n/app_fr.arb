@@ -9,5 +9,7 @@
   "gotoPoiTitle": "Aller à un lieu",
   "gotoPoiDescription": "Centre la caméra sur un identifiant de lieu et le sélectionne.",
   "floorSelectorTitle": "Sélection d'étage / bâtiment",
-  "floorSelectorDescription": "Change de bâtiment et d'étage depuis un panneau natif."
+  "floorSelectorDescription": "Change de bâtiment et d'étage depuis un panneau natif.",
+  "computeNavigationTitle": "Itinéraire",
+  "computeNavigationDescription": "Calcule et affiche un itinéraire entre deux identifiants de lieu."
 }
