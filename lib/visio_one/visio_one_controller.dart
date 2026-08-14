@@ -7,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
+import 'simulated_position_session.dart';
 import 'visio_one_message.dart';
 
 /// Nom du `JavaScriptChannel` exposé à `map.html` (`window.VisioOneBridge`).
@@ -27,11 +28,18 @@ const String kVisioOneBridgeChannel = 'VisioOneBridge';
 /// - **JS -> Native** : un seul [JavaScriptChannel] ([kVisioOneBridgeChannel]),
 ///   exposé en flux typé via [messages].
 class VisioOneController {
-  VisioOneController._(this._webViewController);
+  VisioOneController._(this._webViewController) {
+    simulatedPosition = SimulatedPositionSession(this);
+  }
 
   final WebViewController _webViewController;
   final StreamController<VisioOneMessage> _messages =
       StreamController<VisioOneMessage>.broadcast();
+
+  /// Pilote le va-et-vient de `simulated-position`. Voir sa documentation de
+  /// tête pour pourquoi cette session vit ici plutôt que dans l'overlay de la
+  /// feature : elle doit survivre à la fermeture du bottom sheet.
+  late final SimulatedPositionSession simulatedPosition;
 
   /// Crée le contrôleur et son [WebViewController] sous-jacent.
   ///
@@ -137,6 +145,33 @@ class VisioOneController {
   Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
       _call('updateOccupancy', [occupancy]);
 
+  /// Demande la position WGS84 d'un POI (issue de son marker/label/image —
+  /// un POI n'expose pas de lat/lng directement, voir `assets/www/map.html`).
+  ///
+  /// Fire-and-forget comme [getVenueLayout]/[startItinerary] : la réponse
+  /// arrive de façon asynchrone sur [messages] sous la forme d'un message
+  /// `poiPositionResolved` portant le même `requestId`, avec `position: null`
+  /// si `poiId` ne correspond à aucun POI (ou à un POI sans marker/label/
+  /// image). `requestId` permet de distinguer plusieurs requêtes concurrentes
+  /// (ex. origine + destination pour `simulated-position`).
+  Future<void> resolvePoiPosition(String requestId, String poiId) =>
+      _call('resolvePoiPosition', [requestId, poiId]);
+
+  /// Injecte/actualise une position simulée trackée + son cercle de
+  /// précision (`precisionCircleRadius`, en mètres). Active `allowTracking`
+  /// côté JS au passage (voir `map.html`) — requis par le SDK avant tout
+  /// premier appel à `injectTrackedPosition`.
+  Future<void> injectTrackedPosition({
+    required double latitude,
+    required double longitude,
+    required double precisionCircleRadius,
+  }) => _call('injectTrackedPosition', [latitude, longitude, precisionCircleRadius]);
+
+  /// Arrête le suivi de position simulée. Pas de méthode dédiée côté SDK pour
+  /// "effacer" le marqueur/cercle : c'est `allowTracking = false` qui les
+  /// retire de la carte, voir `docs/features/simulated-position.md`.
+  Future<void> stopTrackedPosition() => _run('window.MapBridge.stopTrackedPosition()');
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -164,6 +199,7 @@ class VisioOneController {
 
   /// Libère les ressources. À appeler depuis `dispose()` du widget hôte.
   void dispose() {
+    simulatedPosition.dispose();
     _messages.close();
   }
 }

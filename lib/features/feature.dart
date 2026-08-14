@@ -9,6 +9,7 @@ import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
+import 'simulated_position_overlay.dart';
 import 'ui_part_visibility_overlay.dart';
 
 /// Catalogue des features démontrées par l'app — source unique de vérité
@@ -23,7 +24,8 @@ enum Feature {
   gotoPoi('goto-poi'),
   floorSelector('floor-selector'),
   computeNavigation('compute-navigation'),
-  uiPartVisibility('ui-part-visibility');
+  uiPartVisibility('ui-part-visibility'),
+  simulatedPosition('simulated-position');
 
   const Feature(this.slug);
 
@@ -37,6 +39,7 @@ enum Feature {
     Feature.floorSelector => l10n.floorSelectorTitle,
     Feature.computeNavigation => l10n.computeNavigationTitle,
     Feature.uiPartVisibility => l10n.uiPartVisibilityTitle,
+    Feature.simulatedPosition => l10n.simulatedPositionTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -47,6 +50,7 @@ enum Feature {
     Feature.floorSelector => l10n.floorSelectorDescription,
     Feature.computeNavigation => l10n.computeNavigationDescription,
     Feature.uiPartVisibility => l10n.uiPartVisibilityDescription,
+    Feature.simulatedPosition => l10n.simulatedPositionDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -57,6 +61,7 @@ enum Feature {
     Feature.floorSelector => FloorSelectorOverlay(controller: controller),
     Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
     Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
+    Feature.simulatedPosition => SimulatedPositionOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -68,7 +73,8 @@ enum Feature {
   /// `floor-selector` n'en a pas besoin non plus : son overlay écoute
   /// directement `controller.messages` (`venueLayout`, `floorChanged`) tant
   /// qu'il est monté dans le bottom sheet, plutôt que de passer par ce
-  /// routage — voir [FloorSelectorOverlay].
+  /// routage — voir [FloorSelectorOverlay]. `simulated-position` fait de même
+  /// pour `poiPositionResolved`, voir [SimulatedPositionOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -79,6 +85,7 @@ enum Feature {
       case Feature.floorSelector:
       case Feature.computeNavigation:
       case Feature.uiPartVisibility:
+      case Feature.simulatedPosition:
         break;
     }
   }

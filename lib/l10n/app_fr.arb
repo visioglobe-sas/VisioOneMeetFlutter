@@ -18,5 +18,7 @@
   "uiPartVisibilityNavigationLabel": "Navigation",
   "uiPartVisibilityPoiDetailsLabel": "Détails du POI",
   "uiPartVisibilitySearchLabel": "Recherche",
-  "uiPartVisibilityUserTrackingLabel": "Suivi utilisateur"
+  "uiPartVisibilityUserTrackingLabel": "Suivi utilisateur",
+  "simulatedPositionTitle": "Position simulée",
+  "simulatedPositionDescription": "Anime une position simulée avec un cercle de précision entre deux POI."
 }

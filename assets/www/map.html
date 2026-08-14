@@ -232,6 +232,49 @@
             });
           });
         },
+
+        // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
+        // un POI n'a pas de lat/lng directement (voir POI.d.ts du package
+        // @visioglobe/visioone) — sa position WGS84 vient de son marker, ou à
+        // défaut de son label, ou à défaut de son image, toutes trois portant
+        // une `Position` (`{latitude, longitude, altitude?}`) au même format
+        // que celui attendu par `injectTrackedPosition`. `requestId` est
+        // renvoyé tel quel pour permettre plusieurs requêtes concurrentes
+        // (origine + destination) sans les confondre côté Dart.
+        resolvePoiPosition: function (requestId, poiId) {
+          if (!venue) return;
+          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          var source = poi
+            ? (poi.markers[0] || poi.labels[0] || poi.images[0])
+            : null;
+          var position = source
+            ? { latitude: source.position.latitude, longitude: source.position.longitude }
+            : null;
+          sendToNative('poiPositionResolved', { requestId: requestId, poiId: poiId, position: position });
+        },
+
+        // Injecte/actualise une position simulée trackée + son cercle de
+        // précision (mètres). `view.allowTracking` doit être à `true` avant
+        // le premier appel à `injectTrackedPosition`, sans quoi le SDK lève
+        // une exception (voir View.ts) : on l'active systématiquement ici
+        // plutôt que d'exposer une commande séparée, ce booléen n'ayant pas
+        // d'autre usage dans cette démo.
+        injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
+          if (!view) return;
+          view.allowTracking = true;
+          view.injectTrackedPosition({
+            position: { latitude: latitude, longitude: longitude },
+            precisionCircleRadius: precisionCircleRadius,
+          });
+        },
+
+        // Pas de méthode dédiée côté SDK pour "effacer" le marqueur/cercle
+        // trackés : c'est `allowTracking = false` qui les retire de la carte
+        // (voir docs/features/simulated-position.md, "Points d'attention").
+        stopTrackedPosition: function () {
+          if (!view) return;
+          view.allowTracking = false;
+        },
       };
 
       // Permet de tester map.html directement dans un navigateur (npm run dev)

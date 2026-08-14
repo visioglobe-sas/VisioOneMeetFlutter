@@ -69,6 +69,9 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `setUIPartVisible(part, visible)` | `String`, `bool` | Affiche/masque un élément de l'UI overlay du SDK. |
 | `updateOccupancy(occupancy)` | `[{planId, color}]` | Met à jour la couleur d'occupation d'un ou plusieurs POI. |
 | `getVenueLayout()` | — | Demande la liste bâtiments/étages ; répond en asynchrone via `venueLayout` (voir ci-dessous). |
+| `resolvePoiPosition(requestId, poiId)` | `String`, `String` | Demande la position WGS84 d'un POI ; répond en asynchrone via `poiPositionResolved` (voir ci-dessous). |
+| `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
+| `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
 
 ### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
 
@@ -82,6 +85,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `floorChanged` | `{buildingId, floorId}` | Changement d'étage courant (`view` event `currentfloorchanged`). |
 | `itineraryComputed` | `{instructions}` | `startItinerary()` a terminé son calcul. |
 | `venueLayout` | `{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}` | Réponse à `getVenueLayout()`. |
+| `poiPositionResolved` | `{requestId, poiId, position: {latitude, longitude}\|null}` | Réponse à `resolvePoiPosition()` ; `position: null` si `poiId` est introuvable ou sans marker/label/image. |
 
 Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
 
