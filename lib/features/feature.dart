@@ -9,6 +9,7 @@ import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
+import 'ui_part_visibility_overlay.dart';
 
 /// Catalogue des features démontrées par l'app — source unique de vérité
 /// pour la liste du menu et la résolution de l'overlay associé.
@@ -21,7 +22,8 @@ enum Feature {
   poiClick('poi-click'),
   gotoPoi('goto-poi'),
   floorSelector('floor-selector'),
-  computeNavigation('compute-navigation');
+  computeNavigation('compute-navigation'),
+  uiPartVisibility('ui-part-visibility');
 
   const Feature(this.slug);
 
@@ -34,6 +36,7 @@ enum Feature {
     Feature.gotoPoi => l10n.gotoPoiTitle,
     Feature.floorSelector => l10n.floorSelectorTitle,
     Feature.computeNavigation => l10n.computeNavigationTitle,
+    Feature.uiPartVisibility => l10n.uiPartVisibilityTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -43,6 +46,7 @@ enum Feature {
     Feature.gotoPoi => l10n.gotoPoiDescription,
     Feature.floorSelector => l10n.floorSelectorDescription,
     Feature.computeNavigation => l10n.computeNavigationDescription,
+    Feature.uiPartVisibility => l10n.uiPartVisibilityDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -52,6 +56,7 @@ enum Feature {
     Feature.gotoPoi => GotoPoiOverlay(controller: controller),
     Feature.floorSelector => FloorSelectorOverlay(controller: controller),
     Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
+    Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -73,6 +78,7 @@ enum Feature {
       case Feature.gotoPoi:
       case Feature.floorSelector:
       case Feature.computeNavigation:
+      case Feature.uiPartVisibility:
         break;
     }
   }

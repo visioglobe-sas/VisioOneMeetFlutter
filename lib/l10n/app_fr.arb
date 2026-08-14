@@ -11,5 +11,12 @@
   "floorSelectorTitle": "Sélection d'étage / bâtiment",
   "floorSelectorDescription": "Change de bâtiment et d'étage depuis un panneau natif.",
   "computeNavigationTitle": "Itinéraire",
-  "computeNavigationDescription": "Calcule et affiche un itinéraire entre deux identifiants de lieu."
+  "computeNavigationDescription": "Calcule et affiche un itinéraire entre deux identifiants de lieu.",
+  "uiPartVisibilityTitle": "Visibilité de l'UI",
+  "uiPartVisibilityDescription": "Affiche ou masque individuellement les parties de l'UI par défaut de la carte.",
+  "uiPartVisibilityFloorSelectorLabel": "Sélecteur d'étage",
+  "uiPartVisibilityNavigationLabel": "Navigation",
+  "uiPartVisibilityPoiDetailsLabel": "Détails du POI",
+  "uiPartVisibilitySearchLabel": "Recherche",
+  "uiPartVisibilityUserTrackingLabel": "Suivi utilisateur"
 }

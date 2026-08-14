@@ -11,5 +11,12 @@
   "floorSelectorTitle": "Floor / building selector",
   "floorSelectorDescription": "Switch buildings and floors from a native panel.",
   "computeNavigationTitle": "Itinerary",
-  "computeNavigationDescription": "Compute and display a route between two place IDs."
+  "computeNavigationDescription": "Compute and display a route between two place IDs.",
+  "uiPartVisibilityTitle": "UI visibility",
+  "uiPartVisibilityDescription": "Show or hide individual parts of the map's default UI.",
+  "uiPartVisibilityFloorSelectorLabel": "Floor selector",
+  "uiPartVisibilityNavigationLabel": "Navigation",
+  "uiPartVisibilityPoiDetailsLabel": "POI details",
+  "uiPartVisibilitySearchLabel": "Search",
+  "uiPartVisibilityUserTrackingLabel": "User tracking"
 }
