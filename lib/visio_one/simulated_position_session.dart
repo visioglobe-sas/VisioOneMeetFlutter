@@ -58,6 +58,16 @@ class SimulatedPositionSession {
   /// tourner en arrière-plan.
   final ValueNotifier<bool> isRunning = ValueNotifier<bool>(false);
 
+  /// `true` si la caméra est verrouillée sur la position trackée courante
+  /// (`view.lockCameraPositionOnTracking`, feature `camera-lock-on-position`).
+  /// Portée ici plutôt que par l'overlay de cette feature, pour la même
+  /// raison que [isRunning] : elle doit rester cohérente même si l'overlay
+  /// est recréé (réouverture du bottom sheet) pendant que la session tourne.
+  /// Toujours remise à `false` par [start] et [stop] — voir
+  /// `docs/features/camera-lock-on-position.md`, "Points d'attention", pour
+  /// pourquoi ce verrou ne doit jamais survivre à un redémarrage/arrêt.
+  final ValueNotifier<bool> isCameraLocked = ValueNotifier<bool>(false);
+
   /// Démarre (ou redémarre, si déjà en cours) le va-et-vient entre [origin]
   /// et [destination].
   void start({required SimulatedPosition origin, required SimulatedPosition destination}) {
@@ -67,8 +77,24 @@ class SimulatedPositionSession {
     _t = 0;
     _direction = 1;
     isRunning.value = true;
+    // Chaque (re)démarrage repart verrouillage désactivé : un opt-in
+    // délibéré à chaque fois, pas un état qui traîne d'une simulation
+    // précédente.
+    _setCameraLocked(false);
     _tick();
     _timer = Timer.periodic(_tickInterval, (_) => _tick());
+  }
+
+  /// Verrouille/déverrouille la caméra sur la position trackée courante.
+  /// N'a d'effet visible côté SDK que si la simulation tourne déjà
+  /// (`view.allowTracking = true`, activé par [start]) — voir
+  /// `docs/features/camera-lock-on-position.md`.
+  void setCameraLocked(bool locked) => _setCameraLocked(locked);
+
+  void _setCameraLocked(bool locked) {
+    if (isCameraLocked.value == locked) return;
+    isCameraLocked.value = locked;
+    _controller.setCameraLockOnPosition(locked);
   }
 
   void _tick() {
@@ -95,6 +121,11 @@ class SimulatedPositionSession {
   /// Arrête le va-et-vient et retire le marqueur/cercle de la carte
   /// (`allowTracking = false`, voir `VisioOneController.stopTrackedPosition`
   /// — pas de méthode dédiée côté SDK pour les effacer autrement).
+  ///
+  /// Déverrouille aussi systématiquement la caméra (`isCameraLocked`) : un
+  /// Stop explicite doit laisser la prochaine simulation repartir
+  /// déverrouillée (voir aussi [start], qui fait la même remise à zéro à
+  /// chaque (re)démarrage).
   void stop() {
     final wasRunning = _timer != null;
     _timer?.cancel();
@@ -105,12 +136,22 @@ class SimulatedPositionSession {
       _controller.stopTrackedPosition();
     }
     isRunning.value = false;
+    _setCameraLocked(false);
   }
 
   /// À appeler depuis `VisioOneController.dispose()` — annule le `Timer` en
   /// cours plutôt que de le laisser tourner sur un contrôleur/WebView détruit.
+  /// Pas d'appel `stopTrackedPosition`/`setCameraLockOnPosition(false)` ici,
+  /// comme pour [stop] : la WebView est de toute façon en train d'être
+  /// détruite avec le reste de l'écran de feature. La sortie de l'écran
+  /// (Retour depuis `FeatureScreen`) reste couverte côté UX : chaque écran de
+  /// feature recrée son propre `VisioOneController`/`SimulatedPositionSession`
+  /// (voir `VisioOneMapShell`), donc `isCameraLocked` redémarre toujours à
+  /// `false` à la prochaine ouverture, sans état qui traverserait deux
+  /// visites de l'écran.
   void dispose() {
     _timer?.cancel();
     isRunning.dispose();
+    isCameraLocked.dispose();
   }
 }

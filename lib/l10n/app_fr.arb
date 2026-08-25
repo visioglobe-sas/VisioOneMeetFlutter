@@ -20,5 +20,7 @@
   "uiPartVisibilitySearchLabel": "Recherche",
   "uiPartVisibilityUserTrackingLabel": "Suivi utilisateur",
   "simulatedPositionTitle": "Position simulée",
-  "simulatedPositionDescription": "Anime une position simulée avec un cercle de précision entre deux POI."
+  "simulatedPositionDescription": "Anime une position simulée avec un cercle de précision entre deux POI.",
+  "cameraLockOnPositionTitle": "Verrou caméra sur la position",
+  "cameraLockOnPositionDescription": "Verrouille la caméra sur une position trackée simulée, façon appli GPS."
 }

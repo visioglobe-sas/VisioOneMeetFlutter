@@ -172,6 +172,14 @@ class VisioOneController {
   /// retire de la carte, voir `docs/features/simulated-position.md`.
   Future<void> stopTrackedPosition() => _run('window.MapBridge.stopTrackedPosition()');
 
+  /// Verrouille/déverrouille le focus caméra sur la position trackée courante
+  /// (`view.lockCameraPositionOnTracking`). Sans effet tant que
+  /// `view.allowTracking` est encore à `false` (no-op documenté côté SDK, pas
+  /// d'exception contrairement à [injectTrackedPosition]) — voir
+  /// `docs/features/camera-lock-on-position.md`.
+  Future<void> setCameraLockOnPosition(bool locked) =>
+      _call('setCameraLockOnPosition', [locked]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
