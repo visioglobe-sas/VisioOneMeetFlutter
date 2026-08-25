@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'camera_lock_on_position_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
@@ -25,7 +26,8 @@ enum Feature {
   floorSelector('floor-selector'),
   computeNavigation('compute-navigation'),
   uiPartVisibility('ui-part-visibility'),
-  simulatedPosition('simulated-position');
+  simulatedPosition('simulated-position'),
+  cameraLockOnPosition('camera-lock-on-position');
 
   const Feature(this.slug);
 
@@ -40,6 +42,7 @@ enum Feature {
     Feature.computeNavigation => l10n.computeNavigationTitle,
     Feature.uiPartVisibility => l10n.uiPartVisibilityTitle,
     Feature.simulatedPosition => l10n.simulatedPositionTitle,
+    Feature.cameraLockOnPosition => l10n.cameraLockOnPositionTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -51,6 +54,7 @@ enum Feature {
     Feature.computeNavigation => l10n.computeNavigationDescription,
     Feature.uiPartVisibility => l10n.uiPartVisibilityDescription,
     Feature.simulatedPosition => l10n.simulatedPositionDescription,
+    Feature.cameraLockOnPosition => l10n.cameraLockOnPositionDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -62,6 +66,7 @@ enum Feature {
     Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
     Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
     Feature.simulatedPosition => SimulatedPositionOverlay(controller: controller),
+    Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -75,6 +80,9 @@ enum Feature {
   /// qu'il est monté dans le bottom sheet, plutôt que de passer par ce
   /// routage — voir [FloorSelectorOverlay]. `simulated-position` fait de même
   /// pour `poiPositionResolved`, voir [SimulatedPositionOverlay].
+  /// `camera-lock-on-position` réutilise directement [SimulatedPositionOverlay]
+  /// pour cette même résolution (voir [CameraLockOnPositionOverlay]) et n'a
+  /// donc rien de plus à faire ici.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -86,6 +94,7 @@ enum Feature {
       case Feature.computeNavigation:
       case Feature.uiPartVisibility:
       case Feature.simulatedPosition:
+      case Feature.cameraLockOnPosition:
         break;
     }
   }

@@ -275,6 +275,20 @@
           if (!view) return;
           view.allowTracking = false;
         },
+
+        // Verrouille/déverrouille le focus caméra sur la position trackée
+        // courante (`view.lockCameraPositionOnTracking`). D'après le
+        // commentaire de View.ts côté SDK, ce booléen "won't have any effect
+        // if flag 'allowTracking' isn't set to true" : contrairement à
+        // `injectTrackedPosition`, aucune exception n'est levée si on
+        // l'active avant — pas besoin de garde ici. Ne gère pas
+        // `lockCameraOrientationOnTracking` (verrouillage de l'orientation,
+        // nécessite les données du capteur d'orientation de l'appareil) :
+        // hors scope, voir docs/features/camera-lock-on-position.md.
+        setCameraLockOnPosition: function (locked) {
+          if (!view) return;
+          view.lockCameraPositionOnTracking = !!locked;
+        },
       };
 
       // Permet de tester map.html directement dans un navigateur (npm run dev)

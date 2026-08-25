@@ -72,6 +72,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `resolvePoiPosition(requestId, poiId)` | `String`, `String` | Demande la position WGS84 d'un POI ; répond en asynchrone via `poiPositionResolved` (voir ci-dessous). |
 | `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
 | `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
+| `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`). |
 
 ### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
 
