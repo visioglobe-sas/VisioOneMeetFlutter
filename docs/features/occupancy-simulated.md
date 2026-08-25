@@ -1,44 +1,39 @@
-# Occupation temps réel (données simulées)
+# Occupancy (Simulated)
 
 ## Description
 
-Colore dynamiquement la surface d'un POI pour refléter un statut d'occupation (libre / bientôt occupé / occupé), via une nouvelle commande `updateOccupancy` ajoutée au pont `window.MapBridge` / `VisioOneController`.
+Dynamically colors a POI's surface to reflect an occupancy status (free / soon occupied / occupied), via `venue.updateSurface(surface, { color })`. There's no real sensor behind it — a periodic timer cycles through colors in place of a real IoT feed, as a starting point for wiring in a real data source (websocket, API polling) without touching the SDK call itself.
 
-Il n'y a pas de vrai capteur derrière : un `Timer.periodic` côté Dart fait tourner la couleur toutes les 2,5 secondes, en lieu et place d'un flux IoT réel. C'est le point de départ pour brancher une vraie source de données (websocket, polling d'API) sans rien changer côté pont ou côté SDK.
+## SDK usage
 
-## Step by step
+```js
+// window.MapBridge, JS side (assets/www/map.html)
+updateOccupancy: function (occupancy) {
+  if (!venue) return;
+  occupancy.forEach(function (entry) {
+    var poi = venue.pois.find(function (p) { return p.id === entry.planId; });
+    if (!poi) return;
+    poi.surfaces.forEach(function (surface) {
+      venue.updateSurface(surface, { color: entry.color });
+    });
+  });
+},
+```
 
-1. **Ajouter la commande côté JS** (`assets/www/map.html`, dans `window.MapBridge`) :
-   ```js
-   updateOccupancy: function (occupancy) {
-     if (!venue) return;
-     occupancy.forEach(function (entry) {
-       var poi = venue.pois.find(function (p) { return p.id === entry.planId; });
-       if (!poi) return;
-       poi.surfaces.forEach(function (surface) {
-         venue.updateSurface(surface, { color: entry.color });
-       });
-     });
-   },
-   ```
-2. **Exposer la commande côté Dart** (`lib/visio_one/visio_one_controller.dart`), en suivant le même pattern que les autres commandes natives → JS (`_call`, arguments encodés en JSON) :
-   ```dart
-   Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
-       _call('updateOccupancy', [occupancy]);
-   ```
-3. **Piloter un timer depuis l'overlay de feature** (`lib/features/occupancy_simulation_overlay.dart`, widget `OccupancySimulationOverlay`) : démarrer un `Timer.periodic` qui appelle `controller.updateOccupancy([{'planId': placeId, 'color': nextColor}])` à chaque tick, et l'annuler (`Timer.cancel()`) quand la simulation s'arrête ou que l'overlay est disposé.
-4. **Toujours remettre `color: null` en arrêtant la simulation** — sinon la surface reste bloquée sur la dernière couleur simulée.
-5. Exposer un contrôle utilisateur (ici, un champ "Place ID" + un bouton toggle) — une feature du catalogue doit être démontrable via une interaction, pas seulement câblée en silence.
+```dart
+// lib/visio_one/visio_one_controller.dart
+Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
+    _call('updateOccupancy', [occupancy]);
+```
 
-## Points d'attention
+`occupancy` is a list of `{planId, color}` entries — `planId` is a POI's Place ID, `color` a CSS-style color value applied to every surface of that POI.
 
-- **`planId` doit être un vrai ID de POI de la carte chargée.** `venue.pois.find(...)` échoue silencieusement (pas d'erreur remontée côté Dart) si l'ID ne correspond à rien.
-- **`color: null` réinitialise l'apparence de la surface**, même mécanisme que `clearSelection` avec `selectionColor: undefined` côté JS — c'est la façon de "rendre" une place à son état normal, pas une couleur par défaut à coder en dur.
-- **Ne jamais appeler `JSON.parse()` sur un argument reçu dans `window.MapBridge.*`** (piège déjà documenté dans `docs/COMMUNICATION_GUIDE.md` §5) : Dart encode déjà les arguments via `jsonEncode` avant de les interpoler dans le script généré, donc par le temps que la méthode JS s'exécute, l'argument est déjà une valeur JS native (ici, une liste d'objets), pas du texte JSON à re-parser.
-- **Annuler le `Timer` dans `dispose()`**, pas seulement quand l'utilisateur arrête la simulation — sinon le timer continue de tourner sur un `State` détruit.
-- Ceci démontre la **mécanique** de mise à jour temps réel, pas une vraie intégration IoT — pour un cas client réel, remplacer le `Timer.periodic` par un abonnement à la vraie source (websocket, polling d'API) sans toucher au pont ni au SDK.
+## Things to know
 
-## Pour aller plus loin
+- **`planId` must be a real POI ID from the loaded map.** `venue.pois.find(...)` fails silently (no error surfaced) if the ID doesn't match anything.
+- **`color: null` resets the surface's appearance** — the same mechanism `clearSelection` uses with `selectionColor: undefined` (see `goto-poi`). It's how you "return" a place to its normal look, not a hardcoded default color; always send `color: null` when a simulation/feed stops, or the surface stays stuck on the last color it was given.
+- **Never call `JSON.parse()` on an argument received inside `window.MapBridge.*`.** Dart already encodes arguments via `jsonEncode` before interpolating them into the generated script, so by the time the JS method body runs, the argument is already a native JS value (here, a list of objects), not JSON text to re-parse. Calling `JSON.parse()` on it throws.
 
-- Voir `docs/COMMUNICATION_GUIDE.md` de ce repo pour le contrat de messages complet du pont.
-- Version "vrai capteur" : voir le `ROADMAP.md` du hub (`VisioOneHub`), feature "Suivi d'actifs connectés (IoT)" — hors scope tant qu'aucun flux IoT réel n'est disponible.
+## Learn more
+
+See `docs/COMMUNICATION_GUIDE.md` in this repo for the full bridge message contract.
