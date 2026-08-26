@@ -24,5 +24,7 @@
   "cameraLockOnPositionTitle": "Verrou caméra sur la position",
   "cameraLockOnPositionDescription": "Verrouille la caméra sur une position trackée simulée, façon appli GPS.",
   "clickableSurfaceTitle": "Surface cliquable",
-  "clickableSurfaceDescription": "Rend la surface d'un lieu interactive, le SDK gérant lui-même le retour visuel au survol/tap."
+  "clickableSurfaceDescription": "Rend la surface d'un lieu interactive, le SDK gérant lui-même le retour visuel au survol/tap.",
+  "customDataTitle": "Données personnalisées",
+  "customDataDescription": "Lire des données métier (prix, horaires, référence) attachées à un POI dans VisioMapEditor."
 }

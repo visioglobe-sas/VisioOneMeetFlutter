@@ -187,6 +187,20 @@ class VisioOneController {
   Future<void> setSurfaceInteractive(String placeId, bool interactive) =>
       _call('setSurfaceInteractive', [placeId, interactive]);
 
+  /// Recharge le cache de CustomData métier depuis le serveur puis lit
+  /// celles d'un POI donné — `venue.refreshCustomData()` suivi de
+  /// `venue.getPOICustomData(poi)` côté JS, enchaînés en un seul aller-retour
+  /// de pont plutôt que deux commandes séparées (voir `assets/www/map.html`).
+  ///
+  /// Requête/réponse par `requestId` (même schéma que [resolvePoiPosition]) :
+  /// la réponse arrive de façon asynchrone sur [messages] sous la forme d'un
+  /// message `customDataLoaded` portant le même `requestId`, avec
+  /// `found: false` si `poiId` ne correspond à aucun POI, et sinon
+  /// `customData` — toujours un objet, jamais null/undefined, vide `{}` si
+  /// le POI n'a pas de CustomData — voir `docs/features/custom-data.md`.
+  Future<void> loadCustomData(String requestId, String poiId) =>
+      _call('loadCustomData', [requestId, poiId]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');

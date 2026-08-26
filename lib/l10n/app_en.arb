@@ -24,5 +24,7 @@
   "cameraLockOnPositionTitle": "Camera lock on position",
   "cameraLockOnPositionDescription": "Lock the camera onto a simulated tracked position, GPS-app style.",
   "clickableSurfaceTitle": "Clickable surface",
-  "clickableSurfaceDescription": "Make a place's surface interactive, with the SDK handling hover/tap color feedback itself."
+  "clickableSurfaceDescription": "Make a place's surface interactive, with the SDK handling hover/tap color feedback itself.",
+  "customDataTitle": "Custom data",
+  "customDataDescription": "Read custom business data (price, hours, reference) attached to a POI in VisioMapEditor."
 }

@@ -6,6 +6,7 @@ import '../visio_one/visio_one_message.dart';
 import 'camera_lock_on_position_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
+import 'custom_data_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
@@ -29,7 +30,8 @@ enum Feature {
   uiPartVisibility('ui-part-visibility'),
   simulatedPosition('simulated-position'),
   cameraLockOnPosition('camera-lock-on-position'),
-  clickableSurface('clickable-surface');
+  clickableSurface('clickable-surface'),
+  customData('custom-data');
 
   const Feature(this.slug);
 
@@ -46,6 +48,7 @@ enum Feature {
     Feature.simulatedPosition => l10n.simulatedPositionTitle,
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionTitle,
     Feature.clickableSurface => l10n.clickableSurfaceTitle,
+    Feature.customData => l10n.customDataTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -59,6 +62,7 @@ enum Feature {
     Feature.simulatedPosition => l10n.simulatedPositionDescription,
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionDescription,
     Feature.clickableSurface => l10n.clickableSurfaceDescription,
+    Feature.customData => l10n.customDataDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -72,6 +76,7 @@ enum Feature {
     Feature.simulatedPosition => SimulatedPositionOverlay(controller: controller),
     Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
     Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
+    Feature.customData => CustomDataOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -87,7 +92,8 @@ enum Feature {
   /// pour `poiPositionResolved`, voir [SimulatedPositionOverlay].
   /// `camera-lock-on-position` réutilise directement [SimulatedPositionOverlay]
   /// pour cette même résolution (voir [CameraLockOnPositionOverlay]) et n'a
-  /// donc rien de plus à faire ici.
+  /// donc rien de plus à faire ici. `custom-data` fait de même pour
+  /// `customDataLoaded`, voir [CustomDataOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -101,6 +107,7 @@ enum Feature {
       case Feature.simulatedPosition:
       case Feature.cameraLockOnPosition:
       case Feature.clickableSurface:
+      case Feature.customData:
         break;
     }
   }
