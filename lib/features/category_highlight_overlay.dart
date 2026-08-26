@@ -31,7 +31,7 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
   StreamSubscription<VisioOneMessage>? _subscription;
   late final String _requestId = 'category-highlight-${DateTime.now().microsecondsSinceEpoch}';
 
-  List<String>? _categories;
+  List<({String id, String label})>? _categories;
 
   @override
   void initState() {
@@ -53,7 +53,10 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
     final rawCategories = data['categories'];
     if (rawCategories is! List) return;
     setState(() {
-      _categories = rawCategories.map((c) => c.toString()).toList();
+      _categories = rawCategories.map((c) {
+        final map = c as Map;
+        return (id: map['id'].toString(), label: map['label'].toString());
+      }).toList();
     });
   }
 
@@ -89,11 +92,11 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final categoryId in categories)
+                for (final category in categories)
                   ChoiceChip(
-                    label: Text(categoryId),
-                    selected: selected == categoryId,
-                    onSelected: (_) => _toggle(categoryId),
+                    label: Text(category.label),
+                    selected: selected == category.id,
+                    onSelected: (_) => _toggle(category.id),
                   ),
               ],
             ),

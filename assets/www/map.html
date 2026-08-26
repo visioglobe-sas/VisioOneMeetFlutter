@@ -355,18 +355,25 @@
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
         // renvoie la liste des catégories de la venue courante, telle
         // qu'exposée par `venue.categories` (`Category = { readonly id:
-        // string }`). Sur la carte de démo partagée, ces `id` sont déjà des
-        // noms lisibles dans la locale par défaut (ex. "Shops",
-        // "Food and Beverage") : pas de libellé séparé à résoudre. Voir
+        // string }`). `id` est un identifiant interne brut (une chaîne
+        // numérique sur la carte de démo partagée, ex. "1".."11"), pas un
+        // libellé -- confirmé en direct. Le nom lisible vient de
+        // `venue.translator.translateCategory()`, même idiome qu'utiliserait
+        // un libellé de bâtiment/étage ailleurs. `id` sert au filtrage/à la
+        // mise en avant, `label` est uniquement pour l'affichage. Voir
         // docs/features/category-highlight.md.
         getCategories: function (requestId) {
           if (!venue) {
             sendToNative('categoriesLoaded', { requestId: requestId, categories: [] });
             return;
           }
+          var locale = venue.currentLocale;
           sendToNative('categoriesLoaded', {
             requestId: requestId,
-            categories: venue.categories.map(function (c) { return c.id; }),
+            categories: venue.categories.map(function (c) {
+              var translated = venue.translator.translateCategory(c, locale);
+              return { id: c.id, label: (translated && translated.name) || c.id };
+            }),
           });
         },
 

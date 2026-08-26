@@ -207,9 +207,10 @@ class VisioOneController {
   /// Fire-and-forget comme [getVenueLayout]/[loadCustomData] : la réponse
   /// arrive de façon asynchrone sur [messages] sous la forme d'un message
   /// `categoriesLoaded` portant le même `requestId` et `categories`, une
-  /// liste d'identifiants (`Category.id`) — déjà des libellés lisibles dans
-  /// la locale par défaut sur la carte de démo partagée, voir
-  /// `docs/features/category-highlight.md`.
+  /// liste de paires `{id, label}` — `id` (`Category.id`) est un identifiant
+  /// interne brut à utiliser pour le filtrage/la mise en avant, `label` est
+  /// le nom résolu via `venue.translator.translateCategory()` côté JS, à
+  /// n'utiliser que pour l'affichage. Voir `docs/features/category-highlight.md`.
   Future<void> getCategories(String requestId) => _call('getCategories', [requestId]);
 
   /// Catégorie actuellement mise en avant (ou `null`), voir
