@@ -310,6 +310,47 @@
           if (!view) return;
           view.lockCameraPositionOnTracking = !!locked;
         },
+
+        // Enchaîne les deux appels SDK de cette démo : `venue.refreshCustomData()`
+        // ((re)charge le cache de CustomData métier depuis le serveur — vide tant
+        // qu'il n'a jamais été appelé) puis, une fois résolu ou rejeté,
+        // `venue.getPOICustomData(poi)` (lecture synchrone, renvoie toujours un
+        // objet — jamais null/undefined — vide `{}` si le POI n'a pas de
+        // CustomData). `refreshCustomData()` rejette si aucune CustomData n'est
+        // publiée pour cette carte (404 sur customData.json, cas de la carte de
+        // démo partagée à ce jour) : un état normal pour une démo sans données
+        // publiées, pas une erreur à faire remonter au natif — on l'avale ici
+        // (juste un warning console) et on continue, `getPOICustomData`
+        // renverra `{}` de toute façon. Requête/réponse (même schéma que
+        // resolvePoiPosition / poiPositionResolved), `poiId` recherché comme
+        // dans goToPOI. Voir docs/features/custom-data.md.
+        loadCustomData: function (requestId, poiId) {
+          if (!venue) {
+            sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
+            return;
+          }
+          venue
+            .refreshCustomData()
+            .catch(function (error) {
+              console.warn(
+                '[MapBridge] refreshCustomData a échoué (probablement aucune CustomData publiée pour cette carte) :',
+                error,
+              );
+            })
+            .then(function () {
+              var poi = venue.pois.find(function (p) { return p.id === poiId; });
+              if (!poi) {
+                sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
+                return;
+              }
+              sendToNative('customDataLoaded', {
+                requestId: requestId,
+                poiId: poiId,
+                found: true,
+                customData: venue.getPOICustomData(poi),
+              });
+            });
+        },
       };
 
       // Permet de tester map.html directement dans un navigateur (npm run dev)
