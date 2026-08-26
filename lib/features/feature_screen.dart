@@ -18,7 +18,11 @@ class FeatureScreen extends StatelessWidget {
       appBar: AppBar(title: Text(feature.title(l10n))),
       body: SafeArea(
         child: VisioOneMapShell(
-          hash: kDefaultMapHash,
+          // `custom-data` a besoin d'une carte avec de vraies `CustomData`
+          // publiées — la carte de démo partagée n'en a aucune (voir
+          // `docs/features/custom-data.md`). Toutes les autres features
+          // restent sur `kDefaultMapHash`, inchangé.
+          hash: feature == Feature.customData ? kCustomDataMapHash : kDefaultMapHash,
           overlayBuilder: (context, controller) => feature.buildOverlay(context, controller),
           onMessage: (context, message) => feature.onMapMessage(context, message),
         ),

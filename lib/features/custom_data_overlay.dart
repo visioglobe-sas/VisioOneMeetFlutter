@@ -31,6 +31,14 @@ class CustomDataOverlay extends StatefulWidget {
   State<CustomDataOverlay> createState() => _CustomDataOverlayState();
 }
 
+/// Place IDs confirmés (via `mapserver.visioglobe.com`) comme portant de
+/// vraies `CustomData` sur la carte `kCustomDataMapHash` utilisée par cette
+/// démo (voir `VisioOneMapShell`/`lib/features/feature_screen.dart` et
+/// `docs/features/custom-data.md`) — proposés en accès rapide ci-dessous
+/// pour ne pas obliger à connaître/taper un Place ID à la main pour voir un
+/// résultat non vide.
+const List<String> _kKnownPoiIdsWithCustomData = ['B1', 'B3-UL00-ID0065', 'B3-UL00-ID0064'];
+
 class _CustomDataOverlayState extends State<CustomDataOverlay> {
   final TextEditingController _placeIdController = TextEditingController();
 
@@ -80,6 +88,15 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
     completer.complete(_CustomDataResult(found: found, customData: customData));
   }
 
+  /// Remplit le champ Place ID avec un des [_kKnownPoiIdsWithCustomData] et
+  /// lance immédiatement le chargement — un seul tap pour voir une vraie
+  /// liste clé/valeur non vide, plutôt que de devoir taper l'ID à la main
+  /// puis appuyer sur "Load".
+  void _loadKnownPoi(String poiId) {
+    _placeIdController.text = poiId;
+    _load();
+  }
+
   Future<void> _load() async {
     final poiId = _placeIdController.text.trim();
     if (poiId.isEmpty) return;
@@ -119,6 +136,20 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const Text('Known POIs with real custom data:', style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final poiId in _kKnownPoiIdsWithCustomData)
+              ActionChip(
+                label: Text(poiId),
+                onPressed: _loading ? null : () => _loadKnownPoi(poiId),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(

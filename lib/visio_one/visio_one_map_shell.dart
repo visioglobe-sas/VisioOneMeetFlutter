@@ -12,6 +12,15 @@ import 'visio_one_message.dart';
 /// carte depuis my.visioglobe.com.
 const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';
 
+/// Carte dédiée à la démo `custom-data` (voir `docs/features/custom-data.md`)
+/// — la carte de démo partagée ci-dessus n'a aucune `CustomData` publiée à ce
+/// jour, donc `venue.refreshCustomData()` y rejette systématiquement (404 sur
+/// `customData.json`) et `venue.getPOICustomData(poi)` n'y renvoie jamais que
+/// `{}`. Cette carte-ci a de vraies `CustomData` publiées ; utilisée
+/// uniquement par `Feature.customData` (voir `lib/features/feature_screen.dart`),
+/// toutes les autres features restent sur [kDefaultMapHash].
+const String kCustomDataMapHash = 'kd9426d8cb3f1c532f22b5bcbd325c280bd351feb';
+
 enum _MapLoadState { loading, ready, error }
 
 /// Coquille partagée par tous les écrans de feature : charge la carte

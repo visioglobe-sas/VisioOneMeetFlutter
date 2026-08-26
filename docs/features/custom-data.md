@@ -59,6 +59,16 @@ interface CustomData {
 }
 ```
 
+## Demo map
+
+This feature demo loads a dedicated map hash (`kd9426d8cb3f1c532f22b5bcbd325c280bd351feb`, `kCustomDataMapHash` in `lib/visio_one/visio_one_map_shell.dart`), distinct from the rest of the app's shared demo map (`kDefaultMapHash`) — see the conditional in `lib/features/feature_screen.dart`. The shared demo map has no `CustomData` published yet, so it would only ever demonstrate the empty-state described above; every other feature screen keeps using `kDefaultMapHash` unchanged.
+
+Three Place IDs are confirmed to carry real `CustomData` on that dedicated map (surfaced as quick-select chips in `CustomDataOverlay`, `lib/features/custom_data_overlay.dart`):
+
+- `B1` → `{"CSM ID":"BLBLA"}`
+- `B3-UL00-ID0065` → `{"Sensor X":"17718393"}`
+- `B3-UL00-ID0064` → `{"SENSOR":"DDDZEZHJF"}`
+
 ## Things to know
 
 - **The CustomData cache starts empty and is never populated automatically.** `getPOICustomData` reads from an in-memory cache that starts as `{}` when the venue loads and is only filled by `refreshCustomData()`. Reading a POI's CustomData before ever calling `refreshCustomData()` always returns `{}`, even if that POI has real CustomData published on the server — call `refreshCustomData()` at least once first (this demo does it on every "Load" tap, so it's always fresh, but a production app should decide its own refresh cadence rather than reload on every read).
