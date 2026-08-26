@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 import 'camera_lock_on_position_overlay.dart';
+import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
@@ -31,7 +32,8 @@ enum Feature {
   simulatedPosition('simulated-position'),
   cameraLockOnPosition('camera-lock-on-position'),
   clickableSurface('clickable-surface'),
-  customData('custom-data');
+  customData('custom-data'),
+  categoryHighlight('category-highlight');
 
   const Feature(this.slug);
 
@@ -49,6 +51,7 @@ enum Feature {
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionTitle,
     Feature.clickableSurface => l10n.clickableSurfaceTitle,
     Feature.customData => l10n.customDataTitle,
+    Feature.categoryHighlight => l10n.categoryHighlightTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -63,6 +66,7 @@ enum Feature {
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionDescription,
     Feature.clickableSurface => l10n.clickableSurfaceDescription,
     Feature.customData => l10n.customDataDescription,
+    Feature.categoryHighlight => l10n.categoryHighlightDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -77,6 +81,7 @@ enum Feature {
     Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
     Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
     Feature.customData => CustomDataOverlay(controller: controller),
+    Feature.categoryHighlight => CategoryHighlightOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -93,7 +98,8 @@ enum Feature {
   /// `camera-lock-on-position` réutilise directement [SimulatedPositionOverlay]
   /// pour cette même résolution (voir [CameraLockOnPositionOverlay]) et n'a
   /// donc rien de plus à faire ici. `custom-data` fait de même pour
-  /// `customDataLoaded`, voir [CustomDataOverlay].
+  /// `customDataLoaded`, voir [CustomDataOverlay]. `category-highlight` fait
+  /// de même pour `categoriesLoaded`, voir [CategoryHighlightOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -108,6 +114,7 @@ enum Feature {
       case Feature.cameraLockOnPosition:
       case Feature.clickableSurface:
       case Feature.customData:
+      case Feature.categoryHighlight:
         break;
     }
   }

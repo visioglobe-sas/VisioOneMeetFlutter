@@ -26,5 +26,7 @@
   "clickableSurfaceTitle": "Clickable surface",
   "clickableSurfaceDescription": "Make a place's surface interactive, with the SDK handling hover/tap color feedback itself.",
   "customDataTitle": "Custom data",
-  "customDataDescription": "Read custom business data (price, hours, reference) attached to a POI in VisioMapEditor."
+  "customDataDescription": "Read custom business data (price, hours, reference) attached to a POI in VisioMapEditor.",
+  "categoryHighlightTitle": "Category highlight",
+  "categoryHighlightDescription": "Highlight every POI belonging to a chosen category, e.g. all restaurants or all shops."
 }
