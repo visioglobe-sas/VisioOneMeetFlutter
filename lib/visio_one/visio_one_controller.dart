@@ -180,6 +180,13 @@ class VisioOneController {
   Future<void> setCameraLockOnPosition(bool locked) =>
       _call('setCameraLockOnPosition', [locked]);
 
+  /// Rend (ou non) les surfaces d'un POI interactives : quand `interactive`
+  /// vaut `true`, le SDK gère lui-même le survol/tap sur la surface rendue
+  /// (couleur au repos, de survol, de sélection) sans qu'aucun listener ne
+  /// soit nécessaire côté app — voir `docs/features/clickable-surface.md`.
+  Future<void> setSurfaceInteractive(String placeId, bool interactive) =>
+      _call('setSurfaceInteractive', [placeId, interactive]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');

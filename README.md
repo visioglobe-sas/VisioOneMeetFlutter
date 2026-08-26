@@ -61,6 +61,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[UI part visibility](docs/features/ui-part-visibility.md)** — shows or hides individual parts of the SDK's built-in overlay UI.
 - **[Simulated position](docs/features/simulated-position.md)** — animates a simulated tracked position back and forth between two POIs.
 - **[Camera lock on position](docs/features/camera-lock-on-position.md)** — locks the camera focus on the tracked position set up by "Simulated position".
+- **[Clickable surface](docs/features/clickable-surface.md)** — makes a place's surface interactive, with the SDK handling hover/tap color feedback itself; the base building block for "availability" use cases.
 
 ## How it works
 

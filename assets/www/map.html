@@ -233,6 +233,27 @@
           });
         },
 
+        // Rend la/les surface(s) d'un POI cliquables : le SDK gère lui-même
+        // le survol/tap (hoverColor/selectionColor) sans qu'aucun listener ne
+        // soit nécessaire côté app pour ce changement de couleur — c'est
+        // `isInteractive: true` qui active ce comportement. `color` est la
+        // couleur "au repos" ; on la remet à `'initial'` (pas `undefined`,
+        // voir docs/features/clickable-surface.md) en désactivant, pour ne
+        // pas laisser la surface bloquée sur une couleur custom précédente.
+        setSurfaceInteractive: function (placeId, interactive) {
+          if (!venue) return;
+          var poi = venue.pois.find(function (p) { return p.id === placeId; });
+          if (!poi) return;
+          poi.surfaces.forEach(function (surface) {
+            venue.updateSurface(
+              surface,
+              interactive
+                ? { isInteractive: true, color: '#2ECC71', hoverColor: '#F1C40F', selectionColor: '#E74C3C' }
+                : { isInteractive: false, color: 'initial' },
+            );
+          });
+        },
+
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
         // un POI n'a pas de lat/lng directement (voir POI.d.ts du package
         // @visioglobe/visioone) — sa position WGS84 vient de son marker, ou à
