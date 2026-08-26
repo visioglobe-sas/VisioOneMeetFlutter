@@ -351,6 +351,66 @@
               });
             });
         },
+
+        // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
+        // renvoie la liste des catégories de la venue courante, telle
+        // qu'exposée par `venue.categories` (`Category = { readonly id:
+        // string }`). Sur la carte de démo partagée, ces `id` sont déjà des
+        // noms lisibles dans la locale par défaut (ex. "Shops",
+        // "Food and Beverage") : pas de libellé séparé à résoudre. Voir
+        // docs/features/category-highlight.md.
+        getCategories: function (requestId) {
+          if (!venue) {
+            sendToNative('categoriesLoaded', { requestId: requestId, categories: [] });
+            return;
+          }
+          sendToNative('categoriesLoaded', {
+            requestId: requestId,
+            categories: venue.categories.map(function (c) { return c.id; }),
+          });
+        },
+
+        // Met en avant tous les POI portant la catégorie [categoryId] : pas
+        // de méthode SDK dédiée pour "highlight by category", construite ici
+        // à partir de primitives — `venue.pois.filter(...)` sur
+        // `poi.categories` (un POI peut avoir plusieurs catégories) puis
+        // `venue.updateSurface(surface, { color })` par surface de chaque POI
+        // trouvé, exactement comme `updateOccupancy`/`setSurfaceInteractive`
+        // ci-dessus. Un POI sans surface (marker/label seul) ne se surligne
+        // simplement pas visuellement : `poi.surfaces` y est un tableau vide,
+        // ce n'est pas un bug. Le natif ([VisioOneController.highlightCategory])
+        // est responsable de réinitialiser la catégorie précédemment mise en
+        // avant avant d'appeler ceci, pour ne jamais en cumuler deux.
+        highlightCategory: function (categoryId) {
+          if (!venue) return;
+          venue.pois
+            .filter(function (poi) {
+              return poi.categories.some(function (c) { return c.id === categoryId; });
+            })
+            .forEach(function (poi) {
+              poi.surfaces.forEach(function (surface) {
+                venue.updateSurface(surface, { color: '#FF6B00' });
+              });
+            });
+        },
+
+        // Réinitialise ('initial', pas `undefined` — voir
+        // docs/features/clickable-surface.md pour la même remarque sur
+        // `setSurfaceInteractive` — seul `'initial'` restaure la couleur
+        // définie par le bundle de carte) les surfaces de tous les POI
+        // portant la catégorie [categoryId].
+        clearCategoryHighlight: function (categoryId) {
+          if (!venue) return;
+          venue.pois
+            .filter(function (poi) {
+              return poi.categories.some(function (c) { return c.id === categoryId; });
+            })
+            .forEach(function (poi) {
+              poi.surfaces.forEach(function (surface) {
+                venue.updateSurface(surface, { color: 'initial' });
+              });
+            });
+        },
       };
 
       // Permet de tester map.html directement dans un navigateur (npm run dev)

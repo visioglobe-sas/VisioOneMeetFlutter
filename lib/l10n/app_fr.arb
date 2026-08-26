@@ -26,5 +26,7 @@
   "clickableSurfaceTitle": "Surface cliquable",
   "clickableSurfaceDescription": "Rend la surface d'un lieu interactive, le SDK gérant lui-même le retour visuel au survol/tap.",
   "customDataTitle": "Données personnalisées",
-  "customDataDescription": "Lire des données métier (prix, horaires, référence) attachées à un POI dans VisioMapEditor."
+  "customDataDescription": "Lire des données métier (prix, horaires, référence) attachées à un POI dans VisioMapEditor.",
+  "categoryHighlightTitle": "Mise en avant par catégorie",
+  "categoryHighlightDescription": "Met en avant tous les POI d'une catégorie choisie, ex. tous les restaurants ou tous les commerces."
 }

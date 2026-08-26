@@ -201,6 +201,52 @@ class VisioOneController {
   Future<void> loadCustomData(String requestId, String poiId) =>
       _call('loadCustomData', [requestId, poiId]);
 
+  /// Demande la liste des catégories (`venue.categories`) de la venue
+  /// courante.
+  ///
+  /// Fire-and-forget comme [getVenueLayout]/[loadCustomData] : la réponse
+  /// arrive de façon asynchrone sur [messages] sous la forme d'un message
+  /// `categoriesLoaded` portant le même `requestId` et `categories`, une
+  /// liste d'identifiants (`Category.id`) — déjà des libellés lisibles dans
+  /// la locale par défaut sur la carte de démo partagée, voir
+  /// `docs/features/category-highlight.md`.
+  Future<void> getCategories(String requestId) => _call('getCategories', [requestId]);
+
+  /// Catégorie actuellement mise en avant (ou `null`), voir
+  /// `docs/features/category-highlight.md`.
+  ///
+  /// Portée ici plutôt que par l'overlay de la feature pour survivre à la
+  /// fermeture du bottom sheet — même raison que
+  /// `SimulatedPositionSession.isRunning` (voir ce fichier) : sans ça,
+  /// rouvrir le panneau perdrait la trace de la catégorie actuellement
+  /// surlignée sur la carte, et un nouveau tap pourrait cumuler les
+  /// surlignages au lieu de les remplacer (contrat : une seule catégorie mise
+  /// en avant à la fois).
+  final ValueNotifier<String?> highlightedCategoryId = ValueNotifier<String?>(null);
+
+  /// Met en avant tous les POI de [categoryId] (`poi.categories.some(c =>
+  /// c.id === categoryId)`), après avoir d'abord réinitialisé la catégorie
+  /// précédemment mise en avant s'il y en avait une — garantit qu'une seule
+  /// catégorie est jamais surlignée à la fois. No-op si [categoryId] est déjà
+  /// la catégorie courante.
+  Future<void> highlightCategory(String categoryId) async {
+    final previous = highlightedCategoryId.value;
+    if (previous == categoryId) return;
+    if (previous != null) {
+      await _call('clearCategoryHighlight', [previous]);
+    }
+    highlightedCategoryId.value = categoryId;
+    await _call('highlightCategory', [categoryId]);
+  }
+
+  /// Réinitialise la catégorie actuellement mise en avant, s'il y en a une.
+  Future<void> clearCategoryHighlight() async {
+    final current = highlightedCategoryId.value;
+    if (current == null) return;
+    highlightedCategoryId.value = null;
+    await _call('clearCategoryHighlight', [current]);
+  }
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -229,6 +275,7 @@ class VisioOneController {
   /// Libère les ressources. À appeler depuis `dispose()` du widget hôte.
   void dispose() {
     simulatedPosition.dispose();
+    highlightedCategoryId.dispose();
     _messages.close();
   }
 }
