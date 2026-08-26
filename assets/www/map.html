@@ -44,6 +44,14 @@
       var view = null;
       var container = document.getElementById('container');
 
+      // État de la démo `dynamic-poi-crud` : le POI (et son label) créés à
+      // la volée, actuellement suivis — un seul à la fois (contrat de cette
+      // démo, pas une limite du SDK). Remis à `null` par `setup()` en cas de
+      // rechargement de carte, et par `removeDynamicPOI` ci-dessous. Voir
+      // docs/features/dynamic-poi-crud.md.
+      var dynamicPoi = null;
+      var dynamicPoiLabel = null;
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
@@ -103,6 +111,8 @@
               // setup() déjà appelé : on repart d'un état propre avant de recharger.
               if (view) { visioOne.destroyView(view); view = null; }
               if (venue) { visioOne.unloadVenue(venue); venue = null; }
+              dynamicPoi = null;
+              dynamicPoiLabel = null;
             }
 
             visioOne = VisioOne.createVisioOne();
@@ -417,6 +427,113 @@
                 venue.updateSurface(surface, { color: 'initial' });
               });
             });
+        },
+
+        // Requête/réponse (même schéma que loadCustomData / customDataLoaded) :
+        // crée un POI purement logique (`venue.createPOI({id: newId})`) — un
+        // POI neuf n'a par lui-même aucune représentation visuelle
+        // (`images`/`labels`/`lines`/`surfaces`/`markers` tous vides, voir
+        // POI.ts du SDK) — puis lui attache immédiatement un Label
+        // (`venue.createLabel`) pour le rendre visible/démontrable, dont la
+        // position WGS84 est copiée depuis un POI "ancre" déjà existant
+        // ([anchorId], résolu comme dans goToPOI/loadCustomData) : son
+        // premier label, sinon son premier marker (pas de "tap sur la carte
+        // pour placer" dans cette démo). `success: false` avec un `message`
+        // explicite dans trois cas, tous des états normaux de la démo, pas
+        // des crashs : id [newId] déjà pris (`POIAlreadyExistsError`, voir
+        // Errors/POIAlreadyExistsError.ts), ancre introuvable, ou ancre sans
+        // label ni marker dont copier la position. Voir
+        // docs/features/dynamic-poi-crud.md.
+        createDynamicPOI: function (requestId, newId, anchorId, labelText) {
+          if (!venue) {
+            sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Map not ready.' });
+            return;
+          }
+
+          var anchor = venue.pois.find(function (p) { return p.id === anchorId; });
+          if (!anchor) {
+            sendToNative('dynamicPoiCreated', {
+              requestId: requestId,
+              success: false,
+              message: 'Anchor POI "' + anchorId + '" not found.',
+            });
+            return;
+          }
+
+          var source = anchor.labels[0] || anchor.markers[0];
+          if (!source) {
+            sendToNative('dynamicPoiCreated', {
+              requestId: requestId,
+              success: false,
+              message: 'Anchor POI "' + anchorId + '" has no label or marker to copy a position from.',
+            });
+            return;
+          }
+
+          var poi;
+          try {
+            poi = venue.createPOI({ id: newId });
+          } catch (error) {
+            // POIAlreadyExistsError (thrown synchronously by venue.createPOI
+            // when newId is already used in the venue) — a normal, demoable
+            // state for this feature, not a crash.
+            sendToNative('dynamicPoiCreated', {
+              requestId: requestId,
+              success: false,
+              message: error && error.message ? error.message : 'Could not create POI "' + newId + '".',
+            });
+            return;
+          }
+
+          var label = venue.createLabel({
+            poi: poi,
+            position: source.position,
+            width: 2,
+            text: labelText,
+          });
+
+          dynamicPoi = poi;
+          dynamicPoiLabel = label;
+          sendToNative('dynamicPoiCreated', { requestId: requestId, success: true, poiId: newId, text: labelText });
+        },
+
+        // Seule "modification" possible du contenu visuel d'un POI dynamique
+        // dans cette démo : `venue.updatePOI` ne peut toucher qu'aux
+        // catégories du POI (voir POIUpdateOptions.ts), jamais à sa
+        // représentation visuelle — c'est `venue.updateLabel` sur le Label
+        // attaché à la création qui joue ce rôle ici. Requête/réponse (même
+        // schéma que createDynamicPOI ci-dessus). Voir
+        // docs/features/dynamic-poi-crud.md.
+        updateDynamicPoiLabelText: function (requestId, text) {
+          if (!dynamicPoiLabel) {
+            sendToNative('dynamicPoiLabelUpdated', {
+              requestId: requestId,
+              success: false,
+              message: 'No dynamic POI tracked.',
+            });
+            return;
+          }
+          venue.updateLabel(dynamicPoiLabel, { text: text });
+          sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: true, text: text });
+        },
+
+        // `venue.removePOI` retire le POI ET cascade sur tout élément visuel
+        // attaché (ici, le Label créé par createDynamicPOI) : pas besoin d'un
+        // removeLabel séparé. Requête/réponse (même schéma que
+        // createDynamicPOI ci-dessus). Voir docs/features/dynamic-poi-crud.md.
+        removeDynamicPOI: function (requestId) {
+          if (!dynamicPoi) {
+            sendToNative('dynamicPoiRemoved', {
+              requestId: requestId,
+              success: false,
+              message: 'No dynamic POI tracked.',
+            });
+            return;
+          }
+          venue.removePOI(dynamicPoi);
+          dynamicPoi = null;
+          dynamicPoiLabel = null;
+          sendToNative('dynamicPoiRemoved', { requestId: requestId, success: true });
         },
       };
 

@@ -8,6 +8,7 @@ import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
+import 'dynamic_poi_crud_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
@@ -33,7 +34,8 @@ enum Feature {
   cameraLockOnPosition('camera-lock-on-position'),
   clickableSurface('clickable-surface'),
   customData('custom-data'),
-  categoryHighlight('category-highlight');
+  categoryHighlight('category-highlight'),
+  dynamicPoiCrud('dynamic-poi-crud');
 
   const Feature(this.slug);
 
@@ -52,6 +54,7 @@ enum Feature {
     Feature.clickableSurface => l10n.clickableSurfaceTitle,
     Feature.customData => l10n.customDataTitle,
     Feature.categoryHighlight => l10n.categoryHighlightTitle,
+    Feature.dynamicPoiCrud => l10n.dynamicPoiCrudTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -67,6 +70,7 @@ enum Feature {
     Feature.clickableSurface => l10n.clickableSurfaceDescription,
     Feature.customData => l10n.customDataDescription,
     Feature.categoryHighlight => l10n.categoryHighlightDescription,
+    Feature.dynamicPoiCrud => l10n.dynamicPoiCrudDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -82,6 +86,7 @@ enum Feature {
     Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
     Feature.customData => CustomDataOverlay(controller: controller),
     Feature.categoryHighlight => CategoryHighlightOverlay(controller: controller),
+    Feature.dynamicPoiCrud => DynamicPoiCrudOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -100,6 +105,8 @@ enum Feature {
   /// donc rien de plus à faire ici. `custom-data` fait de même pour
   /// `customDataLoaded`, voir [CustomDataOverlay]. `category-highlight` fait
   /// de même pour `categoriesLoaded`, voir [CategoryHighlightOverlay].
+  /// `dynamic-poi-crud` fait de même pour `dynamicPoiCreated`/
+  /// `dynamicPoiLabelUpdated`/`dynamicPoiRemoved`, voir [DynamicPoiCrudOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -115,6 +122,7 @@ enum Feature {
       case Feature.clickableSurface:
       case Feature.customData:
       case Feature.categoryHighlight:
+      case Feature.dynamicPoiCrud:
         break;
     }
   }
