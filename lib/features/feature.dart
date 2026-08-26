@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 import 'camera_lock_on_position_overlay.dart';
+import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
@@ -27,7 +28,8 @@ enum Feature {
   computeNavigation('compute-navigation'),
   uiPartVisibility('ui-part-visibility'),
   simulatedPosition('simulated-position'),
-  cameraLockOnPosition('camera-lock-on-position');
+  cameraLockOnPosition('camera-lock-on-position'),
+  clickableSurface('clickable-surface');
 
   const Feature(this.slug);
 
@@ -43,6 +45,7 @@ enum Feature {
     Feature.uiPartVisibility => l10n.uiPartVisibilityTitle,
     Feature.simulatedPosition => l10n.simulatedPositionTitle,
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionTitle,
+    Feature.clickableSurface => l10n.clickableSurfaceTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -55,6 +58,7 @@ enum Feature {
     Feature.uiPartVisibility => l10n.uiPartVisibilityDescription,
     Feature.simulatedPosition => l10n.simulatedPositionDescription,
     Feature.cameraLockOnPosition => l10n.cameraLockOnPositionDescription,
+    Feature.clickableSurface => l10n.clickableSurfaceDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -67,6 +71,7 @@ enum Feature {
     Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
     Feature.simulatedPosition => SimulatedPositionOverlay(controller: controller),
     Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
+    Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -95,6 +100,7 @@ enum Feature {
       case Feature.uiPartVisibility:
       case Feature.simulatedPosition:
       case Feature.cameraLockOnPosition:
+      case Feature.clickableSurface:
         break;
     }
   }

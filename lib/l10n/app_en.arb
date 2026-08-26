@@ -22,5 +22,7 @@
   "simulatedPositionTitle": "Simulated position",
   "simulatedPositionDescription": "Animate a simulated position with an accuracy circle between two POIs.",
   "cameraLockOnPositionTitle": "Camera lock on position",
-  "cameraLockOnPositionDescription": "Lock the camera onto a simulated tracked position, GPS-app style."
+  "cameraLockOnPositionDescription": "Lock the camera onto a simulated tracked position, GPS-app style.",
+  "clickableSurfaceTitle": "Clickable surface",
+  "clickableSurfaceDescription": "Make a place's surface interactive, with the SDK handling hover/tap color feedback itself."
 }
