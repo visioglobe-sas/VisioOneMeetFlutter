@@ -28,5 +28,7 @@
   "customDataTitle": "Données personnalisées",
   "customDataDescription": "Lire des données métier (prix, horaires, référence) attachées à un POI dans VisioMapEditor.",
   "categoryHighlightTitle": "Mise en avant par catégorie",
-  "categoryHighlightDescription": "Met en avant tous les POI d'une catégorie choisie, ex. tous les restaurants ou tous les commerces."
+  "categoryHighlightDescription": "Met en avant tous les POI d'une catégorie choisie, ex. tous les restaurants ou tous les commerces.",
+  "dynamicPoiCrudTitle": "POI dynamique",
+  "dynamicPoiCrudDescription": "Crée, modifie et supprime un POI à la volée, sans republier la carte."
 }

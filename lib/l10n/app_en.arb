@@ -28,5 +28,7 @@
   "customDataTitle": "Custom data",
   "customDataDescription": "Read custom business data (price, hours, reference) attached to a POI in VisioMapEditor.",
   "categoryHighlightTitle": "Category highlight",
-  "categoryHighlightDescription": "Highlight every POI belonging to a chosen category, e.g. all restaurants or all shops."
+  "categoryHighlightDescription": "Highlight every POI belonging to a chosen category, e.g. all restaurants or all shops.",
+  "dynamicPoiCrudTitle": "Dynamic POI",
+  "dynamicPoiCrudDescription": "Create, update and remove a POI at runtime, without republishing the map."
 }

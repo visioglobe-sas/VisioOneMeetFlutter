@@ -10,6 +10,24 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'simulated_position_session.dart';
 import 'visio_one_message.dart';
 
+/// État observable du POI dynamique actuellement suivi par la démo
+/// `dynamic-poi-crud` — un seul à la fois (contrat de cette démo, pas une
+/// limite du SDK, voir [VisioOneController.dynamicPoi]). Immuable : chaque
+/// changement (création, texte de label modifié) remplace l'instance plutôt
+/// que de la muter, comme le reste de l'état exposé par ce contrôleur.
+class DynamicPoiInfo {
+  const DynamicPoiInfo({required this.id, required this.labelText});
+
+  /// Id du POI créé à la volée (`newId` passé à
+  /// [VisioOneController.createDynamicPOI]).
+  final String id;
+
+  /// Dernier texte connu du label attaché à ce POI.
+  final String labelText;
+
+  DynamicPoiInfo withLabelText(String labelText) => DynamicPoiInfo(id: id, labelText: labelText);
+}
+
 /// Nom du `JavaScriptChannel` exposé à `map.html` (`window.VisioOneBridge`).
 ///
 /// Un seul canal JS -> Native, avec une enveloppe `{type, data}` (voir
@@ -248,6 +266,56 @@ class VisioOneController {
     await _call('clearCategoryHighlight', [current]);
   }
 
+  /// POI dynamique actuellement suivi par la démo `dynamic-poi-crud` (un
+  /// seul à la fois — voir [DynamicPoiInfo]), ou `null` si aucun n'a encore
+  /// été créé (ou si le dernier créé a été supprimé). Porté ici plutôt que
+  /// par l'overlay de la feature, pour survivre à la fermeture du bottom
+  /// sheet — même raison que [highlightedCategoryId] ci-dessus. C'est
+  /// l'overlay (`DynamicPoiCrudOverlay`) qui met cette valeur à jour une
+  /// fois qu'un aller-retour de pont confirme le succès de l'opération —
+  /// pas ce contrôleur, qui ne fait qu'émettre la commande Native -> JS et
+  /// laisser la réponse arriver de façon asynchrone sur [messages].
+  final ValueNotifier<DynamicPoiInfo?> dynamicPoi = ValueNotifier<DynamicPoiInfo?>(null);
+
+  /// Crée un POI à la volée (`venue.createPOI({id: newId})`, sans passer par
+  /// VisioMapEditor) puis lui attache un label copiant la position d'un POI
+  /// "ancre" existant ([anchorId]) — un POI fraîchement créé n'a par
+  /// lui-même aucune représentation visuelle, voir
+  /// `docs/features/dynamic-poi-crud.md`.
+  ///
+  /// Requête/réponse par `requestId` (même schéma que [loadCustomData]) : la
+  /// réponse arrive de façon asynchrone sur [messages] sous la forme d'un
+  /// message `dynamicPoiCreated` portant le même `requestId`, `success`, et
+  /// si `success` est `false` un `message` expliquant l'échec — id déjà pris
+  /// (`POIAlreadyExistsError`), ancre introuvable, ou ancre sans label/marker
+  /// dont copier la position. Ces trois cas sont des états normaux de la
+  /// démo à afficher tels quels, pas des exceptions à laisser remonter.
+  Future<void> createDynamicPOI(
+    String requestId, {
+    required String newId,
+    required String anchorId,
+    required String labelText,
+  }) => _call('createDynamicPOI', [requestId, newId, anchorId, labelText]);
+
+  /// Modifie le texte du label attaché au POI dynamique actuellement suivi
+  /// (`venue.updateLabel`) — la seule modification "visuelle" possible pour
+  /// cette démo, `venue.updatePOI` ne pouvant toucher qu'aux catégories d'un
+  /// POI (voir `docs/features/dynamic-poi-crud.md`).
+  ///
+  /// Requête/réponse par `requestId`, réponse en message
+  /// `dynamicPoiLabelUpdated` (même schéma que [createDynamicPOI]).
+  Future<void> updateDynamicPoiLabelText(String requestId, String text) =>
+      _call('updateDynamicPoiLabelText', [requestId, text]);
+
+  /// Supprime le POI dynamique actuellement suivi (`venue.removePOI`) — ce
+  /// qui retire aussi son label de la carte, `removePOI` cascadant sur tout
+  /// élément visuel attaché sans appel séparé (voir
+  /// `docs/features/dynamic-poi-crud.md`).
+  ///
+  /// Requête/réponse par `requestId`, réponse en message `dynamicPoiRemoved`
+  /// (même schéma que [createDynamicPOI]).
+  Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [requestId]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -277,6 +345,7 @@ class VisioOneController {
   void dispose() {
     simulatedPosition.dispose();
     highlightedCategoryId.dispose();
+    dynamicPoi.dispose();
     _messages.close();
   }
 }
