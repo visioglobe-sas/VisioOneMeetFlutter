@@ -30,5 +30,7 @@
   "categoryHighlightTitle": "Mise en avant par catégorie",
   "categoryHighlightDescription": "Met en avant tous les POI d'une catégorie choisie, ex. tous les restaurants ou tous les commerces.",
   "dynamicPoiCrudTitle": "POI dynamique",
-  "dynamicPoiCrudDescription": "Crée, modifie et supprime un POI à la volée, sans republier la carte."
+  "dynamicPoiCrudDescription": "Crée, modifie et supprime un POI à la volée, sans republier la carte.",
+  "runtimeLocaleTitle": "Langue à la volée",
+  "runtimeLocaleDescription": "Change la langue des noms et libellés de POI sur la carte, sans la recharger."
 }

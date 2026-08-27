@@ -65,6 +65,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Custom data](docs/features/custom-data.md)** — reads free-form business data (price, opening hours, product reference) attached to a POI in VisioMapEditor.
 - **[Category highlight](docs/features/category-highlight.md)** — highlights every POI belonging to a chosen category (e.g. all restaurants, all shops) in one action.
 - **[Dynamic POI CRUD](docs/features/dynamic-poi-crud.md)** — creates, updates, and removes a POI at runtime, without republishing the map.
+- **[Runtime locale](docs/features/runtime-locale.md)** — switches the language of POI names and labels on the map at runtime, without reloading it.
 
 ## How it works
 
