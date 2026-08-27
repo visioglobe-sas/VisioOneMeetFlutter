@@ -24,6 +24,7 @@ class FeatureScreen extends StatelessWidget {
           // restent sur `kDefaultMapHash`, inchangé.
           hash: feature == Feature.customData ? kCustomDataMapHash : kDefaultMapHash,
           overlayBuilder: (context, controller) => feature.buildOverlay(context, controller),
+          mapOverlayBuilder: (context, controller) => feature.buildMapOverlay(context, controller),
           onMessage: (context, message) => feature.onMapMessage(context, message),
         ),
       ),
