@@ -11,6 +11,7 @@ import 'custom_data_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
+import 'native_ui_replacement_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
@@ -37,7 +38,8 @@ enum Feature {
   customData('custom-data'),
   categoryHighlight('category-highlight'),
   dynamicPoiCrud('dynamic-poi-crud'),
-  runtimeLocale('runtime-locale');
+  runtimeLocale('runtime-locale'),
+  nativeUiReplacement('native-ui-replacement');
 
   const Feature(this.slug);
 
@@ -58,6 +60,7 @@ enum Feature {
     Feature.categoryHighlight => l10n.categoryHighlightTitle,
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudTitle,
     Feature.runtimeLocale => l10n.runtimeLocaleTitle,
+    Feature.nativeUiReplacement => l10n.nativeUiReplacementTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -75,6 +78,7 @@ enum Feature {
     Feature.categoryHighlight => l10n.categoryHighlightDescription,
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudDescription,
     Feature.runtimeLocale => l10n.runtimeLocaleDescription,
+    Feature.nativeUiReplacement => l10n.nativeUiReplacementDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -92,6 +96,18 @@ enum Feature {
     Feature.categoryHighlight => CategoryHighlightOverlay(controller: controller),
     Feature.dynamicPoiCrud => DynamicPoiCrudOverlay(controller: controller),
     Feature.runtimeLocale => RuntimeLocaleOverlay(controller: controller),
+    Feature.nativeUiReplacement => NativeUiReplacementOverlay(controller: controller),
+  };
+
+  /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
+  /// FAB), pour les rares features qui en ont besoin — seule
+  /// `native-ui-replacement` aujourd'hui : son panneau de sélection d'étage
+  /// natif doit être visible dès l'arrivée sur l'écran, sans que le visiteur
+  /// n'ait à ouvrir le FAB pour le découvrir (voir
+  /// [NativeUiReplacementMapPanel]). `null` pour toutes les autres features.
+  Widget? buildMapOverlay(BuildContext context, VisioOneController controller) => switch (this) {
+    Feature.nativeUiReplacement => NativeUiReplacementMapPanel(controller: controller),
+    _ => null,
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -113,7 +129,9 @@ enum Feature {
   /// `dynamic-poi-crud` fait de même pour `dynamicPoiCreated`/
   /// `dynamicPoiLabelUpdated`/`dynamicPoiRemoved`, voir [DynamicPoiCrudOverlay].
   /// `runtime-locale` fait de même pour `localesLoaded`, voir
-  /// [RuntimeLocaleOverlay].
+  /// [RuntimeLocaleOverlay]. `native-ui-replacement` n'en a pas besoin non
+  /// plus : son panneau ([NativeUiReplacementMapPanel]) embarque directement
+  /// [FloorSelectorOverlay], qui gère déjà `venueLayout`/`floorChanged` lui-même.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -131,6 +149,7 @@ enum Feature {
       case Feature.categoryHighlight:
       case Feature.dynamicPoiCrud:
       case Feature.runtimeLocale:
+      case Feature.nativeUiReplacement:
         break;
     }
   }

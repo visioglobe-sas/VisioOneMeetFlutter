@@ -38,6 +38,7 @@ class VisioOneMapShell extends StatefulWidget {
     super.key,
     required this.hash,
     required this.overlayBuilder,
+    this.mapOverlayBuilder,
     this.onMessage,
   });
 
@@ -46,6 +47,16 @@ class VisioOneMapShell extends StatefulWidget {
 
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
+
+  /// Overlay optionnel affiché directement au-dessus de la carte (pas dans le
+  /// bottom sheet ouvert par le FAB) une fois celle-ci prête. Peut renvoyer
+  /// `null` (aucun overlay pour la feature affichée) même quand ce champ
+  /// lui-même n'est pas `null` — [FeatureScreen] branche toujours
+  /// `Feature.buildMapOverlay`, qui ne renvoie un widget que pour
+  /// `native-ui-replacement`, pour que son sélecteur d'étage natif soit
+  /// visible sans action du visiteur — voir
+  /// `lib/features/native_ui_replacement_overlay.dart`.
+  final Widget? Function(BuildContext context, VisioOneController controller)? mapOverlayBuilder;
 
   /// Callback optionnel pour les messages JS -> Native que ce squelette
   /// partagé ne gère pas lui-même (tout sauf `ready`/`error`, ex.
@@ -135,12 +146,16 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final mapOverlay = controller != null && _state == _MapLoadState.ready
+        ? widget.mapOverlayBuilder?.call(context, controller)
+        : null;
     return Scaffold(
       body: ColoredBox(
         color: Colors.black,
         child: Stack(
           children: [
             if (controller != null) WebViewWidget(controller: controller.webViewController),
+            ?mapOverlay,
             if (_state == _MapLoadState.loading)
               const Center(child: CircularProgressIndicator(color: Colors.white)),
             if (_state == _MapLoadState.error) _ErrorOverlay(message: _errorMessage!, onRetry: _retry),

@@ -32,5 +32,9 @@
   "dynamicPoiCrudTitle": "POI dynamique",
   "dynamicPoiCrudDescription": "Crée, modifie et supprime un POI à la volée, sans republier la carte.",
   "runtimeLocaleTitle": "Langue à la volée",
-  "runtimeLocaleDescription": "Change la langue des noms et libellés de POI sur la carte, sans la recharger."
+  "runtimeLocaleDescription": "Change la langue des noms et libellés de POI sur la carte, sans la recharger.",
+  "nativeUiReplacementTitle": "Remplacement d'UI native",
+  "nativeUiReplacementDescription": "Remplace entièrement le sélecteur d'étage du SDK par celui, natif, de l'app.",
+  "nativeUiReplacementPanelLabel": "Sélecteur d'étage natif de l'app",
+  "nativeUiReplacementToggleLabel": "Afficher le sélecteur d'étage natif du SDK"
 }

@@ -32,5 +32,9 @@
   "dynamicPoiCrudTitle": "Dynamic POI",
   "dynamicPoiCrudDescription": "Create, update and remove a POI at runtime, without republishing the map.",
   "runtimeLocaleTitle": "Runtime language",
-  "runtimeLocaleDescription": "Switch the language of POI names and labels on the map, without reloading it."
+  "runtimeLocaleDescription": "Switch the language of POI names and labels on the map, without reloading it.",
+  "nativeUiReplacementTitle": "Native UI replacement",
+  "nativeUiReplacementDescription": "Replace the SDK's own floor selector with the app's native one, entirely.",
+  "nativeUiReplacementPanelLabel": "App's native floor selector",
+  "nativeUiReplacementToggleLabel": "Show SDK's own floor selector"
 }

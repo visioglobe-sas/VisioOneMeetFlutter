@@ -66,6 +66,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Category highlight](docs/features/category-highlight.md)** — highlights every POI belonging to a chosen category (e.g. all restaurants, all shops) in one action.
 - **[Dynamic POI CRUD](docs/features/dynamic-poi-crud.md)** — creates, updates, and removes a POI at runtime, without republishing the map.
 - **[Runtime locale](docs/features/runtime-locale.md)** — switches the language of POI names and labels on the map at runtime, without reloading it.
+- **[Native UI replacement](docs/features/native-ui-replacement.md)** — hides the SDK's built-in floor selector and shows the app's own native one as a complete, fully-functional replacement.
 
 ## How it works
 
