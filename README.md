@@ -67,6 +67,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Dynamic POI CRUD](docs/features/dynamic-poi-crud.md)** — creates, updates, and removes a POI at runtime, without republishing the map.
 - **[Runtime locale](docs/features/runtime-locale.md)** — switches the language of POI names and labels on the map at runtime, without reloading it.
 - **[Native UI replacement](docs/features/native-ui-replacement.md)** — hides the SDK's built-in floor selector and shows the app's own native one as a complete, fully-functional replacement.
+- **[Explore mode](docs/features/explore-mode.md)** — switches between the global, building "carousel", and floor camera-exploration modes.
 
 ## How it works
 

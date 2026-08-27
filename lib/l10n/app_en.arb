@@ -36,5 +36,11 @@
   "nativeUiReplacementTitle": "Native UI replacement",
   "nativeUiReplacementDescription": "Replace the SDK's own floor selector with the app's native one, entirely.",
   "nativeUiReplacementPanelLabel": "App's native floor selector",
-  "nativeUiReplacementToggleLabel": "Show SDK's own floor selector"
+  "nativeUiReplacementToggleLabel": "Show SDK's own floor selector",
+  "exploreModeTitle": "Explore mode",
+  "exploreModeDescription": "Switch between the global, building carousel, and floor views.",
+  "exploreModeGlobalLabel": "Global",
+  "exploreModeBuildingLabel": "Building",
+  "exploreModeFloorLabel": "Floor",
+  "exploreModeHint": "\"Building\" shows every opened building's floors in an exploded carousel view — tap a floor to zoom into it."
 }

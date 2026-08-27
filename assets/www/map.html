@@ -82,6 +82,19 @@
             floorId: event.floor ? event.floor.id : null,
           });
         });
+
+        // Déclenché à chaque changement de `view.currentExploreMode`, quelle
+        // qu'en soit la source — l'appel `setExploreMode` de ce pont
+        // ci-dessous, mais aussi une interaction directe caméra/carte
+        // (déplacer la caméra en/hors d'un bâtiment en mode 'global'
+        // l'ouvre/le ferme ; un clic en mode 'building' bascule
+        // automatiquement en mode 'floor'). Relayé sans condition pour que
+        // le panneau natif reste synchronisé même quand ce n'est pas lui qui
+        // a causé le changement — même schéma que `currentfloorchanged`
+        // ci-dessus. Voir docs/features/explore-mode.md.
+        v.addEventListener('exploremodechanged', function (event) {
+          sendToNative('exploreModeChanged', { currentExploreMode: event.currentExploreMode });
+        });
       }
 
       // ---------------------------------------------------------------
@@ -201,6 +214,30 @@
               };
             }),
           });
+        },
+
+        // Change le mode d'exploration courant du bâtiment — un parmi
+        // 'global' / 'building' / 'floor' (voir ExploreMode.ts du package
+        // @visioglobe/visioone pour la sémantique exacte de chacun, et
+        // docs/features/explore-mode.md). Une simple affectation de
+        // propriété, pas un appel de méthode : le SDK anime lui-même la
+        // transition caméra/scène et déclenche `exploremodechanged` une fois
+        // appliquée (voir `forwardViewEvents` ci-dessus) — aucun message de
+        // confirmation séparé n'est envoyé ici, comme `setCurrentLocale`.
+        setExploreMode: function (mode) {
+          if (!view) return;
+          view.currentExploreMode = mode;
+        },
+
+        // Requête/réponse (même schéma que getVenueLayout / venueLayout,
+        // sans requestId puisqu'il n'y a jamais qu'un seul mode
+        // d'exploration courant à répondre) : renvoie le mode d'exploration
+        // courant (`view.currentExploreMode`) pour présélectionner le bon
+        // bouton dès l'ouverture du panneau, sans attendre un
+        // `exploremodechanged`. Voir docs/features/explore-mode.md.
+        getExploreMode: function () {
+          if (!view) return;
+          sendToNative('exploreMode', { currentExploreMode: view.currentExploreMode });
         },
 
         clearSelection: function () {

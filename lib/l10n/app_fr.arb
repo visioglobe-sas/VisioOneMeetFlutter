@@ -36,5 +36,11 @@
   "nativeUiReplacementTitle": "Remplacement d'UI native",
   "nativeUiReplacementDescription": "Remplace entièrement le sélecteur d'étage du SDK par celui, natif, de l'app.",
   "nativeUiReplacementPanelLabel": "Sélecteur d'étage natif de l'app",
-  "nativeUiReplacementToggleLabel": "Afficher le sélecteur d'étage natif du SDK"
+  "nativeUiReplacementToggleLabel": "Afficher le sélecteur d'étage natif du SDK",
+  "exploreModeTitle": "Mode d'exploration",
+  "exploreModeDescription": "Bascule entre les vues globale, éclatée par bâtiment et par étage.",
+  "exploreModeGlobalLabel": "Global",
+  "exploreModeBuildingLabel": "Bâtiment",
+  "exploreModeFloorLabel": "Étage",
+  "exploreModeHint": "« Bâtiment » affiche les étages de chaque bâtiment ouvert en vue éclatée façon carrousel — tapez un étage pour zoomer dessus."
 }
