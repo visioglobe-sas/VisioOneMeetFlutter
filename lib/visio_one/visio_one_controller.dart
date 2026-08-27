@@ -128,6 +128,21 @@ class VisioOneController {
   /// Efface la sélection visuelle courante (surlignage de POI).
   Future<void> clearSelection() => _run('window.MapBridge.clearSelection()');
 
+  /// Change le mode d'exploration courant du bâtiment
+  /// (`view.currentExploreMode = mode`), l'un de `'global'`, `'building'`,
+  /// `'floor'` — voir `docs/features/explore-mode.md`.
+  Future<void> setExploreMode(String mode) => _call('setExploreMode', [mode]);
+
+  /// Demande le mode d'exploration courant.
+  ///
+  /// Fire-and-forget comme [getVenueLayout]/[getCategories] : la réponse
+  /// arrive de façon asynchrone sur [messages] sous la forme d'un message
+  /// `exploreMode` (`{currentExploreMode}`) — même idiome requête/réponse
+  /// que le reste de ce pont, sans `requestId` puisqu'il n'y a jamais qu'un
+  /// seul mode d'exploration courant à répondre. Voir
+  /// `docs/features/explore-mode.md`.
+  Future<void> getExploreMode() => _run('window.MapBridge.getExploreMode()');
+
   /// Demande la liste des bâtiments/étages de la venue courante.
   ///
   /// Fire-and-forget comme le reste du pont Native -> JS : la réponse

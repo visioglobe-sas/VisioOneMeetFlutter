@@ -9,6 +9,7 @@ import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
+import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'native_ui_replacement_overlay.dart';
@@ -39,7 +40,8 @@ enum Feature {
   categoryHighlight('category-highlight'),
   dynamicPoiCrud('dynamic-poi-crud'),
   runtimeLocale('runtime-locale'),
-  nativeUiReplacement('native-ui-replacement');
+  nativeUiReplacement('native-ui-replacement'),
+  exploreMode('explore-mode');
 
   const Feature(this.slug);
 
@@ -61,6 +63,7 @@ enum Feature {
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudTitle,
     Feature.runtimeLocale => l10n.runtimeLocaleTitle,
     Feature.nativeUiReplacement => l10n.nativeUiReplacementTitle,
+    Feature.exploreMode => l10n.exploreModeTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -79,6 +82,7 @@ enum Feature {
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudDescription,
     Feature.runtimeLocale => l10n.runtimeLocaleDescription,
     Feature.nativeUiReplacement => l10n.nativeUiReplacementDescription,
+    Feature.exploreMode => l10n.exploreModeDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -97,6 +101,7 @@ enum Feature {
     Feature.dynamicPoiCrud => DynamicPoiCrudOverlay(controller: controller),
     Feature.runtimeLocale => RuntimeLocaleOverlay(controller: controller),
     Feature.nativeUiReplacement => NativeUiReplacementOverlay(controller: controller),
+    Feature.exploreMode => ExploreModeOverlay(controller: controller),
   };
 
   /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
@@ -132,6 +137,8 @@ enum Feature {
   /// [RuntimeLocaleOverlay]. `native-ui-replacement` n'en a pas besoin non
   /// plus : son panneau ([NativeUiReplacementMapPanel]) embarque directement
   /// [FloorSelectorOverlay], qui gère déjà `venueLayout`/`floorChanged` lui-même.
+  /// `explore-mode` fait de même pour `exploreMode`/`exploreModeChanged`,
+  /// voir [ExploreModeOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -150,6 +157,7 @@ enum Feature {
       case Feature.dynamicPoiCrud:
       case Feature.runtimeLocale:
       case Feature.nativeUiReplacement:
+      case Feature.exploreMode:
         break;
     }
   }
