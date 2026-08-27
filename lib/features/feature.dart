@@ -14,6 +14,7 @@ import 'goto_poi_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
+import 'runtime_locale_overlay.dart';
 import 'simulated_position_overlay.dart';
 import 'ui_part_visibility_overlay.dart';
 
@@ -35,7 +36,8 @@ enum Feature {
   clickableSurface('clickable-surface'),
   customData('custom-data'),
   categoryHighlight('category-highlight'),
-  dynamicPoiCrud('dynamic-poi-crud');
+  dynamicPoiCrud('dynamic-poi-crud'),
+  runtimeLocale('runtime-locale');
 
   const Feature(this.slug);
 
@@ -55,6 +57,7 @@ enum Feature {
     Feature.customData => l10n.customDataTitle,
     Feature.categoryHighlight => l10n.categoryHighlightTitle,
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudTitle,
+    Feature.runtimeLocale => l10n.runtimeLocaleTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -71,6 +74,7 @@ enum Feature {
     Feature.customData => l10n.customDataDescription,
     Feature.categoryHighlight => l10n.categoryHighlightDescription,
     Feature.dynamicPoiCrud => l10n.dynamicPoiCrudDescription,
+    Feature.runtimeLocale => l10n.runtimeLocaleDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -87,6 +91,7 @@ enum Feature {
     Feature.customData => CustomDataOverlay(controller: controller),
     Feature.categoryHighlight => CategoryHighlightOverlay(controller: controller),
     Feature.dynamicPoiCrud => DynamicPoiCrudOverlay(controller: controller),
+    Feature.runtimeLocale => RuntimeLocaleOverlay(controller: controller),
   };
 
   /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
@@ -107,6 +112,8 @@ enum Feature {
   /// de même pour `categoriesLoaded`, voir [CategoryHighlightOverlay].
   /// `dynamic-poi-crud` fait de même pour `dynamicPoiCreated`/
   /// `dynamicPoiLabelUpdated`/`dynamicPoiRemoved`, voir [DynamicPoiCrudOverlay].
+  /// `runtime-locale` fait de même pour `localesLoaded`, voir
+  /// [RuntimeLocaleOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -123,6 +130,7 @@ enum Feature {
       case Feature.customData:
       case Feature.categoryHighlight:
       case Feature.dynamicPoiCrud:
+      case Feature.runtimeLocale:
         break;
     }
   }

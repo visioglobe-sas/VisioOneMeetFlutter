@@ -30,5 +30,7 @@
   "categoryHighlightTitle": "Category highlight",
   "categoryHighlightDescription": "Highlight every POI belonging to a chosen category, e.g. all restaurants or all shops.",
   "dynamicPoiCrudTitle": "Dynamic POI",
-  "dynamicPoiCrudDescription": "Create, update and remove a POI at runtime, without republishing the map."
+  "dynamicPoiCrudDescription": "Create, update and remove a POI at runtime, without republishing the map.",
+  "runtimeLocaleTitle": "Runtime language",
+  "runtimeLocaleDescription": "Switch the language of POI names and labels on the map, without reloading it."
 }

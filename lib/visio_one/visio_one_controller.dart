@@ -316,6 +316,41 @@ class VisioOneController {
   /// (même schéma que [createDynamicPOI]).
   Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [requestId]);
 
+  /// Locale actuellement affichée par la venue (code brut renvoyé par
+  /// `venue.currentLocale`, ex. `'default'`/`'en'`/`'fr'`), ou `null` tant
+  /// qu'aucune réponse `localesLoaded` n'a encore été reçue.
+  ///
+  /// Portée ici plutôt que par l'overlay de la feature, pour survivre à la
+  /// fermeture du bottom sheet — même raison que [highlightedCategoryId]
+  /// ci-dessus : sans ça, rouvrir le panneau perdrait la trace de la locale
+  /// choisie lors d'un passage précédent tant que [getLocales] n'a pas
+  /// répondu à nouveau. Voir `docs/features/runtime-locale.md`.
+  final ValueNotifier<String?> currentLocale = ValueNotifier<String?>(null);
+
+  /// Demande la locale courante et la liste des locales disponibles de la
+  /// venue (`venue.currentLocale` / `venue.translator.allLocales`).
+  ///
+  /// Fire-and-forget comme [getCategories]/[getVenueLayout] : la réponse
+  /// arrive de façon asynchrone sur [messages] sous la forme d'un message
+  /// `localesLoaded` portant le même `requestId`, `currentLocale` et
+  /// `allLocales`. Voir `docs/features/runtime-locale.md`.
+  Future<void> getLocales(String requestId) => _call('getLocales', [requestId]);
+
+  /// Change la locale courante de la venue (`venue.setCurrentLocale`) : le
+  /// SDK se charge lui-même de re-rendre les labels de POI et l'UI courante
+  /// dans la nouvelle locale, aucun re-fetch manuel des données POI n'est
+  /// nécessaire côté natif — voir `docs/features/runtime-locale.md`.
+  ///
+  /// Met à jour [currentLocale] immédiatement (avant même que la `Promise`
+  /// JS sous-jacente ne se résolve) plutôt que d'attendre un message de
+  /// confirmation dédié : il n'y en a pas, le résultat étant directement
+  /// observable sur la carte (voir `assets/www/map.html`,
+  /// `window.MapBridge.setCurrentLocale`).
+  Future<void> setCurrentLocale(String locale) {
+    currentLocale.value = locale;
+    return _call('setCurrentLocale', [locale]);
+  }
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -346,6 +381,7 @@ class VisioOneController {
     simulatedPosition.dispose();
     highlightedCategoryId.dispose();
     dynamicPoi.dispose();
+    currentLocale.dispose();
     _messages.close();
   }
 }
