@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'geofence_utils.dart';
 import 'visio_one_controller.dart';
 
 /// Coordonnées WGS84 minimales nécessaires à l'interpolation — pas besoin
@@ -68,6 +69,41 @@ class SimulatedPositionSession {
   /// pourquoi ce verrou ne doit jamais survivre à un redémarrage/arrêt.
   final ValueNotifier<bool> isCameraLocked = ValueNotifier<bool>(false);
 
+  /// Id du POI zone actuellement surveillé par la démo `geofencing` (ou
+  /// `null` si aucune zone n'est configurée), et le polygone WGS84 déjà
+  /// résolu pour ce POI (`poi.surfaces[0].positions`, via
+  /// `VisioOneController.resolvePoiZone`) — voir [setZone].
+  String? _zonePlaceId;
+  List<SimulatedPosition>? _zonePositions;
+
+  /// `true` si la position trackée courante est à l'intérieur de la zone
+  /// configurée par [setZone]. Portée ici plutôt que par l'overlay de la
+  /// feature, pour la même raison que [isCameraLocked] : reste cohérente
+  /// même si l'overlay est recréé (réouverture du bottom sheet) pendant que
+  /// la session tourne, et sert à ne rappeler
+  /// `VisioOneController.setZoneAlert` qu'aux transitions (voir
+  /// [_updateZoneAlert]), pas à chaque tick. Voir
+  /// `docs/features/geofencing.md`.
+  final ValueNotifier<bool> isInsideZone = ValueNotifier<bool>(false);
+
+  /// Configure (ou retire, si [positions] est `null`) la zone de geofencing
+  /// à tester à chaque tick de [_tick] contre la position simulée courante.
+  /// N'exige pas que la simulation soit démarrée : le polygone est
+  /// simplement mémorisé, testé dès le prochain tick si/quand [start] tourne
+  /// déjà ou tourne plus tard — voir `docs/features/geofencing.md`.
+  void setZone({required String? placeId, required List<SimulatedPosition>? positions}) {
+    _zonePlaceId = placeId;
+    _zonePositions = positions;
+    _updateZoneAlert(false);
+  }
+
+  void _updateZoneAlert(bool inside) {
+    if (isInsideZone.value == inside) return;
+    isInsideZone.value = inside;
+    final placeId = _zonePlaceId;
+    if (placeId != null) _controller.setZoneAlert(placeId, inside);
+  }
+
   /// Démarre (ou redémarre, si déjà en cours) le va-et-vient entre [origin]
   /// et [destination].
   void start({required SimulatedPosition origin, required SimulatedPosition destination}) {
@@ -102,11 +138,25 @@ class SimulatedPositionSession {
     final destination = _destination;
     if (origin == null || destination == null) return;
 
+    final latitude = origin.latitude + (destination.latitude - origin.latitude) * _t;
+    final longitude = origin.longitude + (destination.longitude - origin.longitude) * _t;
+
     _controller.injectTrackedPosition(
-      latitude: origin.latitude + (destination.latitude - origin.latitude) * _t,
-      longitude: origin.longitude + (destination.longitude - origin.longitude) * _t,
+      latitude: latitude,
+      longitude: longitude,
       precisionCircleRadius: radiusMeters,
     );
+
+    // `geofencing` : testé à chaque tick plutôt que sur un event dédié — le
+    // SDK n'émet aucun `trackedpositionchanged` (voir
+    // docs/features/geofencing.md), cette boucle déjà existante pour
+    // l'injection de position est le point d'accroche naturel.
+    final zonePositions = _zonePositions;
+    if (zonePositions != null) {
+      _updateZoneAlert(
+        isPointInPolygon(latitude: latitude, longitude: longitude, polygon: zonePositions),
+      );
+    }
 
     _t += _stepPerTick * _direction;
     if (_t >= 1) {
@@ -137,6 +187,12 @@ class SimulatedPositionSession {
     }
     isRunning.value = false;
     _setCameraLocked(false);
+    // Revert l'alerte visuelle de zone (si elle était active) mais garde la
+    // zone elle-même configurée (`_zonePlaceId`/`_zonePositions`) : un
+    // redémarrage doit reprendre la surveillance sans ressaisir le POI zone
+    // — contrairement à `isCameraLocked`, ce n'est pas un opt-in à refaire
+    // à chaque (re)démarrage.
+    _updateZoneAlert(false);
   }
 
   /// À appeler depuis `VisioOneController.dispose()` — annule le `Timer` en
@@ -153,5 +209,6 @@ class SimulatedPositionSession {
     _timer?.cancel();
     isRunning.dispose();
     isCameraLocked.dispose();
+    isInsideZone.dispose();
   }
 }

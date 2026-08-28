@@ -69,6 +69,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Native UI replacement](docs/features/native-ui-replacement.md)** — hides the SDK's built-in floor selector and shows the app's own native one as a complete, fully-functional replacement.
 - **[Explore mode](docs/features/explore-mode.md)** — switches between the global, building "carousel", and floor camera-exploration modes.
 - **[Add locale](docs/features/add-locale.md)** — adds a brand-new locale at runtime, never authored in VisioMapEditor for this map.
+- **[Geofencing](docs/features/geofencing.md)** — triggers a visual alert when a simulated tracked position enters a zone on the map.
 
 ## How it works
 

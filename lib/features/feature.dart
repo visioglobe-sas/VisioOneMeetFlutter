@@ -12,6 +12,7 @@ import 'custom_data_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
 import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
+import 'geofencing_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'native_ui_replacement_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
@@ -43,7 +44,8 @@ enum Feature {
   runtimeLocale('runtime-locale'),
   nativeUiReplacement('native-ui-replacement'),
   exploreMode('explore-mode'),
-  addLocale('add-locale');
+  addLocale('add-locale'),
+  geofencing('geofencing');
 
   const Feature(this.slug);
 
@@ -67,6 +69,7 @@ enum Feature {
     Feature.nativeUiReplacement => l10n.nativeUiReplacementTitle,
     Feature.exploreMode => l10n.exploreModeTitle,
     Feature.addLocale => l10n.addLocaleTitle,
+    Feature.geofencing => l10n.geofencingTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -87,6 +90,7 @@ enum Feature {
     Feature.nativeUiReplacement => l10n.nativeUiReplacementDescription,
     Feature.exploreMode => l10n.exploreModeDescription,
     Feature.addLocale => l10n.addLocaleDescription,
+    Feature.geofencing => l10n.geofencingDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -107,6 +111,7 @@ enum Feature {
     Feature.nativeUiReplacement => NativeUiReplacementOverlay(controller: controller),
     Feature.exploreMode => ExploreModeOverlay(controller: controller),
     Feature.addLocale => AddLocaleOverlay(controller: controller),
+    Feature.geofencing => GeofencingOverlay(controller: controller),
   };
 
   /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
@@ -144,7 +149,10 @@ enum Feature {
   /// [FloorSelectorOverlay], qui gère déjà `venueLayout`/`floorChanged` lui-même.
   /// `explore-mode` fait de même pour `exploreMode`/`exploreModeChanged`,
   /// voir [ExploreModeOverlay]. `add-locale` fait de même pour
-  /// `spanishLocaleAdded`, voir [AddLocaleOverlay].
+  /// `spanishLocaleAdded`, voir [AddLocaleOverlay]. `geofencing` fait de
+  /// même pour `poiZoneResolved`, voir [GeofencingOverlay] — le test
+  /// dedans/dehors lui-même n'a besoin d'aucun message, il tourne sur la
+  /// boucle de tick déjà existante de [SimulatedPositionSession].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -165,6 +173,7 @@ enum Feature {
       case Feature.nativeUiReplacement:
       case Feature.exploreMode:
       case Feature.addLocale:
+      case Feature.geofencing:
         break;
     }
   }
