@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'add_locale_overlay.dart';
 import 'camera_lock_on_position_overlay.dart';
 import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
@@ -41,7 +42,8 @@ enum Feature {
   dynamicPoiCrud('dynamic-poi-crud'),
   runtimeLocale('runtime-locale'),
   nativeUiReplacement('native-ui-replacement'),
-  exploreMode('explore-mode');
+  exploreMode('explore-mode'),
+  addLocale('add-locale');
 
   const Feature(this.slug);
 
@@ -64,6 +66,7 @@ enum Feature {
     Feature.runtimeLocale => l10n.runtimeLocaleTitle,
     Feature.nativeUiReplacement => l10n.nativeUiReplacementTitle,
     Feature.exploreMode => l10n.exploreModeTitle,
+    Feature.addLocale => l10n.addLocaleTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -83,6 +86,7 @@ enum Feature {
     Feature.runtimeLocale => l10n.runtimeLocaleDescription,
     Feature.nativeUiReplacement => l10n.nativeUiReplacementDescription,
     Feature.exploreMode => l10n.exploreModeDescription,
+    Feature.addLocale => l10n.addLocaleDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -102,6 +106,7 @@ enum Feature {
     Feature.runtimeLocale => RuntimeLocaleOverlay(controller: controller),
     Feature.nativeUiReplacement => NativeUiReplacementOverlay(controller: controller),
     Feature.exploreMode => ExploreModeOverlay(controller: controller),
+    Feature.addLocale => AddLocaleOverlay(controller: controller),
   };
 
   /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
@@ -138,7 +143,8 @@ enum Feature {
   /// plus : son panneau ([NativeUiReplacementMapPanel]) embarque directement
   /// [FloorSelectorOverlay], qui gère déjà `venueLayout`/`floorChanged` lui-même.
   /// `explore-mode` fait de même pour `exploreMode`/`exploreModeChanged`,
-  /// voir [ExploreModeOverlay].
+  /// voir [ExploreModeOverlay]. `add-locale` fait de même pour
+  /// `spanishLocaleAdded`, voir [AddLocaleOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -158,6 +164,7 @@ enum Feature {
       case Feature.runtimeLocale:
       case Feature.nativeUiReplacement:
       case Feature.exploreMode:
+      case Feature.addLocale:
         break;
     }
   }

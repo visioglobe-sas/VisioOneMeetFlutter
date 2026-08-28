@@ -68,6 +68,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Runtime locale](docs/features/runtime-locale.md)** — switches the language of POI names and labels on the map at runtime, without reloading it.
 - **[Native UI replacement](docs/features/native-ui-replacement.md)** — hides the SDK's built-in floor selector and shows the app's own native one as a complete, fully-functional replacement.
 - **[Explore mode](docs/features/explore-mode.md)** — switches between the global, building "carousel", and floor camera-exploration modes.
+- **[Add locale](docs/features/add-locale.md)** — adds a brand-new locale at runtime, never authored in VisioMapEditor for this map.
 
 ## How it works
 

@@ -366,6 +366,37 @@ class VisioOneController {
     return _call('setCurrentLocale', [locale]);
   }
 
+  /// Valeurs traduites en espagnol de la démo `add-locale` (une entrée par
+  /// clé de `AddLocaleOverlay.kSpanishResources`), ou `null` tant que
+  /// [addSpanishLocale] n'a pas encore été appelé avec succès.
+  ///
+  /// Portée ici plutôt que par l'overlay de la feature, pour survivre à la
+  /// fermeture du bottom sheet — même raison que [currentLocale] ci-dessus :
+  /// `venue.translator.addLocale` a déjà pris effet côté SDK dès le premier
+  /// appel (l'ajout d'une locale à l'exécution n'a rien d'idempotent à
+  /// répéter), donc rouvrir le panneau doit continuer à afficher l'état
+  /// "ajoutée", pas revenir à "(not added yet)". Voir
+  /// `docs/features/add-locale.md`.
+  final ValueNotifier<Map<String, String>?> spanishLocaleTranslations =
+      ValueNotifier<Map<String, String>?>(null);
+
+  /// Ajoute la locale `'es'` à l'exécution avec le dictionnaire fixe
+  /// [resources] (`venue.translator.addLocale('es', resources)`), puis relit
+  /// immédiatement chaque clé traduite (`venue.translator.translate(key,
+  /// 'es')`) dans le même aller-retour de pont — même idiome que
+  /// [loadCustomData] (`refreshCustomData` + `getPOICustomData` enchaînés
+  /// côté JS plutôt que deux commandes séparées).
+  ///
+  /// Requête/réponse par `requestId` (même schéma que [loadCustomData]) : la
+  /// réponse arrive de façon asynchrone sur [messages] sous la forme d'un
+  /// message `spanishLocaleAdded` portant le même `requestId` et `values`
+  /// (une entrée par clé de [resources], chacune déjà traduite en espagnol) —
+  /// c'est la preuve que l'aller-retour `addLocale`/`translate` a fonctionné,
+  /// indépendamment de la visibilité de l'UI native du SDK. Voir
+  /// `docs/features/add-locale.md`.
+  Future<void> addSpanishLocale(String requestId, Map<String, String> resources) =>
+      _call('addSpanishLocale', [requestId, resources]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -397,6 +428,7 @@ class VisioOneController {
     highlightedCategoryId.dispose();
     dynamicPoi.dispose();
     currentLocale.dispose();
+    spanishLocaleTranslations.dispose();
     _messages.close();
   }
 }
