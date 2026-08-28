@@ -42,5 +42,7 @@
   "exploreModeGlobalLabel": "Global",
   "exploreModeBuildingLabel": "Bâtiment",
   "exploreModeFloorLabel": "Étage",
-  "exploreModeHint": "« Bâtiment » affiche les étages de chaque bâtiment ouvert en vue éclatée façon carrousel — tapez un étage pour zoomer dessus."
+  "exploreModeHint": "« Bâtiment » affiche les étages de chaque bâtiment ouvert en vue éclatée façon carrousel — tapez un étage pour zoomer dessus.",
+  "addLocaleTitle": "Ajouter une langue",
+  "addLocaleDescription": "Ajoute une nouvelle langue à l'exécution, jamais configurée dans VisioMapEditor pour cette carte."
 }

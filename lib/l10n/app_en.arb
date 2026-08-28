@@ -42,5 +42,7 @@
   "exploreModeGlobalLabel": "Global",
   "exploreModeBuildingLabel": "Building",
   "exploreModeFloorLabel": "Floor",
-  "exploreModeHint": "\"Building\" shows every opened building's floors in an exploded carousel view — tap a floor to zoom into it."
+  "exploreModeHint": "\"Building\" shows every opened building's floors in an exploded carousel view — tap a floor to zoom into it.",
+  "addLocaleTitle": "Add a locale",
+  "addLocaleDescription": "Add a brand-new locale at runtime, never authored in VisioMapEditor for this map."
 }
