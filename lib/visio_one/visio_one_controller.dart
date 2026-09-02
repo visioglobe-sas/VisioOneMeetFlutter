@@ -190,6 +190,32 @@ class VisioOneController {
   Future<void> resolvePoiPosition(String requestId, String poiId) =>
       _call('resolvePoiPosition', [requestId, poiId]);
 
+  /// Résout le polygone WGS84 de la première surface d'un POI ("zone" pour
+  /// la démo `geofencing`) — contrairement à [resolvePoiPosition] (position
+  /// ponctuelle marker/label/image), lit `poi.surfaces[0].positions`, même
+  /// forme `{latitude, longitude}` que celle attendue par
+  /// [injectTrackedPosition].
+  ///
+  /// Requête/réponse par `requestId` (même schéma que [resolvePoiPosition]) :
+  /// la réponse arrive de façon asynchrone sur [messages] sous la forme d'un
+  /// message `poiZoneResolved` portant le même `requestId`, avec
+  /// `positions: null` si `poiId` ne correspond à aucun POI, ou
+  /// `positions: []` (liste vide, pas `null`) si le POI existe mais n'a
+  /// aucune surface — deux états distincts à afficher différemment côté
+  /// natif. Voir `docs/features/geofencing.md`.
+  Future<void> resolvePoiZone(String requestId, String poiId) =>
+      _call('resolvePoiZone', [requestId, poiId]);
+
+  /// Colore (ou réinitialise, `active: false`) la/les surface(s) d'un POI
+  /// zone comme alerte visuelle de geofencing (`venue.updateSurface`, même
+  /// idiome que [updateOccupancy]/[highlightCategory] — `'initial'`, pas
+  /// `undefined`, restaure la couleur du bundle de carte). Le test
+  /// d'appartenance position/zone est fait côté natif
+  /// ([SimulatedPositionSession]) ; cet appel ne fait qu'appliquer son
+  /// résultat visuellement. Voir `docs/features/geofencing.md`.
+  Future<void> setZoneAlert(String placeId, bool active) =>
+      _call('setZoneAlert', [placeId, active]);
+
   /// Injecte/actualise une position simulée trackée + son cercle de
   /// précision (`precisionCircleRadius`, en mètres). Active `allowTracking`
   /// côté JS au passage (voir `map.html`) — requis par le SDK avant tout

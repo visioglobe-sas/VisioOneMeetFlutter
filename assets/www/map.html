@@ -321,6 +321,55 @@
           sendToNative('poiPositionResolved', { requestId: requestId, poiId: poiId, position: position });
         },
 
+        // `geofencing` : résout le polygone WGS84 de la première surface
+        // d'un POI ("zone" pour cette démo), à tester côté natif contre la
+        // position trackée courante — le SDK n'expose aucune primitive de
+        // geofencing/point-in-polygon, ce test est fait par l'app elle-même.
+        // Contrairement à resolvePoiPosition (position ponctuelle
+        // marker/label/image), on lit ici `surface.positions`
+        // (`Position[]`, même forme `{latitude, longitude}` que celle
+        // attendue par injectTrackedPosition, aucune conversion nécessaire).
+        // `positions: null` si `poiId` ne correspond à aucun POI,
+        // `positions: []` si le POI existe mais n'a aucune surface — deux
+        // états distincts, laissés au natif d'afficher chacun son propre
+        // message. Voir docs/features/geofencing.md.
+        resolvePoiZone: function (requestId, poiId) {
+          if (!venue) {
+            sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
+            return;
+          }
+          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          if (!poi) {
+            sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
+            return;
+          }
+          var surface = poi.surfaces[0];
+          var positions = surface
+            ? surface.positions.map(function (pos) {
+                return { latitude: pos.latitude, longitude: pos.longitude };
+              })
+            : [];
+          sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: positions });
+        },
+
+        // `geofencing` : colore (ou réinitialise, `active: false`) la/les
+        // surface(s) du POI zone comme alerte visuelle d'entrée/sortie de
+        // zone — même idiome que updateOccupancy/highlightCategory
+        // ci-dessus (`venue.updateSurface(surface, { color })`), `'initial'`
+        // et non `undefined` pour restaurer la couleur du bundle de carte
+        // (voir la même remarque sur setSurfaceInteractive). Le test
+        // d'appartenance lui-même est fait côté natif, ce point d'entrée ne
+        // fait qu'appliquer son résultat visuellement. Voir
+        // docs/features/geofencing.md.
+        setZoneAlert: function (placeId, active) {
+          if (!venue) return;
+          var poi = venue.pois.find(function (p) { return p.id === placeId; });
+          if (!poi) return;
+          poi.surfaces.forEach(function (surface) {
+            venue.updateSurface(surface, { color: active ? '#E74C3C' : 'initial' });
+          });
+        },
+
         // Injecte/actualise une position simulée trackée + son cercle de
         // précision (mètres). `view.allowTracking` doit être à `true` avant
         // le premier appel à `injectTrackedPosition`, sans quoi le SDK lève
