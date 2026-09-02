@@ -46,5 +46,9 @@
   "addLocaleTitle": "Ajouter une langue",
   "addLocaleDescription": "Ajoute une nouvelle langue à l'exécution, jamais configurée dans VisioMapEditor pour cette carte.",
   "geofencingTitle": "Geofencing",
-  "geofencingDescription": "Déclenche une alerte visuelle quand une position trackée simulée entre dans une zone de la carte."
+  "geofencingDescription": "Déclenche une alerte visuelle quand une position trackée simulée entre dans une zone de la carte.",
+  "customBaseUrlTitle": "Serveur de carte personnalisé",
+  "customBaseUrlDescription": "Pointe le SDK vers un serveur de cartes auto-hébergé plutôt que le SaaS Visioglobe par défaut.",
+  "customBaseUrlFieldLabel": "Base URL",
+  "customBaseUrlReloadButton": "Recharger"
 }

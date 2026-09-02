@@ -113,7 +113,15 @@ class VisioOneController {
   ///
   /// `hash` est la chaîne de 41 caractères identifiant une carte publiée
   /// sur my.visioglobe.com (voir docs/INTEGRATION_GUIDE.md, partie D).
-  Future<void> setup(String hash) => _call('setup', [hash]);
+  ///
+  /// `baseURL` correspond à l'option `baseURL` de `loadVenue` (voir
+  /// `docs/features/custom-base-url.md`) : le serveur de cartes à
+  /// interroger, à la place du SaaS Visioglobe par défaut
+  /// (`https://mapserver.visioglobe.com/`) utilisé quand `baseURL` est
+  /// `null`. Ce n'est pas une propriété mutable sur une venue déjà
+  /// chargée : la seule façon de la changer est de rappeler [setup], qui
+  /// recharge entièrement la carte (même chemin que pour changer de hash).
+  Future<void> setup(String hash, {String? baseURL}) => _call('setup', [hash, baseURL]);
 
   /// Recentre la caméra sur la vue globale du site.
   Future<void> goToGlobal() => _run('window.MapBridge.goToGlobal()');

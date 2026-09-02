@@ -70,6 +70,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Explore mode](docs/features/explore-mode.md)** — switches between the global, building "carousel", and floor camera-exploration modes.
 - **[Add locale](docs/features/add-locale.md)** — adds a brand-new locale at runtime, never authored in VisioMapEditor for this map.
 - **[Geofencing](docs/features/geofencing.md)** — triggers a visual alert when a simulated tracked position enters a zone on the map.
+- **[Custom map server](docs/features/custom-base-url.md)** — points the SDK at a different map server than the default Visioglobe SaaS.
 
 ## How it works
 

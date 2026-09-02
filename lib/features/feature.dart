@@ -45,7 +45,8 @@ enum Feature {
   nativeUiReplacement('native-ui-replacement'),
   exploreMode('explore-mode'),
   addLocale('add-locale'),
-  geofencing('geofencing');
+  geofencing('geofencing'),
+  customBaseUrl('custom-base-url');
 
   const Feature(this.slug);
 
@@ -70,6 +71,7 @@ enum Feature {
     Feature.exploreMode => l10n.exploreModeTitle,
     Feature.addLocale => l10n.addLocaleTitle,
     Feature.geofencing => l10n.geofencingTitle,
+    Feature.customBaseUrl => l10n.customBaseUrlTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -91,6 +93,7 @@ enum Feature {
     Feature.exploreMode => l10n.exploreModeDescription,
     Feature.addLocale => l10n.addLocaleDescription,
     Feature.geofencing => l10n.geofencingDescription,
+    Feature.customBaseUrl => l10n.customBaseUrlDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -112,6 +115,14 @@ enum Feature {
     Feature.exploreMode => ExploreModeOverlay(controller: controller),
     Feature.addLocale => AddLocaleOverlay(controller: controller),
     Feature.geofencing => GeofencingOverlay(controller: controller),
+    // Jamais réellement appelé : `baseURL` n'est pas une propriété de
+    // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
+    // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
+    // lui-même, avec son propre état de `baseURL` et un callback de reload,
+    // plutôt que d'appeler `buildOverlay` pour cette feature.
+    Feature.customBaseUrl => throw UnsupportedError(
+      'custom-base-url: overlay construit directement par FeatureScreen',
+    ),
   };
 
   /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
@@ -174,6 +185,7 @@ enum Feature {
       case Feature.exploreMode:
       case Feature.addLocale:
       case Feature.geofencing:
+      case Feature.customBaseUrl:
         break;
     }
   }
