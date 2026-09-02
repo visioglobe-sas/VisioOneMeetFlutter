@@ -116,9 +116,15 @@
       };
 
       window.MapBridge = {
-        setup: function (hash) {
+        // `baseURL` est optionnel (undefined si non fourni depuis Dart) :
+        // le SDK retombe alors sur son défaut public,
+        // https://mapserver.visioglobe.com/ (voir docs/features/custom-base-url.md).
+        // C'est une option de `loadVenue`, pas une propriété mutable sur une
+        // venue déjà chargée -- changer de baseURL passe donc entièrement
+        // par ce chemin de rechargement, comme un changement de hash.
+        setup: function (hash, baseURL) {
           try {
-            console.log('[MapBridge] setup, hash =', hash, ', typeof VisioOne =', typeof VisioOne);
+            console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', typeof VisioOne =', typeof VisioOne);
 
             if (visioOne) {
               // setup() déjà appelé : on repart d'un état propre avant de recharger.
@@ -133,7 +139,7 @@
 
             console.log('[MapBridge] appel loadVenue...');
             visioOne
-              .loadVenue({ hash: hash }, container)
+              .loadVenue(baseURL ? { hash: hash, baseURL: baseURL } : { hash: hash }, container)
               .then(function (v) {
                 console.log('[MapBridge] loadVenue résolu, appel createView...');
                 venue = v;

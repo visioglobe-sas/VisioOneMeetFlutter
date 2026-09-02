@@ -21,6 +21,13 @@ const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';
 /// toutes les autres features restent sur [kDefaultMapHash].
 const String kCustomDataMapHash = 'kd9426d8cb3f1c532f22b5bcbd325c280bd351feb';
 
+/// Défaut public du SDK pour `LoadOptions.baseURL` quand l'app ne le
+/// renseigne pas explicitement (voir `docs/features/custom-base-url.md`) —
+/// affiché comme valeur pré-remplie par cette démo, jamais codé en dur
+/// ailleurs dans l'app : les autres features laissent `baseURL` à `null` et
+/// s'appuient sur ce même défaut côté SDK.
+const String kDefaultMapServerBaseUrl = 'https://mapserver.visioglobe.com/';
+
 enum _MapLoadState { loading, ready, error }
 
 /// Coquille partagée par tous les écrans de feature : charge la carte
@@ -37,13 +44,24 @@ class VisioOneMapShell extends StatefulWidget {
   const VisioOneMapShell({
     super.key,
     required this.hash,
+    this.baseURL,
     required this.overlayBuilder,
     this.mapOverlayBuilder,
     this.onMessage,
+    this.showControlsOnError = false,
   });
 
   /// Hash à 41 caractères d'une carte publiée sur my.visioglobe.com.
   final String hash;
+
+  /// Serveur de cartes à interroger (`LoadOptions.baseURL`), ou `null` pour
+  /// le défaut public du SDK (`https://mapserver.visioglobe.com/`) — voir
+  /// `docs/features/custom-base-url.md`. Seule cette démo le renseigne ;
+  /// toutes les autres features laissent `null`. Changer cette valeur ne
+  /// suffit pas à recharger une instance déjà montée : [FeatureScreen] lui
+  /// donne une `Key` dérivée de `baseURL` pour forcer un remount complet
+  /// (même mécanisme qu'un changement de [hash] aurait exigé).
+  final String? baseURL;
 
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
@@ -66,6 +84,15 @@ class VisioOneMapShell extends StatefulWidget {
   /// pas alors que `map.html` émet les mêmes événements sur toutes les cartes.
   final void Function(BuildContext context, VisioOneMessage message)? onMessage;
 
+  /// `true` pour garder le FAB accessible même en état d'erreur, en plus de
+  /// l'état "prête" habituel. Seule `custom-base-url` en a besoin : sans
+  /// ça, une `baseURL` invalide ferait échouer le chargement et masquerait
+  /// le seul moyen d'en taper une nouvelle (le FAB n'ouvre le panneau que si
+  /// la carte est "ready" par défaut) -- le bouton "Réessayer" de l'état
+  /// d'erreur, lui, ne fait que rejouer la même valeur. Voir
+  /// `docs/features/custom-base-url.md`.
+  final bool showControlsOnError;
+
   @override
   State<VisioOneMapShell> createState() => _VisioOneMapShellState();
 }
@@ -85,7 +112,9 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
     final controller = await VisioOneController.create();
     controller.messages.listen(_onMessage);
     await controller.webViewController.setNavigationDelegate(
-      NavigationDelegate(onPageFinished: (_) => controller.setup(widget.hash)),
+      NavigationDelegate(
+        onPageFinished: (_) => controller.setup(widget.hash, baseURL: widget.baseURL),
+      ),
     );
     await controller.loadMapPage();
 
@@ -128,7 +157,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       _state = _MapLoadState.loading;
       _errorMessage = null;
     });
-    _controller?.setup(widget.hash);
+    _controller?.setup(widget.hash, baseURL: widget.baseURL);
   }
 
   void _showFeatureControls(BuildContext context, VisioOneController controller) {
@@ -162,7 +191,10 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
           ],
         ),
       ),
-      floatingActionButton: controller != null && _state == _MapLoadState.ready
+      floatingActionButton:
+          controller != null &&
+              (_state == _MapLoadState.ready ||
+                  (widget.showControlsOnError && _state == _MapLoadState.error))
           ? FloatingActionButton(
               onPressed: () => _showFeatureControls(context, controller),
               child: const Icon(Icons.tune),
