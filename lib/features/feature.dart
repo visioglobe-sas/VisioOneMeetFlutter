@@ -9,6 +9,7 @@ import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
+import 'custom_navigation_trace_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
 import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
@@ -46,7 +47,8 @@ enum Feature {
   exploreMode('explore-mode'),
   addLocale('add-locale'),
   geofencing('geofencing'),
-  customBaseUrl('custom-base-url');
+  customBaseUrl('custom-base-url'),
+  customNavigationTrace('custom-navigation-trace');
 
   const Feature(this.slug);
 
@@ -72,6 +74,7 @@ enum Feature {
     Feature.addLocale => l10n.addLocaleTitle,
     Feature.geofencing => l10n.geofencingTitle,
     Feature.customBaseUrl => l10n.customBaseUrlTitle,
+    Feature.customNavigationTrace => l10n.customNavigationTraceTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -94,6 +97,7 @@ enum Feature {
     Feature.addLocale => l10n.addLocaleDescription,
     Feature.geofencing => l10n.geofencingDescription,
     Feature.customBaseUrl => l10n.customBaseUrlDescription,
+    Feature.customNavigationTrace => l10n.customNavigationTraceDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -115,6 +119,7 @@ enum Feature {
     Feature.exploreMode => ExploreModeOverlay(controller: controller),
     Feature.addLocale => AddLocaleOverlay(controller: controller),
     Feature.geofencing => GeofencingOverlay(controller: controller),
+    Feature.customNavigationTrace => CustomNavigationTraceOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -164,6 +169,10 @@ enum Feature {
   /// même pour `poiZoneResolved`, voir [GeofencingOverlay] — le test
   /// dedans/dehors lui-même n'a besoin d'aucun message, il tourne sur la
   /// boucle de tick déjà existante de [SimulatedPositionSession].
+  /// `custom-navigation-trace` fait de même pour `itineraryComputed` (déjà
+  /// émis par `startItinerary`, réutilisé pour réappliquer automatiquement
+  /// le preset de couleur sélectionné à chaque nouvel itinéraire), voir
+  /// [CustomNavigationTraceOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -186,6 +195,7 @@ enum Feature {
       case Feature.addLocale:
       case Feature.geofencing:
       case Feature.customBaseUrl:
+      case Feature.customNavigationTrace:
         break;
     }
   }

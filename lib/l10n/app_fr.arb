@@ -50,5 +50,7 @@
   "customBaseUrlTitle": "Serveur de carte personnalisé",
   "customBaseUrlDescription": "Pointe le SDK vers un serveur de cartes auto-hébergé plutôt que le SaaS Visioglobe par défaut.",
   "customBaseUrlFieldLabel": "Base URL",
-  "customBaseUrlReloadButton": "Recharger"
+  "customBaseUrlReloadButton": "Recharger",
+  "customNavigationTraceTitle": "Trace de navigation personnalisée",
+  "customNavigationTraceDescription": "Personnalise les couleurs du tracé d'itinéraire calculé avec un preset de couleurs."
 }

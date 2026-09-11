@@ -50,5 +50,7 @@
   "customBaseUrlTitle": "Custom map server",
   "customBaseUrlDescription": "Point the SDK at a self-hosted map server instead of the default Visioglobe SaaS.",
   "customBaseUrlFieldLabel": "Base URL",
-  "customBaseUrlReloadButton": "Reload"
+  "customBaseUrlReloadButton": "Reload",
+  "customNavigationTraceTitle": "Custom navigation trace",
+  "customNavigationTraceDescription": "Restyle the computed itinerary's route line with a custom color preset."
 }
