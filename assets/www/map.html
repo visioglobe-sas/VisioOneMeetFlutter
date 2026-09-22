@@ -52,6 +52,14 @@
       var dynamicPoi = null;
       var dynamicPoiLabel = null;
 
+      // Trace créée par `startItinerary`, retenue ici pour que
+      // `updateNavigationTrace` (démo `custom-navigation-trace`) puisse la
+      // restyler après coup — `venue.updateNavigationTrace()` prend l'objet
+      // `NavigationTrace` lui-même, pas un id. Remise à `null` par `setup()`
+      // en cas de rechargement de carte, comme `dynamicPoi` ci-dessus. Voir
+      // docs/features/custom-navigation-trace.md.
+      var currentNavigationTrace = null;
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
@@ -132,6 +140,7 @@
               if (venue) { visioOne.unloadVenue(venue); venue = null; }
               dynamicPoi = null;
               dynamicPoiLabel = null;
+              currentNavigationTrace = null;
             }
 
             visioOne = VisioOne.createVisioOne();
@@ -267,7 +276,49 @@
           });
           var trace = venue.createNavigationTrace(navigation);
           view.setCurrentNavigationTrace(trace);
+          currentNavigationTrace = trace;
           sendToNative('itineraryComputed', { instructions: navigation.instructions });
+        },
+
+        // `custom-navigation-trace` : restyle la trace actuellement affichée
+        // (créée par `startItinerary` ci-dessus) via
+        // `venue.updateNavigationTrace(trace, options)` -- `options` ne porte
+        // que des couleurs (`progressColor`, `progressOutlineColor`,
+        // `progressFutureColor`, `previewColor`, `previewOutlineColor`, plus
+        // `textureRepeat`/`animationSpeed`, sans effet ici -- voir
+        // `NavigationTraceUpdateOptions.d.ts` du package
+        // @visioglobe/visioone) : aucun moyen de changer `displayMode` ou
+        // l'épaisseur après création. No-op si aucune trace n'existe encore.
+        //
+        // `venue.updateNavigationTrace()` peut lever une exception interne
+        // ("undefined is not an object (evaluating 'o.children[0].material')"
+        // sous JavaScriptCore/WKWebView -- même bug que le `TypeError:
+        // Cannot read properties of undefined (reading 'material')` de V8
+        // côté Vue, tout au fond du pipeline de rendu de ligne du SDK) --
+        // confirmé en direct sur ce dépôt (test d'intégration), mais
+        // seulement au tout premier appel d'une session, pas à chaque appel
+        // (voir docs/features/custom-navigation-trace.md pour le détail) --,
+        // alors que chaque couleur de `options` est malgré tout bien
+        // appliquée avant que l'exception ne soit levée. On l'avale ici
+        // (simple warning console) plutôt que de la laisser remonter comme un
+        // `error` non intercepté à `window.onerror` ci-dessus : ce n'est pas
+        // un échec, juste un défaut du SDK sur cette trajectoire de code.
+        updateNavigationTrace: function (options) {
+          if (!venue || !currentNavigationTrace) return;
+          try {
+            venue.updateNavigationTrace(currentNavigationTrace, options);
+          } catch (error) {
+            // Un seul argument texte, pas l'objet `error` séparément : les
+            // moteurs JS (et le relais console -> `debugPrint`, voir
+            // VisioOneController._initialize) sérialisent souvent un `Error`
+            // passé tel quel en argument séparé comme `{}` (JSON.stringify
+            // d'un Error natif n'expose aucune propriété énumérable), ce qui
+            // masquerait le vrai message ici.
+            console.warn(
+              '[MapBridge] updateNavigationTrace: le SDK a levé une exception (couleurs tout de même appliquées) : ' +
+                (error && error.message ? error.message : String(error)),
+            );
+          }
         },
 
         setUIPartVisible: function (part, visible) {

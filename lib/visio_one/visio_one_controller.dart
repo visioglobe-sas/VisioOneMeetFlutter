@@ -175,6 +175,31 @@ class VisioOneController {
     ]);
   }
 
+  /// Restyle la trace de navigation actuellement affichée (créée par
+  /// [startItinerary]) via `venue.updateNavigationTrace(trace, options)`.
+  /// `options` ne porte que des couleurs (`progressColor`,
+  /// `progressOutlineColor`, `progressFutureColor`, `previewColor`,
+  /// `previewOutlineColor` — voir `CustomNavigationTraceOverlay.kNavigationTracePresets`
+  /// pour le catalogue de presets utilisé par cette démo) : sans effet tant
+  /// qu'aucune trace n'a été créée (voir `assets/www/map.html`), et pas de
+  /// méthode pour revenir à l'apparence par défaut du SDK une fois changée.
+  /// Voir `docs/features/custom-navigation-trace.md`, notamment la
+  /// `TypeError` interne au SDK que ce pont attrape déjà côté JS.
+  Future<void> updateNavigationTrace(Map<String, String> options) =>
+      _call('updateNavigationTrace', [options]);
+
+  /// Clé du preset de couleurs actuellement sélectionné pour
+  /// `custom-navigation-trace` (voir `CustomNavigationTraceOverlay.kNavigationTracePresets`),
+  /// `'visioglobeBlue'` par défaut. Portée ici plutôt que par l'overlay de la
+  /// feature, pour survivre à la fermeture du bottom sheet — même raison que
+  /// [highlightedCategoryId] ci-dessous : sans ça, rouvrir le panneau après
+  /// avoir choisi une couleur perdrait la sélection, et le prochain
+  /// itinéraire calculé retomberait sur le bleu par défaut au lieu de la
+  /// dernière couleur choisie.
+  final ValueNotifier<String> selectedNavigationTracePresetKey = ValueNotifier<String>(
+    'visioglobeBlue',
+  );
+
   /// Affiche/masque un élément de l'UI overlay fournie par le SDK
   /// (`floorSelector`, `search`, `poiDetails`, `navigation`, `userTracking`...).
   Future<void> setUIPartVisible(String part, bool visible) =>
@@ -460,6 +485,7 @@ class VisioOneController {
   void dispose() {
     simulatedPosition.dispose();
     highlightedCategoryId.dispose();
+    selectedNavigationTracePresetKey.dispose();
     dynamicPoi.dispose();
     currentLocale.dispose();
     spanishLocaleTranslations.dispose();
