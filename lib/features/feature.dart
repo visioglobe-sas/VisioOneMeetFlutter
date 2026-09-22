@@ -16,6 +16,7 @@ import 'floor_selector_overlay.dart';
 import 'geofencing_overlay.dart';
 import 'goto_poi_overlay.dart';
 import 'native_ui_replacement_overlay.dart';
+import 'navigation_exclude_modalities_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
 import 'poi_click_overlay.dart';
 import 'reset_view_overlay.dart';
@@ -48,7 +49,8 @@ enum Feature {
   addLocale('add-locale'),
   geofencing('geofencing'),
   customBaseUrl('custom-base-url'),
-  customNavigationTrace('custom-navigation-trace');
+  customNavigationTrace('custom-navigation-trace'),
+  navigationExcludeModalities('navigation-exclude-modalities');
 
   const Feature(this.slug);
 
@@ -75,6 +77,7 @@ enum Feature {
     Feature.geofencing => l10n.geofencingTitle,
     Feature.customBaseUrl => l10n.customBaseUrlTitle,
     Feature.customNavigationTrace => l10n.customNavigationTraceTitle,
+    Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -98,6 +101,7 @@ enum Feature {
     Feature.geofencing => l10n.geofencingDescription,
     Feature.customBaseUrl => l10n.customBaseUrlDescription,
     Feature.customNavigationTrace => l10n.customNavigationTraceDescription,
+    Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -120,6 +124,7 @@ enum Feature {
     Feature.addLocale => AddLocaleOverlay(controller: controller),
     Feature.geofencing => GeofencingOverlay(controller: controller),
     Feature.customNavigationTrace => CustomNavigationTraceOverlay(controller: controller),
+    Feature.navigationExcludeModalities => NavigationExcludeModalitiesOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -196,6 +201,7 @@ enum Feature {
       case Feature.geofencing:
       case Feature.customBaseUrl:
       case Feature.customNavigationTrace:
+      case Feature.navigationExcludeModalities:
         break;
     }
   }

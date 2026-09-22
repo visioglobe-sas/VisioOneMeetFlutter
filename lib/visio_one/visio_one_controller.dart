@@ -175,6 +175,36 @@ class VisioOneController {
     ]);
   }
 
+  /// Calcule et affiche un itinéraire entre deux POI en excluant certaines
+  /// particularités de segment (`excludedAttributes` de
+  /// `venue.computeNavigation`, ex. forcer un itinéraire qui évite les
+  /// ascenseurs) — même appel que [startItinerary], avec ce seul paramètre en
+  /// plus. Pas de recalcul automatique quand [excludedAttributes] change
+  /// seul : la démo `navigation-exclude-modalities` ne relit son switch
+  /// "Avoid elevator" qu'à l'appui du bouton "Itinerary" (voir
+  /// `NavigationExcludeModalitiesOverlay`).
+  ///
+  /// La documentation JSDoc du SDK pour `excludedAttributes` donne
+  /// `"elevator"` comme exemple, mais la valeur réellement taguée sur les
+  /// segments d'ascenseur de cette venue (confirmé en direct — voir
+  /// `docs/features/navigation-exclude-modalities.md`) est `'lift'`, pas
+  /// `'elevator'`.
+  Future<void> startItineraryExcludingModalities({
+    required String origin,
+    required String destination,
+    bool isAccessible = false,
+    List<String> excludedAttributes = const [],
+  }) {
+    return _call('startItineraryExcludingModalities', [
+      {
+        'origin': origin,
+        'destination': destination,
+        'isAccessible': isAccessible,
+        'excludedAttributes': excludedAttributes,
+      },
+    ]);
+  }
+
   /// Restyle la trace de navigation actuellement affichée (créée par
   /// [startItinerary]) via `venue.updateNavigationTrace(trace, options)`.
   /// `options` ne porte que des couleurs (`progressColor`,

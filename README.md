@@ -72,6 +72,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Geofencing](docs/features/geofencing.md)** — triggers a visual alert when a simulated tracked position enters a zone on the map.
 - **[Custom map server](docs/features/custom-base-url.md)** — points the SDK at a different map server than the default Visioglobe SaaS.
 - **[Custom navigation trace](docs/features/custom-navigation-trace.md)** — restyles the computed itinerary's route line with a custom color preset.
+- **[Exclude modalities](docs/features/navigation-exclude-modalities.md)** — computes a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.
 
 ## How it works
 

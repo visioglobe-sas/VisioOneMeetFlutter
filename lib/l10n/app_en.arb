@@ -52,5 +52,7 @@
   "customBaseUrlFieldLabel": "Base URL",
   "customBaseUrlReloadButton": "Reload",
   "customNavigationTraceTitle": "Custom navigation trace",
-  "customNavigationTraceDescription": "Restyle the computed itinerary's route line with a custom color preset."
+  "customNavigationTraceDescription": "Restyle the computed itinerary's route line with a custom color preset.",
+  "navigationExcludeModalitiesTitle": "Exclude modalities",
+  "navigationExcludeModalitiesDescription": "Compute a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph."
 }
