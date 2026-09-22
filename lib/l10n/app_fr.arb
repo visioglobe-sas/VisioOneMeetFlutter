@@ -52,5 +52,7 @@
   "customBaseUrlFieldLabel": "Base URL",
   "customBaseUrlReloadButton": "Recharger",
   "customNavigationTraceTitle": "Trace de navigation personnalisée",
-  "customNavigationTraceDescription": "Personnalise les couleurs du tracé d'itinéraire calculé avec un preset de couleurs."
+  "customNavigationTraceDescription": "Personnalise les couleurs du tracé d'itinéraire calculé avec un preset de couleurs.",
+  "navigationExcludeModalitiesTitle": "Exclure des modalités",
+  "navigationExcludeModalitiesDescription": "Calcule un itinéraire en excluant un attribut ou une modalité de segment (ex. ascenseur) du graphe de routage."
 }

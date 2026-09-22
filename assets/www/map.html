@@ -280,6 +280,36 @@
           sendToNative('itineraryComputed', { instructions: navigation.instructions });
         },
 
+        // `navigation-exclude-modalities` : même calcul que `startItinerary`
+        // ci-dessus, avec `excludedAttributes` en plus -- une "particularité"
+        // de segment (ex. ascenseur) à exclure du graphe de routage. Le JSDoc
+        // du SDK donne "elevator" comme exemple pour ce champ, mais la valeur
+        // réellement taguée sur les segments d'ascenseur de cette venue
+        // (confirmé en direct) est 'lift', pas 'elevator' -- voir
+        // docs/features/navigation-exclude-modalities.md.
+        //
+        // Pas de try/catch ici, volontairement : un couple origine/destination
+        // qu'aucune route ne relie une fois l'exclusion appliquée doit échouer
+        // exactement comme un couple non relié pour `startItinerary` ci-dessus
+        // (aucune trace, aucun message d'erreur explicite renvoyé au natif —
+        // voir docs/features/compute-navigation.md).
+        startItineraryExcludingModalities: function (args) {
+          if (!venue || !view) return;
+          var navigation = venue.computeNavigation({
+            origin: args.origin,
+            destination: args.destination,
+            isAccessible: !!args.isAccessible,
+            type: 'fastest',
+            firstNodeAsIntersection: false,
+            mergeFloorChangeInstructions: false,
+            excludedAttributes: args.excludedAttributes || [],
+          });
+          var trace = venue.createNavigationTrace(navigation);
+          view.setCurrentNavigationTrace(trace);
+          currentNavigationTrace = trace;
+          sendToNative('itineraryComputed', { instructions: navigation.instructions });
+        },
+
         // `custom-navigation-trace` : restyle la trace actuellement affichée
         // (créée par `startItinerary` ci-dessus) via
         // `venue.updateNavigationTrace(trace, options)` -- `options` ne porte
