@@ -54,5 +54,7 @@
   "customNavigationTraceTitle": "Trace de navigation personnalisée",
   "customNavigationTraceDescription": "Personnalise les couleurs du tracé d'itinéraire calculé avec un preset de couleurs.",
   "navigationExcludeModalitiesTitle": "Exclure des modalités",
-  "navigationExcludeModalitiesDescription": "Calcule un itinéraire en excluant un attribut ou une modalité de segment (ex. ascenseur) du graphe de routage."
+  "navigationExcludeModalitiesDescription": "Calcule un itinéraire en excluant un attribut ou une modalité de segment (ex. ascenseur) du graphe de routage.",
+  "accessibleModeTitle": "Mode accessible",
+  "accessibleModeDescription": "Calcule un itinéraire qui n'emprunte que la route accessible de la venue (ex. en évitant les escaliers)."
 }
