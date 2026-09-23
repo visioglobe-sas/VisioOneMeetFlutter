@@ -73,6 +73,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Custom map server](docs/features/custom-base-url.md)** — points the SDK at a different map server than the default Visioglobe SaaS.
 - **[Custom navigation trace](docs/features/custom-navigation-trace.md)** — restyles the computed itinerary's route line with a custom color preset.
 - **[Exclude modalities](docs/features/navigation-exclude-modalities.md)** — computes a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.
+- **[Accessible mode](docs/features/accessible-mode.md)** — computes a route that only uses the venue's accessible route (e.g. avoiding stairs).
 
 ## How it works
 
