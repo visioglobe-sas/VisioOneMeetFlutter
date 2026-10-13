@@ -201,16 +201,13 @@ enum Feature {
   /// `iconImagePlaced`/`iconImageUpdated`/`iconImageRemoved`, voir
   /// [IconMarkerOverlay]. `custom-text-label` fait de même pour
   /// `textLabelPlaced`/`textLabelUpdated`/`textLabelRemoved`, voir
-  /// [CustomTextLabelOverlay]. `html-overlay-marker` s'en sert pour le tap
-  /// sur le badge HTML (`htmlBadgeTapped` -> SnackBar), le panneau de
-  /// contrôle étant modal donc fermé au moment du tap, voir
-  /// [handleHtmlBadgeTappedMessage].
+  /// [CustomTextLabelOverlay]. `html-overlay-marker` n'en a pas besoin non
+  /// plus : le compteur de taps (`htmlBadgeTapped`) est tenu par
+  /// `VisioOneController.htmlBadgeTapCount`.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
         handlePoiSelectedMessage(context, message);
-      case Feature.htmlOverlayMarker:
-        handleHtmlBadgeTappedMessage(context, message);
       case Feature.resetView:
       case Feature.occupancySimulated:
       case Feature.gotoPoi:
@@ -234,6 +231,7 @@ enum Feature {
       case Feature.accessibleMode:
       case Feature.iconMarker:
       case Feature.customTextLabel:
+      case Feature.htmlOverlayMarker:
         break;
     }
   }

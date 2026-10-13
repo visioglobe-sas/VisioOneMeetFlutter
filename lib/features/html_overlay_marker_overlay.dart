@@ -21,8 +21,8 @@ const String _kDefaultAnchorId = 'B4-UL00-ID0009';
 /// Le badge est un élément DOM créé par le JS du pont
 /// (`venue.createMarker({ poi, position, element })`) ; son tap remonte en
 /// message `htmlBadgeTapped`, compté sur le contrôleur
-/// ([VisioOneController.htmlBadgeTapCount]) et signalé par une SnackBar
-/// ([handleHtmlBadgeTappedMessage]). L'état vit sur le contrôleur
+/// ([VisioOneController.htmlBadgeTapCount]) et affiché dans la ligne de
+/// statut du panneau à sa réouverture. L'état vit sur le contrôleur
 /// (`htmlBadge*`) pour survivre à la fermeture du bottom sheet. Voir
 /// `docs/features/html-overlay-marker.md`.
 class HtmlOverlayMarkerOverlay extends StatefulWidget {
@@ -261,22 +261,4 @@ class _HtmlOverlayMarkerOverlayState extends State<HtmlOverlayMarkerOverlay> {
       },
     );
   }
-}
-
-/// Réagit au message JS -> Native `htmlBadgeTapped` (`{count}`, émis par le
-/// `click` du badge dans `assets/www/map.html`) par une SnackBar : le
-/// panneau de contrôle étant un bottom sheet modal, il est forcément fermé
-/// quand l'utilisateur tape le badge sur la carte. Le compteur lui-même est
-/// tenu par [VisioOneController.htmlBadgeTapCount] et réaffiché dans la
-/// ligne de statut du panneau à sa réouverture.
-void handleHtmlBadgeTappedMessage(BuildContext context, VisioOneMessage message) {
-  if (message.type != 'htmlBadgeTapped') return;
-  final data = message.data;
-  final count = data is Map ? data['count'] : null;
-  if (count is! int) return;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text('Badge tapped ($count)'), duration: const Duration(seconds: 2)),
-    );
 }
