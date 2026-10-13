@@ -54,5 +54,7 @@
   "customNavigationTraceTitle": "Custom navigation trace",
   "customNavigationTraceDescription": "Restyle the computed itinerary's route line with a custom color preset.",
   "navigationExcludeModalitiesTitle": "Exclude modalities",
-  "navigationExcludeModalitiesDescription": "Compute a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph."
+  "navigationExcludeModalitiesDescription": "Compute a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.",
+  "accessibleModeTitle": "Accessible mode",
+  "accessibleModeDescription": "Compute a route that only uses the venue's accessible route (e.g. avoiding stairs)."
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'accessible_mode_overlay.dart';
 import 'add_locale_overlay.dart';
 import 'camera_lock_on_position_overlay.dart';
 import 'category_highlight_overlay.dart';
@@ -50,7 +51,8 @@ enum Feature {
   geofencing('geofencing'),
   customBaseUrl('custom-base-url'),
   customNavigationTrace('custom-navigation-trace'),
-  navigationExcludeModalities('navigation-exclude-modalities');
+  navigationExcludeModalities('navigation-exclude-modalities'),
+  accessibleMode('accessible-mode');
 
   const Feature(this.slug);
 
@@ -78,6 +80,7 @@ enum Feature {
     Feature.customBaseUrl => l10n.customBaseUrlTitle,
     Feature.customNavigationTrace => l10n.customNavigationTraceTitle,
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesTitle,
+    Feature.accessibleMode => l10n.accessibleModeTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -102,6 +105,7 @@ enum Feature {
     Feature.customBaseUrl => l10n.customBaseUrlDescription,
     Feature.customNavigationTrace => l10n.customNavigationTraceDescription,
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesDescription,
+    Feature.accessibleMode => l10n.accessibleModeDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -125,6 +129,7 @@ enum Feature {
     Feature.geofencing => GeofencingOverlay(controller: controller),
     Feature.customNavigationTrace => CustomNavigationTraceOverlay(controller: controller),
     Feature.navigationExcludeModalities => NavigationExcludeModalitiesOverlay(controller: controller),
+    Feature.accessibleMode => AccessibleModeOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -202,6 +207,7 @@ enum Feature {
       case Feature.customBaseUrl:
       case Feature.customNavigationTrace:
       case Feature.navigationExcludeModalities:
+      case Feature.accessibleMode:
         break;
     }
   }
