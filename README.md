@@ -75,6 +75,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Exclude modalities](docs/features/navigation-exclude-modalities.md)** — computes a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.
 - **[Accessible mode](docs/features/accessible-mode.md)** — computes a route that only uses the venue's accessible route (e.g. avoiding stairs).
 - **[3D icon marker](docs/features/3d-icon-marker.md)** — places a custom image (icon) at a spot on the 3D map, with a live-switchable orientation behavior.
+- **[Custom text label](docs/features/custom-text-label.md)** — places your own text on the map next to a POI and restyles it live (color, size, rotation).
 
 ## How it works
 

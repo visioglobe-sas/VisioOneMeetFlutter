@@ -461,6 +461,62 @@ class VisioOneController {
   Future<void> removeIconImage(String requestId, String imageId) =>
       _call('removeIconImage', [requestId, imageId]);
 
+  /// Id du POI ancre du label texte de la démo `custom-text-label`, ou
+  /// `null` si aucun label n'est placé. Porté ici (comme les réglages
+  /// ci-dessous) plutôt que par l'overlay, pour survivre à la fermeture du
+  /// bottom sheet — même raison que [iconMarkerAnchorId].
+  final ValueNotifier<String?> textLabelAnchorId = ValueNotifier<String?>(null);
+
+  /// Dernier texte appliqué au label de `custom-text-label`.
+  final ValueNotifier<String> textLabelText = ValueNotifier<String>('Lunch 12:00–14:00');
+
+  /// Couleur (hex `#RRGGBB`) choisie pour le label de `custom-text-label`.
+  final ValueNotifier<String> textLabelColor = ValueNotifier<String>('#E53935');
+
+  /// Taille choisie pour le label de `custom-text-label` (`'small'`,
+  /// `'medium'` ou `'large'`, traduite en width/height par l'overlay).
+  final ValueNotifier<String> textLabelSize = ValueNotifier<String>('medium');
+
+  /// Rotation (degrés) choisie pour le label de `custom-text-label`.
+  final ValueNotifier<int> textLabelRotation = ValueNotifier<int>(0);
+
+  /// Place un label texte (`venue.createLabel`) sur un POI existant
+  /// ([anchorId], propriétaire et source de position — résolue comme pour
+  /// [createDynamicPOI], puis décalée de ~4 m), en retirant d'abord le label
+  /// déjà placé le cas échéant. [width]/[height] en mètres, toujours passés
+  /// tous les deux ; [color] en hex ; [rotation] en degrés.
+  ///
+  /// Requête/réponse par `requestId`, réponse en message `textLabelPlaced`
+  /// (`success`, et sinon `error` = `'textRequired'` / `'notFound'` /
+  /// `'noPosition'` / `'sdk'` avec `message`, plus `previousRemoved`). Voir
+  /// `docs/features/custom-text-label.md`.
+  Future<void> placeTextLabel(
+    String requestId, {
+    required String anchorId,
+    required String text,
+    required String color,
+    required double width,
+    required double height,
+    required int rotation,
+  }) => _call('placeTextLabel', [requestId, anchorId, text, color, width, height, rotation]);
+
+  /// `venue.updateLabel(label, changes)` sur le label placé, en direct.
+  /// [changes] = `{text}`, `{color}` ou `{width, height}` (jamais `width`
+  /// seul, jamais `rotation` — voir [rotateTextLabel]). Réponse en message
+  /// `textLabelUpdated` (`error` = `'noLabel'` / `'textRequired'` / `'sdk'`).
+  Future<void> updateTextLabel(String requestId, Map<String, Object> changes) =>
+      _call('updateTextLabel', [requestId, changes]);
+
+  /// Change la rotation du label placé : `rotation` n'étant pas dans
+  /// `LabelUpdateOptions`, le côté JS retire puis recrée le label avec les
+  /// mêmes valeurs. Réponse en message `textLabelUpdated`.
+  Future<void> rotateTextLabel(String requestId, int rotation) =>
+      _call('rotateTextLabel', [requestId, rotation]);
+
+  /// Retire le label placé (`venue.removeLabel`). Réponse en message
+  /// `textLabelRemoved` (`error: 'noLabel'` si aucun label n'est placé).
+  Future<void> removeTextLabel(String requestId) => _call('removeTextLabel', [requestId]);
+
   /// Locale actuellement affichée par la venue (code brut renvoyé par
   /// `venue.currentLocale`, ex. `'default'`/`'en'`/`'fr'`), ou `null` tant
   /// qu'aucune réponse `localesLoaded` n'a encore été reçue.
@@ -560,6 +616,11 @@ class VisioOneController {
     dynamicPoi.dispose();
     iconMarkerAnchorId.dispose();
     iconMarkerOrientation.dispose();
+    textLabelAnchorId.dispose();
+    textLabelText.dispose();
+    textLabelColor.dispose();
+    textLabelSize.dispose();
+    textLabelRotation.dispose();
     currentLocale.dispose();
     spanishLocaleTranslations.dispose();
     _messages.close();
