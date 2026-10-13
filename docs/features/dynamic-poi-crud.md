@@ -97,7 +97,7 @@ interface POICreateOptions {
 }
 
 interface POIUpdateOptions {
-  categories: Category[]; // the only updatable field
+  readonly categories: Category[]; // the only updatable field
 }
 
 interface POI {

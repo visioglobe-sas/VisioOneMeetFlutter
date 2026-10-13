@@ -141,14 +141,14 @@ cp package/dist/visioone.umd.cjs assets/www/visioone.umd.cjs
 rm -rf package visioglobe-visioone-*.tgz
 ```
 
-✅ **Vérification :** `assets/www/visioone.umd.cjs` existe et pèse plusieurs Mo (≈5 Mo pour la version 1.0.5).
+✅ **Vérification :** `assets/www/visioone.umd.cjs` existe et pèse plusieurs Mo (≈8 Mo pour la version 1.0.9).
 
 > **Pourquoi `npm pack` et pas `npm install` ?** On ne construit rien avec un bundler (pas de Vite/Webpack ici, contrairement à une intégration native Android) : on récupère juste le fichier UMD déjà construit par Visioglobe, tel quel. Voir [`ARCHITECTURE.md`, section 2](ARCHITECTURE.md#2-pourquoi-le-bundle-umd-pas-lesm) pour pourquoi ce fichier précis (et pas `dist/visioone.js`).
 
 Pour choisir une version précise plutôt que la dernière :
 
 ```bash
-npm pack @visioglobe/visioone@1.0.5
+npm pack @visioglobe/visioone@1.0.9
 ```
 
 ---
