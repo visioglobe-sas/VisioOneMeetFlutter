@@ -88,10 +88,14 @@
       // `error` = 'notFound' (aucun POI de cet id) ou 'noPosition' (POI sans
       // label ni marker) — deux états normaux des démos, pas des crashs ;
       // chaque appelant formule son propre message.
-      function resolveAnchor(anchorId) {
+      // `ignoredLabel` (optionnel) : un label créé par la démo elle-même et
+      // encore attaché au POI, à ne jamais utiliser comme source de position
+      // (`custom-text-label` résout l'ancre avant de retirer son label).
+      function resolveAnchor(anchorId, ignoredLabel) {
         var poi = venue.pois.find(function (p) { return p.id === anchorId; });
         if (!poi) return { error: 'notFound' };
-        var source = poi.labels[0] || poi.markers[0];
+        var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
+        var source = ownLabels[0] || poi.markers[0];
         if (!source) return { poi: poi, error: 'noPosition' };
         return { poi: poi, position: source.position };
       }
@@ -843,43 +847,27 @@
         // placeIconImage), décalée de ~4 m (+0.00004° en lat/lng) pour ne pas
         // recouvrir le label propre du POI. `height` est TOUJOURS passé
         // (sinon le SDK le cale sur `width` : boîte carrée, texte déformé).
-        // Un seul label à la fois : l'éventuel label précédent est d'abord
-        // retiré (`previousRemoved` le signale au natif, même en cas d'échec
-        // ensuite). Requête/réponse `textLabelPlaced` avec `error` =
-        // 'textRequired' / 'notFound' / 'noPosition' / 'sdk' (message du SDK).
+        // Tout est validé AVANT de toucher au label existant (texte non vide,
+        // POI ancre, position issue des données de la carte — jamais de notre
+        // propre label, encore attaché à l'ancre) : un échec de validation
+        // laisse le label déjà placé intact. Ce n'est qu'ensuite que l'ancien
+        // label est retiré et le nouveau créé (un seul à la fois) ;
+        // `previousRemoved` signale un échec du SDK après ce retrait.
+        // Requête/réponse `textLabelPlaced` avec `error` = 'textRequired' /
+        // 'notFound' / 'noPosition' / 'sdk' (message du SDK).
         // Voir docs/features/custom-text-label.md.
         placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
           if (!venue) {
             sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
             return;
           }
-          var previousRemoved = false;
-          try {
-            if (textLabel) {
-              venue.removeLabel(textLabel);
-              textLabel = null;
-              textLabelOptions = null;
-              previousRemoved = true;
-            }
-          } catch (error) {
-            // Label déjà inconnu du SDK : on l'oublie quand même.
-            textLabel = null;
-            textLabelOptions = null;
-            previousRemoved = true;
-          }
-          var fail = function (fields) {
-            fields.requestId = requestId;
-            fields.success = false;
-            fields.previousRemoved = previousRemoved;
-            sendToNative('textLabelPlaced', fields);
-          };
           if (!text || !String(text).trim()) {
-            fail({ error: 'textRequired' });
+            sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
             return;
           }
-          var anchor = resolveAnchor(anchorId);
+          var anchor = resolveAnchor(anchorId, textLabel);
           if (anchor.error) {
-            fail({ error: anchor.error });
+            sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: anchor.error });
             return;
           }
           var position = {
@@ -896,11 +884,25 @@
             color: color,
             rotation: rotation,
           };
+          var previousRemoved = false;
           try {
+            if (textLabel) {
+              var previous = textLabel;
+              textLabel = null;
+              textLabelOptions = null;
+              previousRemoved = true;
+              venue.removeLabel(previous);
+            }
             textLabel = venue.createLabel(options);
             textLabelOptions = options;
           } catch (error) {
-            fail({ error: 'sdk', message: error && error.message ? error.message : String(error) });
+            sendToNative('textLabelPlaced', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+              previousRemoved: previousRemoved,
+            });
             return;
           }
           sendToNative('textLabelPlaced', { requestId: requestId, success: true, poiId: anchorId });

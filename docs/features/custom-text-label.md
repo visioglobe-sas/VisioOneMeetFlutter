@@ -36,25 +36,24 @@ var textLabel = null;
 var textLabelOptions = null;
 
 // Shared with dynamic-poi-crud and 3d-icon-marker: resolve an existing POI and the position to copy from it.
-function resolveAnchor(anchorId) {
+// `ignoredLabel`: a label we created ourselves, still attached to the POI — never use it as the position source.
+function resolveAnchor(anchorId, ignoredLabel) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var source = poi.labels[0] || poi.markers[0];
+  var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
+  var source = ownLabels[0] || poi.markers[0];
   if (!source) return { poi: poi, error: 'noPosition' };
   return { poi: poi, position: source.position };
 }
 
 placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
-  if (textLabel) {                       // one label at a time
-    venue.removeLabel(textLabel);
-    textLabel = null;
-  }
+  // 1. Validate everything first: a failed placement leaves the current label untouched.
   if (!text || !String(text).trim()) {   // the SDK would throw "Cannot create Label, text is required"
     sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
     return;
   }
-  var anchor = resolveAnchor(anchorId);  // error: 'notFound' | 'noPosition'
-  // ...
+  var anchor = resolveAnchor(anchorId, textLabel);  // error: 'notFound' | 'noPosition'
+  // ... report anchor.error the same way
   var position = {
     latitude: anchor.position.latitude + 0.00004,   // ~4 m offset, so the text doesn't
     longitude: anchor.position.longitude + 0.00004, // overlap the POI's own label
@@ -70,6 +69,11 @@ placeTextLabel: function (requestId, anchorId, text, color, width, height, rotat
     rotation: rotation,    // degrees, create-only
   };
   try {
+    // 2. Only now replace: one label at a time.
+    if (textLabel) {
+      venue.removeLabel(textLabel);
+      textLabel = null;
+    }
     textLabel = venue.createLabel(options);
     textLabelOptions = options;
   } catch (error) {
@@ -142,6 +146,7 @@ interface LabelUpdateOptions {
 - **The anchor's floor must be displayed.** A label is attached to its owner POI's floor and only renders while that floor is shown — not from the default global view of a multi-building venue. Move the camera to the anchor (`view.goToFloor(poi.floor)` then `view.goToPOI(poi)`) after placing it.
 - **Text is fitted inside `width × height`** (meters, so the on-screen size follows the camera zoom); a long text wraps to two lines.
 - **Offset the position** if you anchor on a POI that already has a label: copying its position as-is draws your text right on top of it. A small lat/lng offset (here +0.00004°, ≈ 4 m) keeps both readable.
+- **Validate before replacing.** Check the text and resolve the anchor before `removeLabel()`-ing the label you already placed, so that a rejected placement (blank text, unknown POI, no position) leaves the current label on the map. While resolving, your own label is still in `poi.labels`: skip it, or a POI with no label of its own would get its position from your label instead of from the map's data.
 - A POI with neither `labels[0]` nor `markers[0]` has no position to copy — report it as an explicit "no position" state rather than passing `undefined` to `createLabel`.
 
 ## Learn more
