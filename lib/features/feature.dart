@@ -16,6 +16,7 @@ import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'geofencing_overlay.dart';
 import 'goto_poi_overlay.dart';
+import 'icon_marker_overlay.dart';
 import 'native_ui_replacement_overlay.dart';
 import 'navigation_exclude_modalities_overlay.dart';
 import 'occupancy_simulation_overlay.dart';
@@ -52,7 +53,8 @@ enum Feature {
   customBaseUrl('custom-base-url'),
   customNavigationTrace('custom-navigation-trace'),
   navigationExcludeModalities('navigation-exclude-modalities'),
-  accessibleMode('accessible-mode');
+  accessibleMode('accessible-mode'),
+  iconMarker('3d-icon-marker');
 
   const Feature(this.slug);
 
@@ -81,6 +83,7 @@ enum Feature {
     Feature.customNavigationTrace => l10n.customNavigationTraceTitle,
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesTitle,
     Feature.accessibleMode => l10n.accessibleModeTitle,
+    Feature.iconMarker => l10n.iconMarkerTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -106,6 +109,7 @@ enum Feature {
     Feature.customNavigationTrace => l10n.customNavigationTraceDescription,
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesDescription,
     Feature.accessibleMode => l10n.accessibleModeDescription,
+    Feature.iconMarker => l10n.iconMarkerDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -130,6 +134,7 @@ enum Feature {
     Feature.customNavigationTrace => CustomNavigationTraceOverlay(controller: controller),
     Feature.navigationExcludeModalities => NavigationExcludeModalitiesOverlay(controller: controller),
     Feature.accessibleMode => AccessibleModeOverlay(controller: controller),
+    Feature.iconMarker => IconMarkerOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -182,7 +187,9 @@ enum Feature {
   /// `custom-navigation-trace` fait de même pour `itineraryComputed` (déjà
   /// émis par `startItinerary`, réutilisé pour réappliquer automatiquement
   /// le preset de couleur sélectionné à chaque nouvel itinéraire), voir
-  /// [CustomNavigationTraceOverlay].
+  /// [CustomNavigationTraceOverlay]. `3d-icon-marker` fait de même pour
+  /// `iconImagePlaced`/`iconImageUpdated`/`iconImageRemoved`, voir
+  /// [IconMarkerOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -208,6 +215,7 @@ enum Feature {
       case Feature.customNavigationTrace:
       case Feature.navigationExcludeModalities:
       case Feature.accessibleMode:
+      case Feature.iconMarker:
         break;
     }
   }

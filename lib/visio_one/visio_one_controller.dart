@@ -420,6 +420,47 @@ class VisioOneController {
   /// (même schéma que [createDynamicPOI]).
   Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [requestId]);
 
+  /// Id du POI ancre sur lequel l'icône de la démo `3d-icon-marker` est
+  /// actuellement placée, ou `null` si aucune icône n'est placée. Porté ici
+  /// plutôt que par l'overlay de la feature, pour survivre à la fermeture du
+  /// bottom sheet — même raison que [dynamicPoi] ci-dessus. Mis à jour par
+  /// `IconMarkerOverlay` une fois l'aller-retour de pont confirmé.
+  final ValueNotifier<String?> iconMarkerAnchorId = ValueNotifier<String?>(null);
+
+  /// `OrientationType` du SDK choisi pour l'icône de `3d-icon-marker`
+  /// (`'fixed'`, `'flat'` ou `'facing'`, défaut `'facing'`), conservé ici
+  /// pour la même raison que [iconMarkerAnchorId].
+  final ValueNotifier<String> iconMarkerOrientation = ValueNotifier<String>('facing');
+
+  /// Place une image (icône) sur un POI existant ([anchorId], à la fois
+  /// propriétaire et source de position, résolue comme pour
+  /// [createDynamicPOI]) via `venue.createImage` — en retirant d'abord
+  /// l'image déjà placée sous [imageId], le cas échéant. L'objet `Image` du
+  /// SDK reste côté JS, indexé par [imageId]. [url] peut être une data URL.
+  ///
+  /// Requête/réponse par `requestId`, réponse en message `iconImagePlaced`
+  /// (`success`, et sinon `error` = `'notFound'` / `'noPosition'` / `'sdk'`
+  /// avec `message`, plus `previousRemoved`). Voir
+  /// `docs/features/3d-icon-marker.md`.
+  Future<void> placeIconImage(
+    String requestId, {
+    required String imageId,
+    required String anchorId,
+    required String url,
+    required String orientationType,
+  }) => _call('placeIconImage', [requestId, imageId, anchorId, url, orientationType]);
+
+  /// Change l'`orientationType` d'une image déjà placée
+  /// (`venue.updateImage(image, { orientationType })`), en direct. Réponse
+  /// en message `iconImageUpdated` (même schéma que [placeIconImage]).
+  Future<void> updateIconImageOrientation(String requestId, String imageId, String orientationType) =>
+      _call('updateIconImageOrientation', [requestId, imageId, orientationType]);
+
+  /// Retire une image placée par [placeIconImage] (`venue.removeImage`).
+  /// Réponse en message `iconImageRemoved` (même schéma que [placeIconImage]).
+  Future<void> removeIconImage(String requestId, String imageId) =>
+      _call('removeIconImage', [requestId, imageId]);
+
   /// Locale actuellement affichée par la venue (code brut renvoyé par
   /// `venue.currentLocale`, ex. `'default'`/`'en'`/`'fr'`), ou `null` tant
   /// qu'aucune réponse `localesLoaded` n'a encore été reçue.
@@ -517,6 +558,8 @@ class VisioOneController {
     highlightedCategoryId.dispose();
     selectedNavigationTracePresetKey.dispose();
     dynamicPoi.dispose();
+    iconMarkerAnchorId.dispose();
+    iconMarkerOrientation.dispose();
     currentLocale.dispose();
     spanishLocaleTranslations.dispose();
     _messages.close();

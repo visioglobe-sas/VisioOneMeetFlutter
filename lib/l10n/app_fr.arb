@@ -56,5 +56,7 @@
   "navigationExcludeModalitiesTitle": "Exclure des modalités",
   "navigationExcludeModalitiesDescription": "Calcule un itinéraire en excluant un attribut ou une modalité de segment (ex. ascenseur) du graphe de routage.",
   "accessibleModeTitle": "Mode accessible",
-  "accessibleModeDescription": "Calcule un itinéraire qui n'emprunte que la route accessible de la venue (ex. en évitant les escaliers)."
+  "accessibleModeDescription": "Calcule un itinéraire qui n'emprunte que la route accessible de la venue (ex. en évitant les escaliers).",
+  "iconMarkerTitle": "Icône 3D positionnée",
+  "iconMarkerDescription": "Placer une image personnalisée à un endroit de la carte 3D"
 }
