@@ -56,5 +56,7 @@
   "navigationExcludeModalitiesTitle": "Exclude modalities",
   "navigationExcludeModalitiesDescription": "Compute a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.",
   "accessibleModeTitle": "Accessible mode",
-  "accessibleModeDescription": "Compute a route that only uses the venue's accessible route (e.g. avoiding stairs)."
+  "accessibleModeDescription": "Compute a route that only uses the venue's accessible route (e.g. avoiding stairs).",
+  "iconMarkerTitle": "3D icon marker",
+  "iconMarkerDescription": "Place a custom image at a spot on the 3D map"
 }

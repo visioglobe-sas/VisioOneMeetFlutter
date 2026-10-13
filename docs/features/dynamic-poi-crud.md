@@ -29,14 +29,14 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
     return;
   }
 
-  var anchor = venue.pois.find(function (p) { return p.id === anchorId; });
-  if (!anchor) {
+  // resolveAnchor(): venue.pois.find(p => p.id === anchorId), then its
+  // labels[0] || markers[0] position (shared with 3d-icon-marker).
+  var anchor = resolveAnchor(anchorId);
+  if (anchor.error === 'notFound') {
     sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Anchor POI "' + anchorId + '" not found.' });
     return;
   }
-
-  var source = anchor.labels[0] || anchor.markers[0];
-  if (!source) {
+  if (anchor.error === 'noPosition') {
     sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Anchor POI "' + anchorId + '" has no label or marker to copy a position from.' });
     return;
   }
@@ -50,7 +50,7 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
     return;
   }
 
-  var label = venue.createLabel({ poi: poi, position: source.position, width: 2, text: labelText });
+  var label = venue.createLabel({ poi: poi, position: anchor.position, width: 2, text: labelText });
 
   dynamicPoi = poi;
   dynamicPoiLabel = label;

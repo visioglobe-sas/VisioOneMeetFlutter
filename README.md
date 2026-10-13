@@ -74,6 +74,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Custom navigation trace](docs/features/custom-navigation-trace.md)** — restyles the computed itinerary's route line with a custom color preset.
 - **[Exclude modalities](docs/features/navigation-exclude-modalities.md)** — computes a route while excluding a segment attribute or modality (e.g. elevator) from the routing graph.
 - **[Accessible mode](docs/features/accessible-mode.md)** — computes a route that only uses the venue's accessible route (e.g. avoiding stairs).
+- **[3D icon marker](docs/features/3d-icon-marker.md)** — places a custom image (icon) at a spot on the 3D map, with a live-switchable orientation behavior.
 
 ## How it works
 

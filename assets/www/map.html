@@ -60,10 +60,32 @@
       // docs/features/custom-navigation-trace.md.
       var currentNavigationTrace = null;
 
+      // Images créées par la démo `3d-icon-marker` (`venue.createImage`),
+      // indexées par un id choisi côté natif : `venue.updateImage` /
+      // `venue.removeImage` prennent l'objet `Image` lui-même, qui ne peut
+      // pas traverser le pont. Vidé par `setup()` en cas de rechargement de
+      // carte, comme `dynamicPoi` ci-dessus. Voir docs/features/3d-icon-marker.md.
+      var iconImages = {};
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
       // ---------------------------------------------------------------
+      // Résout un POI "ancre" existant par son id et la position WGS84 à
+      // copier depuis lui : son premier label, sinon son premier marker.
+      // Partagé par `dynamic-poi-crud` (createDynamicPOI) et `3d-icon-marker`
+      // (placeIconImage). Renvoie `{ poi, position }`, ou `{ error }` avec
+      // `error` = 'notFound' (aucun POI de cet id) ou 'noPosition' (POI sans
+      // label ni marker) — deux états normaux des démos, pas des crashs ;
+      // chaque appelant formule son propre message.
+      function resolveAnchor(anchorId) {
+        var poi = venue.pois.find(function (p) { return p.id === anchorId; });
+        if (!poi) return { error: 'notFound' };
+        var source = poi.labels[0] || poi.markers[0];
+        if (!source) return { poi: poi, error: 'noPosition' };
+        return { poi: poi, position: source.position };
+      }
+
       function sendToNative(type, data) {
         var bridge = window.VisioOneBridge;
         if (!bridge) {
@@ -141,6 +163,7 @@
               dynamicPoi = null;
               dynamicPoiLabel = null;
               currentNavigationTrace = null;
+              iconImages = {};
             }
 
             visioOne = VisioOne.createVisioOne();
@@ -623,8 +646,8 @@
             return;
           }
 
-          var anchor = venue.pois.find(function (p) { return p.id === anchorId; });
-          if (!anchor) {
+          var anchor = resolveAnchor(anchorId);
+          if (anchor.error === 'notFound') {
             sendToNative('dynamicPoiCreated', {
               requestId: requestId,
               success: false,
@@ -632,9 +655,7 @@
             });
             return;
           }
-
-          var source = anchor.labels[0] || anchor.markers[0];
-          if (!source) {
+          if (anchor.error === 'noPosition') {
             sendToNative('dynamicPoiCreated', {
               requestId: requestId,
               success: false,
@@ -660,7 +681,7 @@
 
           var label = venue.createLabel({
             poi: poi,
-            position: source.position,
+            position: anchor.position,
             width: 2,
             text: labelText,
           });
@@ -707,6 +728,101 @@
           dynamicPoi = null;
           dynamicPoiLabel = null;
           sendToNative('dynamicPoiRemoved', { requestId: requestId, success: true });
+        },
+
+        // `3d-icon-marker` : place une image (icône) au-dessus d'un POI
+        // existant (`venue.createImage`), dont il est à la fois le
+        // propriétaire (`poi`) et la source de position (via resolveAnchor,
+        // partagé avec createDynamicPOI). Une seule image par `imageId` :
+        // si une image est déjà placée sous cet id, elle est d'abord retirée.
+        // Requête/réponse (même schéma que createDynamicPOI) avec `error` =
+        // 'notFound' / 'noPosition' / 'sdk' (message du SDK) en cas d'échec.
+        // Voir docs/features/3d-icon-marker.md.
+        placeIconImage: function (requestId, imageId, anchorId, url, orientationType) {
+          if (!venue) {
+            sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            return;
+          }
+          var anchor = resolveAnchor(anchorId);
+          if (anchor.error) {
+            sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: anchor.error });
+            return;
+          }
+          // `previousRemoved` signale au natif qu'une image précédente a déjà
+          // été retirée avant un éventuel échec de createImage (ex. url
+          // vide) : l'état devient alors "aucune icône placée".
+          var previousRemoved = false;
+          try {
+            if (iconImages[imageId]) {
+              venue.removeImage(iconImages[imageId]);
+              delete iconImages[imageId];
+              previousRemoved = true;
+            }
+            iconImages[imageId] = venue.createImage({
+              poi: anchor.poi,
+              position: anchor.position,
+              width: 6,
+              height: 6,
+              url: url,
+              orientationType: orientationType,
+            });
+          } catch (error) {
+            sendToNative('iconImagePlaced', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+              previousRemoved: previousRemoved,
+            });
+            return;
+          }
+          sendToNative('iconImagePlaced', { requestId: requestId, success: true, imageId: imageId, poiId: anchorId });
+        },
+
+        // `venue.updateImage(image, { orientationType })` sur une image déjà
+        // placée par placeIconImage — prend effet immédiatement, sans
+        // recréer l'image. Voir docs/features/3d-icon-marker.md.
+        updateIconImageOrientation: function (requestId, imageId, orientationType) {
+          var image = iconImages[imageId];
+          if (!image) {
+            sendToNative('iconImageUpdated', { requestId: requestId, success: false, error: 'noImage' });
+            return;
+          }
+          try {
+            venue.updateImage(image, { orientationType: orientationType });
+          } catch (error) {
+            sendToNative('iconImageUpdated', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          sendToNative('iconImageUpdated', { requestId: requestId, success: true, orientationType: image.orientationType });
+        },
+
+        // `venue.removeImage(image)` : retire l'image de la carte et de
+        // `poi.images` du POI ancre. Voir docs/features/3d-icon-marker.md.
+        removeIconImage: function (requestId, imageId) {
+          var image = iconImages[imageId];
+          if (!image) {
+            sendToNative('iconImageRemoved', { requestId: requestId, success: false, error: 'noImage' });
+            return;
+          }
+          try {
+            venue.removeImage(image);
+          } catch (error) {
+            sendToNative('iconImageRemoved', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          delete iconImages[imageId];
+          sendToNative('iconImageRemoved', { requestId: requestId, success: true });
         },
 
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
