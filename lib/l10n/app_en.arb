@@ -60,5 +60,7 @@
   "iconMarkerTitle": "3D icon marker",
   "iconMarkerDescription": "Place a custom image at a spot on the 3D map",
   "customTextLabelTitle": "Custom text label",
-  "customTextLabelDescription": "Place your own text on the map and restyle it live"
+  "customTextLabelDescription": "Place your own text on the map and restyle it live",
+  "htmlOverlayMarkerTitle": "HTML overlay marker",
+  "htmlOverlayMarkerDescription": "Pin a tappable HTML badge on the map that's never hidden by 3D"
 }

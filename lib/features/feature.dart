@@ -17,6 +17,7 @@ import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
 import 'geofencing_overlay.dart';
 import 'goto_poi_overlay.dart';
+import 'html_overlay_marker_overlay.dart';
 import 'icon_marker_overlay.dart';
 import 'native_ui_replacement_overlay.dart';
 import 'navigation_exclude_modalities_overlay.dart';
@@ -56,7 +57,8 @@ enum Feature {
   navigationExcludeModalities('navigation-exclude-modalities'),
   accessibleMode('accessible-mode'),
   iconMarker('3d-icon-marker'),
-  customTextLabel('custom-text-label');
+  customTextLabel('custom-text-label'),
+  htmlOverlayMarker('html-overlay-marker');
 
   const Feature(this.slug);
 
@@ -87,6 +89,7 @@ enum Feature {
     Feature.accessibleMode => l10n.accessibleModeTitle,
     Feature.iconMarker => l10n.iconMarkerTitle,
     Feature.customTextLabel => l10n.customTextLabelTitle,
+    Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -114,6 +117,7 @@ enum Feature {
     Feature.accessibleMode => l10n.accessibleModeDescription,
     Feature.iconMarker => l10n.iconMarkerDescription,
     Feature.customTextLabel => l10n.customTextLabelDescription,
+    Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -140,6 +144,7 @@ enum Feature {
     Feature.accessibleMode => AccessibleModeOverlay(controller: controller),
     Feature.iconMarker => IconMarkerOverlay(controller: controller),
     Feature.customTextLabel => CustomTextLabelOverlay(controller: controller),
+    Feature.htmlOverlayMarker => HtmlOverlayMarkerOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -196,11 +201,16 @@ enum Feature {
   /// `iconImagePlaced`/`iconImageUpdated`/`iconImageRemoved`, voir
   /// [IconMarkerOverlay]. `custom-text-label` fait de même pour
   /// `textLabelPlaced`/`textLabelUpdated`/`textLabelRemoved`, voir
-  /// [CustomTextLabelOverlay].
+  /// [CustomTextLabelOverlay]. `html-overlay-marker` s'en sert pour le tap
+  /// sur le badge HTML (`htmlBadgeTapped` -> SnackBar), le panneau de
+  /// contrôle étant modal donc fermé au moment du tap, voir
+  /// [handleHtmlBadgeTappedMessage].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
         handlePoiSelectedMessage(context, message);
+      case Feature.htmlOverlayMarker:
+        handleHtmlBadgeTappedMessage(context, message);
       case Feature.resetView:
       case Feature.occupancySimulated:
       case Feature.gotoPoi:

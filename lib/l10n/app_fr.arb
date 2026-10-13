@@ -60,5 +60,7 @@
   "iconMarkerTitle": "Icône 3D positionnée",
   "iconMarkerDescription": "Placer une image personnalisée à un endroit de la carte 3D",
   "customTextLabelTitle": "Label texte personnalisé",
-  "customTextLabelDescription": "Placez votre propre texte sur la carte et modifiez son style en direct"
+  "customTextLabelDescription": "Placez votre propre texte sur la carte et modifiez son style en direct",
+  "htmlOverlayMarkerTitle": "Marqueur HTML superposé",
+  "htmlOverlayMarkerDescription": "Épinglez sur la carte un badge HTML cliquable, jamais masqué par la 3D"
 }
