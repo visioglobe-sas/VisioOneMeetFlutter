@@ -171,7 +171,7 @@
 
             console.log('[MapBridge] appel loadVenue...');
             visioOne
-              .loadVenue(baseURL ? { hash: hash, baseURL: baseURL } : { hash: hash }, container)
+              .loadVenue(baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash }, container)
               .then(function (v) {
                 console.log('[MapBridge] loadVenue résolu, appel createView...');
                 venue = v;

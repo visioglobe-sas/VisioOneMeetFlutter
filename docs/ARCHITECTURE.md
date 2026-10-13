@@ -19,7 +19,7 @@ C'est la décision la plus importante du projet, et elle n'est pas arbitraire : 
 
 - Le build ESM (`dist/visioone.js`) est petit (~8 Ko) mais référence des chunks additionnels chargés par des `import()` dynamiques (ex. `visioOne-*.js`, ~6 Mo). Sous WebKit, des imports de modules ES en `file://` échouent à cause des restrictions CORS appliquées aux modules — un problème constaté et documenté explicitement sur une implémentation native iOS du SDK (« Ne pas utiliser `dist/visioone.js`... ce fichier échoue en `file://` »).
 - Une intégration React Native a rencontré une variante du même problème en chargeant l'ESM depuis un CDN plutôt qu'en local (« latest loads a large module graph »), ce qui a nécessité un mode diagnostic dédié pour isoler la cause.
-- Le build **UMD** (`dist/visioone.umd.cjs`, ~5 Mo) est un bundle autonome, chargé comme un `<script>` classique (pas `type="module"`). Il ne fait aucun `import()` dynamique et fonctionne donc **indépendamment de l'origine** servant la page (`file://`, `https://`, ou l'origine interne utilisée par `webview_flutter`).
+- Le build **UMD** (`dist/visioone.umd.cjs`, ~8 Mo) est un bundle autonome, chargé comme un `<script>` classique (pas `type="module"`). Il ne fait aucun `import()` dynamique et fonctionne donc **indépendamment de l'origine** servant la page (`file://`, `https://`, ou l'origine interne utilisée par `webview_flutter`).
 
 Flutter doit tourner de façon identique sur Android *et* iOS avec le même code JS embarqué (pas de fork par plateforme comme sur Android/iOS natifs) : le bundle UMD est donc le seul choix qui évite de refaire l'enquête déjà menée sur iOS et sur RN.
 
@@ -83,7 +83,7 @@ sequenceDiagram
   WV->>UI: onPageFinished
   UI->>Ctrl: setup(hash)
   Ctrl->>JS: runJavaScript("window.MapBridge.setup('...')")
-  JS->>SDK: createVisioOne() / loadVenue({hash}) / createView(container, venue)
+  JS->>SDK: createVisioOne() / loadVenue({vg_maphash}) / createView(container, venue)
   SDK-->>JS: Promise résolue (carte prête)
   JS->>WV: VisioOneBridge.postMessage('{"type":"ready"}')
   WV->>Ctrl: JavaScriptChannel.onMessageReceived

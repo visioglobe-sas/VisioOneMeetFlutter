@@ -18,7 +18,7 @@ Future<void> setup(String hash, {String? baseURL}) => _call('setup', [hash, base
 setup: function (hash, baseURL) {
   // ...
   visioOne
-    .loadVenue(baseURL ? { hash: hash, baseURL: baseURL } : { hash: hash }, container)
+    .loadVenue(baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash }, container)
     .then(function (v) { /* ... */ })
     .catch(function (error) {
       sendToNative('error', { message: error && error.message ? error.message : String(error) });
