@@ -58,5 +58,7 @@
   "accessibleModeTitle": "Accessible mode",
   "accessibleModeDescription": "Compute a route that only uses the venue's accessible route (e.g. avoiding stairs).",
   "iconMarkerTitle": "3D icon marker",
-  "iconMarkerDescription": "Place a custom image at a spot on the 3D map"
+  "iconMarkerDescription": "Place a custom image at a spot on the 3D map",
+  "customTextLabelTitle": "Custom text label",
+  "customTextLabelDescription": "Place your own text on the map and restyle it live"
 }

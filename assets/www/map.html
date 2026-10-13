@@ -67,6 +67,16 @@
       // carte, comme `dynamicPoi` ci-dessus. Voir docs/features/3d-icon-marker.md.
       var iconImages = {};
 
+      // Label texte créé par la démo `custom-text-label`
+      // (`venue.createLabel`), et les options avec lesquelles il a été créé :
+      // `rotation` n'existe que dans `LabelCreateOptions` (pas dans
+      // `LabelUpdateOptions`), donc changer la rotation d'un label placé
+      // impose de le retirer puis de le recréer avec les mêmes valeurs.
+      // Une seule instance à la fois. Vidé par `setup()` en cas de
+      // rechargement de carte. Voir docs/features/custom-text-label.md.
+      var textLabel = null;
+      var textLabelOptions = null;
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
@@ -164,6 +174,8 @@
               dynamicPoiLabel = null;
               currentNavigationTrace = null;
               iconImages = {};
+              textLabel = null;
+              textLabelOptions = null;
             }
 
             visioOne = VisioOne.createVisioOne();
@@ -823,6 +835,160 @@
           }
           delete iconImages[imageId];
           sendToNative('iconImageRemoved', { requestId: requestId, success: true });
+        },
+
+        // `custom-text-label` : place un texte libre sur la carte
+        // (`venue.createLabel`), possédé par un POI existant dont la position
+        // est copiée via resolveAnchor (partagé avec createDynamicPOI /
+        // placeIconImage), décalée de ~4 m (+0.00004° en lat/lng) pour ne pas
+        // recouvrir le label propre du POI. `height` est TOUJOURS passé
+        // (sinon le SDK le cale sur `width` : boîte carrée, texte déformé).
+        // Un seul label à la fois : l'éventuel label précédent est d'abord
+        // retiré (`previousRemoved` le signale au natif, même en cas d'échec
+        // ensuite). Requête/réponse `textLabelPlaced` avec `error` =
+        // 'textRequired' / 'notFound' / 'noPosition' / 'sdk' (message du SDK).
+        // Voir docs/features/custom-text-label.md.
+        placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
+          if (!venue) {
+            sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            return;
+          }
+          var previousRemoved = false;
+          try {
+            if (textLabel) {
+              venue.removeLabel(textLabel);
+              textLabel = null;
+              textLabelOptions = null;
+              previousRemoved = true;
+            }
+          } catch (error) {
+            // Label déjà inconnu du SDK : on l'oublie quand même.
+            textLabel = null;
+            textLabelOptions = null;
+            previousRemoved = true;
+          }
+          var fail = function (fields) {
+            fields.requestId = requestId;
+            fields.success = false;
+            fields.previousRemoved = previousRemoved;
+            sendToNative('textLabelPlaced', fields);
+          };
+          if (!text || !String(text).trim()) {
+            fail({ error: 'textRequired' });
+            return;
+          }
+          var anchor = resolveAnchor(anchorId);
+          if (anchor.error) {
+            fail({ error: anchor.error });
+            return;
+          }
+          var position = {
+            latitude: anchor.position.latitude + 0.00004,
+            longitude: anchor.position.longitude + 0.00004,
+          };
+          if (anchor.position.altitude !== undefined) position.altitude = anchor.position.altitude;
+          var options = {
+            poi: anchor.poi,
+            position: position,
+            width: width,
+            height: height,
+            text: text,
+            color: color,
+            rotation: rotation,
+          };
+          try {
+            textLabel = venue.createLabel(options);
+            textLabelOptions = options;
+          } catch (error) {
+            fail({ error: 'sdk', message: error && error.message ? error.message : String(error) });
+            return;
+          }
+          sendToNative('textLabelPlaced', { requestId: requestId, success: true, poiId: anchorId });
+        },
+
+        // `venue.updateLabel(label, changes)` sur le label placé, en direct.
+        // `changes` = { text } | { color } | { width, height } — width et
+        // height TOUJOURS ensemble (`width` seul remet `height = width`).
+        // `rotation` n'est pas accepté ici (voir rotateTextLabel). Réponse
+        // `textLabelUpdated`, `error` = 'noLabel' / 'textRequired' / 'sdk'.
+        updateTextLabel: function (requestId, changes) {
+          if (!textLabel) {
+            sendToNative('textLabelUpdated', { requestId: requestId, success: false, error: 'noLabel' });
+            return;
+          }
+          if ('text' in changes && (!changes.text || !String(changes.text).trim())) {
+            sendToNative('textLabelUpdated', { requestId: requestId, success: false, error: 'textRequired' });
+            return;
+          }
+          try {
+            venue.updateLabel(textLabel, changes);
+          } catch (error) {
+            sendToNative('textLabelUpdated', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          Object.keys(changes).forEach(function (key) { textLabelOptions[key] = changes[key]; });
+          sendToNative('textLabelUpdated', { requestId: requestId, success: true });
+        },
+
+        // Rotation d'un label placé : absente de `LabelUpdateOptions`, donc
+        // removeLabel + createLabel avec les mêmes options (position, taille,
+        // texte, couleur courants) et la nouvelle rotation. Réponse
+        // `textLabelUpdated` ; en cas d'échec de la recréation, le label a
+        // disparu (`previousRemoved`).
+        rotateTextLabel: function (requestId, rotation) {
+          if (!textLabel) {
+            sendToNative('textLabelUpdated', { requestId: requestId, success: false, error: 'noLabel' });
+            return;
+          }
+          var options = Object.assign({}, textLabelOptions, { rotation: rotation });
+          try {
+            venue.removeLabel(textLabel);
+            textLabel = null;
+            textLabelOptions = null;
+            textLabel = venue.createLabel(options);
+            textLabelOptions = options;
+          } catch (error) {
+            sendToNative('textLabelUpdated', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+              previousRemoved: textLabel === null,
+            });
+            return;
+          }
+          sendToNative('textLabelUpdated', { requestId: requestId, success: true });
+        },
+
+        // `venue.removeLabel(label)` puis on oublie la référence : un second
+        // appel est un no-op côté app (`error: 'noLabel'`) — le SDK, lui,
+        // lèverait `Provided label is not registered`.
+        removeTextLabel: function (requestId) {
+          if (!textLabel) {
+            sendToNative('textLabelRemoved', { requestId: requestId, success: false, error: 'noLabel' });
+            return;
+          }
+          try {
+            venue.removeLabel(textLabel);
+          } catch (error) {
+            textLabel = null;
+            textLabelOptions = null;
+            sendToNative('textLabelRemoved', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          textLabel = null;
+          textLabelOptions = null;
+          sendToNative('textLabelRemoved', { requestId: requestId, success: true });
         },
 
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :

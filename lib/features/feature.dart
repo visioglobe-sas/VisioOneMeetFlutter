@@ -11,6 +11,7 @@ import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
 import 'custom_navigation_trace_overlay.dart';
+import 'custom_text_label_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
 import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
@@ -54,7 +55,8 @@ enum Feature {
   customNavigationTrace('custom-navigation-trace'),
   navigationExcludeModalities('navigation-exclude-modalities'),
   accessibleMode('accessible-mode'),
-  iconMarker('3d-icon-marker');
+  iconMarker('3d-icon-marker'),
+  customTextLabel('custom-text-label');
 
   const Feature(this.slug);
 
@@ -84,6 +86,7 @@ enum Feature {
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesTitle,
     Feature.accessibleMode => l10n.accessibleModeTitle,
     Feature.iconMarker => l10n.iconMarkerTitle,
+    Feature.customTextLabel => l10n.customTextLabelTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -110,6 +113,7 @@ enum Feature {
     Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesDescription,
     Feature.accessibleMode => l10n.accessibleModeDescription,
     Feature.iconMarker => l10n.iconMarkerDescription,
+    Feature.customTextLabel => l10n.customTextLabelDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -135,6 +139,7 @@ enum Feature {
     Feature.navigationExcludeModalities => NavigationExcludeModalitiesOverlay(controller: controller),
     Feature.accessibleMode => AccessibleModeOverlay(controller: controller),
     Feature.iconMarker => IconMarkerOverlay(controller: controller),
+    Feature.customTextLabel => CustomTextLabelOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -189,7 +194,9 @@ enum Feature {
   /// le preset de couleur sélectionné à chaque nouvel itinéraire), voir
   /// [CustomNavigationTraceOverlay]. `3d-icon-marker` fait de même pour
   /// `iconImagePlaced`/`iconImageUpdated`/`iconImageRemoved`, voir
-  /// [IconMarkerOverlay].
+  /// [IconMarkerOverlay]. `custom-text-label` fait de même pour
+  /// `textLabelPlaced`/`textLabelUpdated`/`textLabelRemoved`, voir
+  /// [CustomTextLabelOverlay].
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -216,6 +223,7 @@ enum Feature {
       case Feature.navigationExcludeModalities:
       case Feature.accessibleMode:
       case Feature.iconMarker:
+      case Feature.customTextLabel:
         break;
     }
   }
