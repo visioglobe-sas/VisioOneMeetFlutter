@@ -45,6 +45,7 @@ class VisioOneMapShell extends StatefulWidget {
     super.key,
     required this.hash,
     this.baseURL,
+    this.viewOptions,
     required this.overlayBuilder,
     this.mapOverlayBuilder,
     this.onMessage,
@@ -62,6 +63,11 @@ class VisioOneMapShell extends StatefulWidget {
   /// donne une `Key` dérivée de `baseURL` pour forcer un remount complet
   /// (même mécanisme qu'un changement de [hash] aurait exigé).
   final String? baseURL;
+
+  /// Options passées en 3e argument de `createView` (`null` = aucune, le
+  /// défaut du SDK). Seule `custom-theme` le renseigne
+  /// (`{'enableShadows': true}`) ; toutes les autres features laissent `null`.
+  final Map<String, Object>? viewOptions;
 
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
@@ -113,7 +119,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
     controller.messages.listen(_onMessage);
     await controller.webViewController.setNavigationDelegate(
       NavigationDelegate(
-        onPageFinished: (_) => controller.setup(widget.hash, baseURL: widget.baseURL),
+        onPageFinished: (_) => controller.setup(widget.hash, baseURL: widget.baseURL, viewOptions: widget.viewOptions),
       ),
     );
     await controller.loadMapPage();
@@ -157,7 +163,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       _state = _MapLoadState.loading;
       _errorMessage = null;
     });
-    _controller?.setup(widget.hash, baseURL: widget.baseURL);
+    _controller?.setup(widget.hash, baseURL: widget.baseURL, viewOptions: widget.viewOptions);
   }
 
   void _showFeatureControls(BuildContext context, VisioOneController controller) {

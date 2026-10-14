@@ -60,7 +60,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 
 | Méthode | Arguments (JSON-encodés) | Rôle |
 |---|---|---|
-| `setup(hash)` | `String` | (Ré)initialise `venue`/`view` pour ce hash. |
+| `setup(hash, baseURL, viewOptions)` | `String`, `String?`, `Map?` | (Ré)initialise `venue`/`view` pour ce hash ; `viewOptions` est passé tel quel à `createView` (seul `custom-theme` le renseigne : `{enableShadows: true}`). |
 | `goToGlobal()` | — | Recentre sur la vue globale du site. |
 | `goToPOI(poiId)` | `String` | Centre la caméra sur un POI et le sélectionne. |
 | `goToFloor(buildingId, floorId)` | `String`, `String?` | Change de bâtiment/étage. |
@@ -73,6 +73,9 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
 | `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
 | `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`). |
+| `getThemes(requestId)` | `String` | Demande `view.themes` ; répond via `themesLoaded` (`{requestId, themes}`). |
+| `setTheme(name)` | `String` | `view.setTheme(name)` ; répond via `themeApplied` (`{success, theme, message?}`). |
+| `setAccentColors(accentColor, textAccentColor)` | `String`, `String` | `view.accentColor` / `view.textAccentColor` ; répond via `accentColorsApplied` (`{success, message?}`). |
 
 ### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
 
@@ -87,6 +90,9 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `itineraryComputed` | `{instructions}` | `startItinerary()` a terminé son calcul. |
 | `venueLayout` | `{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}` | Réponse à `getVenueLayout()`. |
 | `poiPositionResolved` | `{requestId, poiId, position: {latitude, longitude}\|null}` | Réponse à `resolvePoiPosition()` ; `position: null` si `poiId` est introuvable ou sans marker/label/image. |
+| `themesLoaded` | `{requestId, themes}` | Réponse à `getThemes()` (`view.themes`, vide si la carte n'est pas prête). |
+| `themeApplied` | `{success, theme, message?}` | Réponse à `setTheme()` ; `success: false` + message du SDK pour un id non enregistré. |
+| `accentColorsApplied` | `{success, message?}` | Réponse à `setAccentColors()` ; `success: false` + message du SDK pour une couleur invalide. |
 
 Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
 

@@ -47,6 +47,10 @@ class _FeatureScreenState extends State<FeatureScreen> {
           // restent sur `kDefaultMapHash`, inchangé.
           hash: feature == Feature.customData ? kCustomDataMapHash : kDefaultMapHash,
           baseURL: baseUrl,
+          // `custom-theme` seulement : sans `enableShadows`, `view.setTheme`
+          // n'a aucun effet visible (voir `docs/features/custom-theme.md`).
+          // Toutes les autres features gardent `createView` sans options.
+          viewOptions: feature == Feature.customTheme ? const {'enableShadows': true} : null,
           showControlsOnError: isCustomBaseUrl,
           overlayBuilder: (context, controller) => isCustomBaseUrl
               ? CustomBaseUrlOverlay(

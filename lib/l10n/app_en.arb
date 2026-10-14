@@ -62,5 +62,8 @@
   "customTextLabelTitle": "Custom text label",
   "customTextLabelDescription": "Place your own text on the map and restyle it live",
   "htmlOverlayMarkerTitle": "HTML overlay marker",
-  "htmlOverlayMarkerDescription": "Pin a tappable HTML badge on the map that's never hidden by 3D"
+  "htmlOverlayMarkerDescription": "Pin a tappable HTML badge on the map that's never hidden by 3D",
+  "customThemeTitle": "Custom theme",
+  "customThemeDescription": "Switch the 3D lighting theme and recolor the SDK's buttons live",
+  "customThemeHint": "Tap a place: its card's Go button uses the accent colors."
 }

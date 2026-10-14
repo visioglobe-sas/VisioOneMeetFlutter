@@ -62,5 +62,8 @@
   "customTextLabelTitle": "Label texte personnalisé",
   "customTextLabelDescription": "Placez votre propre texte sur la carte et modifiez son style en direct",
   "htmlOverlayMarkerTitle": "Marqueur HTML superposé",
-  "htmlOverlayMarkerDescription": "Épinglez sur la carte un badge HTML cliquable, jamais masqué par la 3D"
+  "htmlOverlayMarkerDescription": "Épinglez sur la carte un badge HTML cliquable, jamais masqué par la 3D",
+  "customThemeTitle": "Thème personnalisé",
+  "customThemeDescription": "Changez l'ambiance lumineuse 3D et recolorez les boutons du SDK en direct",
+  "customThemeHint": "Touchez un lieu : le bouton « Y aller » de sa fiche utilise les couleurs d'accent."
 }
