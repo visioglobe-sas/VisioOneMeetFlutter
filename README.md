@@ -76,6 +76,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Accessible mode](docs/features/accessible-mode.md)** — computes a route that only uses the venue's accessible route (e.g. avoiding stairs).
 - **[3D icon marker](docs/features/3d-icon-marker.md)** — places a custom image (icon) at a spot on the 3D map, with a live-switchable orientation behavior.
 - **[Custom text label](docs/features/custom-text-label.md)** — places your own text on the map next to a POI and restyles it live (color, size, rotation).
+- **[HTML overlay marker](docs/features/html-overlay-marker.md)** — pins a tappable HTML badge on the map, drawn above the 3D scene, whose taps reach the Dart side.
 
 ## How it works
 

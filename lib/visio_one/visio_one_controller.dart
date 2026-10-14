@@ -517,6 +517,52 @@ class VisioOneController {
   /// `textLabelRemoved` (`error: 'noLabel'` si aucun label n'est placé).
   Future<void> removeTextLabel(String requestId) => _call('removeTextLabel', [requestId]);
 
+  /// Id du POI ancre du badge HTML de la démo `html-overlay-marker`, ou
+  /// `null` si aucun badge n'est placé. Porté ici (comme les valeurs
+  /// ci-dessous) plutôt que par l'overlay, pour survivre à la fermeture du
+  /// bottom sheet — même raison que [textLabelAnchorId].
+  final ValueNotifier<String?> htmlBadgeAnchorId = ValueNotifier<String?>(null);
+
+  /// Dernier texte appliqué au badge de `html-overlay-marker`.
+  final ValueNotifier<String> htmlBadgeText = ValueNotifier<String>('Open now · 12:00–14:00');
+
+  /// Visibilité du badge placé (`venue.updateMarker(marker, { isVisible })`).
+  final ValueNotifier<bool> htmlBadgeVisible = ValueNotifier<bool>(true);
+
+  /// Nombre de taps sur le badge placé, remis à 0 à chaque placement réussi.
+  /// Mis à jour ici, dans [_handleRawMessage], à chaque message
+  /// `htmlBadgeTapped` (`{count}`) : le tap arrive alors que le bottom sheet
+  /// (modal) est fermé, donc sans overlay monté pour l'écouter.
+  final ValueNotifier<int> htmlBadgeTapCount = ValueNotifier<int>(0);
+
+  /// Épingle un badge HTML (`venue.createMarker({ poi, position, element })`,
+  /// élément DOM créé côté JS) sur un POI existant ([anchorId], propriétaire
+  /// et source de position — résolue comme pour [createDynamicPOI], puis
+  /// décalée de ~4 m), en retirant d'abord le badge déjà placé le cas
+  /// échéant. Un tap sur le badge remonte en message `htmlBadgeTapped`.
+  ///
+  /// Requête/réponse par `requestId`, réponse en message `htmlBadgePlaced`
+  /// (`success`, et sinon `error` = `'textRequired'` / `'notFound'` /
+  /// `'noPosition'` / `'sdk'` avec `message`, plus `previousRemoved`). Voir
+  /// `docs/features/html-overlay-marker.md`.
+  Future<void> placeHtmlBadge(String requestId, {required String anchorId, required String text}) =>
+      _call('placeHtmlBadge', [requestId, anchorId, text]);
+
+  /// Change le texte du badge placé (édition DOM de `marker.element`, aucun
+  /// appel SDK). Réponse en message `htmlBadgeUpdated` (`error` =
+  /// `'noBadge'` / `'textRequired'`).
+  Future<void> updateHtmlBadgeText(String requestId, String text) =>
+      _call('updateHtmlBadgeText', [requestId, text]);
+
+  /// Affiche/masque le badge placé (`venue.updateMarker(marker, { isVisible })`).
+  /// Réponse en message `htmlBadgeUpdated` (`error` = `'noBadge'` / `'sdk'`).
+  Future<void> setHtmlBadgeVisible(String requestId, bool visible) =>
+      _call('setHtmlBadgeVisible', [requestId, visible]);
+
+  /// Retire le badge placé (`venue.removeMarker`). Réponse en message
+  /// `htmlBadgeRemoved` (`error: 'noBadge'` si aucun badge n'est placé).
+  Future<void> removeHtmlBadge(String requestId) => _call('removeHtmlBadge', [requestId]);
+
   /// Locale actuellement affichée par la venue (code brut renvoyé par
   /// `venue.currentLocale`, ex. `'default'`/`'en'`/`'fr'`), ou `null` tant
   /// qu'aucune réponse `localesLoaded` n'a encore été reçue.
@@ -605,6 +651,10 @@ class VisioOneController {
       debugPrint('VisioOneController: message JS illisible: ${message.message}');
       return;
     }
+    if (parsed.type == 'htmlBadgeTapped') {
+      final count = parsed.data is Map ? (parsed.data as Map)['count'] : null;
+      if (count is int) htmlBadgeTapCount.value = count;
+    }
     _messages.add(parsed);
   }
 
@@ -621,6 +671,10 @@ class VisioOneController {
     textLabelColor.dispose();
     textLabelSize.dispose();
     textLabelRotation.dispose();
+    htmlBadgeAnchorId.dispose();
+    htmlBadgeText.dispose();
+    htmlBadgeVisible.dispose();
+    htmlBadgeTapCount.dispose();
     currentLocale.dispose();
     spanishLocaleTranslations.dispose();
     _messages.close();

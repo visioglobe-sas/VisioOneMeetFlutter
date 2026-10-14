@@ -77,6 +77,18 @@
       var textLabel = null;
       var textLabelOptions = null;
 
+      // Badge HTML créé par la démo `html-overlay-marker`
+      // (`venue.createMarker({ poi, position, element })`) et son compteur de
+      // taps (remis à 0 à chaque placement réussi). Le `Marker` du SDK (et
+      // son élément DOM) ne peuvent pas traverser le pont : ils restent ici.
+      // Une seule instance à la fois. Vidé par `setup()` en cas de
+      // rechargement de carte. Voir docs/features/html-overlay-marker.md.
+      var htmlBadge = null;
+      var htmlBadgeTapCount = 0;
+      var HTML_BADGE_STYLE =
+        'background:#0B6BCB;color:#FFFFFF;font:600 14px sans-serif;padding:6px 12px;' +
+        'border-radius:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer';
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
@@ -88,14 +100,16 @@
       // `error` = 'notFound' (aucun POI de cet id) ou 'noPosition' (POI sans
       // label ni marker) — deux états normaux des démos, pas des crashs ;
       // chaque appelant formule son propre message.
-      // `ignoredLabel` (optionnel) : un label créé par la démo elle-même et
-      // encore attaché au POI, à ne jamais utiliser comme source de position
-      // (`custom-text-label` résout l'ancre avant de retirer son label).
-      function resolveAnchor(anchorId, ignoredLabel) {
+      // `ignoredLabel` / `ignoredMarker` (optionnels) : un label / marker
+      // créé par la démo elle-même et encore attaché au POI, à ne jamais
+      // utiliser comme source de position (`custom-text-label` et
+      // `html-overlay-marker` résolvent l'ancre avant de retirer le leur).
+      function resolveAnchor(anchorId, ignoredLabel, ignoredMarker) {
         var poi = venue.pois.find(function (p) { return p.id === anchorId; });
         if (!poi) return { error: 'notFound' };
         var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
-        var source = ownLabels[0] || poi.markers[0];
+        var ownMarkers = poi.markers.filter(function (m) { return m !== ignoredMarker; });
+        var source = ownLabels[0] || ownMarkers[0];
         if (!source) return { poi: poi, error: 'noPosition' };
         return { poi: poi, position: source.position };
       }
@@ -180,6 +194,8 @@
               iconImages = {};
               textLabel = null;
               textLabelOptions = null;
+              htmlBadge = null;
+              htmlBadgeTapCount = 0;
             }
 
             visioOne = VisioOne.createVisioOne();
@@ -991,6 +1007,141 @@
           textLabel = null;
           textLabelOptions = null;
           sendToNative('textLabelRemoved', { requestId: requestId, success: true });
+        },
+
+        // `html-overlay-marker` : épingle un élément HTML (un badge) sur la
+        // carte via `venue.createMarker({ poi, position, element })`. Le SDK
+        // déplace l'élément dans son propre conteneur d'overlay, au-dessus
+        // de la scène 3D (jamais masqué par la géométrie), et en possède la
+        // mise en page (position/translate/transform/z-index) : on ne stylise
+        // donc ni `transform` ni `position` dessus. Validation AVANT de toucher
+        // au badge existant (texte non vide, POI ancre, position issue des
+        // données de la carte — jamais de notre propre badge, encore dans
+        // `poi.markers`) ; position décalée de ~4 m comme custom-text-label.
+        // Le SDK force `pointer-events: none` à la création : on le remet à
+        // `auto` juste après, et le `click` est stoppé (stopPropagation) pour
+        // ne pas retomber sur la carte (fiche du POI dessous), puis relayé au
+        // natif (`htmlBadgeTapped`, `count`). Requête/réponse `htmlBadgePlaced`
+        // avec `error` = 'textRequired' / 'notFound' / 'noPosition' / 'sdk',
+        // plus `previousRemoved`. Voir docs/features/html-overlay-marker.md.
+        placeHtmlBadge: function (requestId, anchorId, text) {
+          if (!venue) {
+            sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            return;
+          }
+          if (!text || !String(text).trim()) {
+            sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: 'textRequired' });
+            return;
+          }
+          var anchor = resolveAnchor(anchorId, textLabel, htmlBadge);
+          if (anchor.error) {
+            sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: anchor.error });
+            return;
+          }
+          var position = {
+            latitude: anchor.position.latitude + 0.00004,
+            longitude: anchor.position.longitude + 0.00004,
+          };
+          if (anchor.position.altitude !== undefined) position.altitude = anchor.position.altitude;
+
+          var element = document.createElement('div');
+          element.setAttribute('style', HTML_BADGE_STYLE);
+          element.textContent = text;
+
+          var previousRemoved = false;
+          try {
+            if (htmlBadge) {
+              var previous = htmlBadge;
+              htmlBadge = null;
+              previousRemoved = true;
+              venue.removeMarker(previous);
+            }
+            var marker = venue.createMarker({ poi: anchor.poi, position: position, element: element });
+            // Le SDK pose `pointer-events: none` à la création (et ne le
+            // réécrit plus ensuite) : sans ça, le badge n'est pas tappable.
+            element.style.pointerEvents = 'auto';
+            element.addEventListener('click', function (event) {
+              event.stopPropagation();
+              if (htmlBadge !== marker) return;
+              htmlBadgeTapCount += 1;
+              sendToNative('htmlBadgeTapped', { count: htmlBadgeTapCount });
+            });
+            htmlBadge = marker;
+            htmlBadgeTapCount = 0;
+          } catch (error) {
+            sendToNative('htmlBadgePlaced', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+              previousRemoved: previousRemoved,
+            });
+            return;
+          }
+          sendToNative('htmlBadgePlaced', { requestId: requestId, success: true, poiId: anchorId });
+        },
+
+        // Change le texte du badge : simple édition DOM de `marker.element`
+        // (nœud vivant), aucun appel SDK. Réponse `htmlBadgeUpdated`,
+        // `error` = 'noBadge' / 'textRequired'.
+        updateHtmlBadgeText: function (requestId, text) {
+          if (!htmlBadge) {
+            sendToNative('htmlBadgeUpdated', { requestId: requestId, success: false, error: 'noBadge' });
+            return;
+          }
+          if (!text || !String(text).trim()) {
+            sendToNative('htmlBadgeUpdated', { requestId: requestId, success: false, error: 'textRequired' });
+            return;
+          }
+          htmlBadge.element.textContent = text;
+          sendToNative('htmlBadgeUpdated', { requestId: requestId, success: true });
+        },
+
+        // `venue.updateMarker(marker, { isVisible })` : `false` passe
+        // l'élément en `display: none` (il reste dans le DOM). Réponse
+        // `htmlBadgeUpdated`, `error` = 'noBadge' / 'sdk'.
+        setHtmlBadgeVisible: function (requestId, visible) {
+          if (!htmlBadge) {
+            sendToNative('htmlBadgeUpdated', { requestId: requestId, success: false, error: 'noBadge' });
+            return;
+          }
+          try {
+            venue.updateMarker(htmlBadge, { isVisible: visible });
+          } catch (error) {
+            sendToNative('htmlBadgeUpdated', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          sendToNative('htmlBadgeUpdated', { requestId: requestId, success: true, visible: visible });
+        },
+
+        // `venue.removeMarker(marker)` (le SDK détache aussi l'élément du
+        // DOM) puis on oublie la référence : un second appel est un no-op
+        // côté app (`error: 'noBadge'`) — le SDK, lui, lèverait
+        // `Provided marker is not registered`.
+        removeHtmlBadge: function (requestId) {
+          if (!htmlBadge) {
+            sendToNative('htmlBadgeRemoved', { requestId: requestId, success: false, error: 'noBadge' });
+            return;
+          }
+          var marker = htmlBadge;
+          htmlBadge = null;
+          try {
+            venue.removeMarker(marker);
+          } catch (error) {
+            sendToNative('htmlBadgeRemoved', {
+              requestId: requestId,
+              success: false,
+              error: 'sdk',
+              message: error && error.message ? error.message : String(error),
+            });
+            return;
+          }
+          sendToNative('htmlBadgeRemoved', { requestId: requestId, success: true });
         },
 
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
