@@ -180,9 +180,16 @@
         // C'est une option de `loadVenue`, pas une propriété mutable sur une
         // venue déjà chargée -- changer de baseURL passe donc entièrement
         // par ce chemin de rechargement, comme un changement de hash.
-        setup: function (hash, baseURL) {
+        //
+        // `viewOptions` (optionnel, `null`/undefined par défaut) est passé
+        // tel quel en 3e argument de `createView` — seule la démo
+        // `custom-theme` le renseigne (`{ enableShadows: true }`, sans quoi
+        // `view.setTheme` n'a aucun effet visible) ; toutes les autres
+        // features gardent un `createView(container, venue)` inchangé. Voir
+        // docs/features/custom-theme.md.
+        setup: function (hash, baseURL, viewOptions) {
           try {
-            console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', typeof VisioOne =', typeof VisioOne);
+            console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', viewOptions =', viewOptions, ', typeof VisioOne =', typeof VisioOne);
 
             if (visioOne) {
               // setup() déjà appelé : on repart d'un état propre avant de recharger.
@@ -207,7 +214,9 @@
               .then(function (v) {
                 console.log('[MapBridge] loadVenue résolu, appel createView...');
                 venue = v;
-                return visioOne.createView(container, venue);
+                return viewOptions
+                  ? visioOne.createView(container, venue, viewOptions)
+                  : visioOne.createView(container, venue);
               })
               .then(function (createdView) {
                 console.log('[MapBridge] createView résolu, carte prête.');
@@ -1178,6 +1187,60 @@
           venue.setCurrentLocale(locale).catch(function (error) {
             console.error('[MapBridge] setCurrentLocale a échoué:', error);
           });
+        },
+
+        // `custom-theme` : liste des thèmes de scène 3D enregistrés
+        // (`view.themes`, lecture seule — `['day', 'night', 'goldenHour']`
+        // sur 1.0.9). Requête/réponse `themesLoaded` ({requestId, themes}) ;
+        // `themes` vide si la carte n'est pas prête. Il n'existe pas de
+        // getter du thème courant en 1.0.9 : c'est le natif qui le suit.
+        // Voir docs/features/custom-theme.md.
+        getThemes: function (requestId) {
+          sendToNative('themesLoaded', {
+            requestId: requestId,
+            themes: view ? view.themes.slice() : [],
+          });
+        },
+
+        // `view.setTheme(name)` : change uniquement l'éclairage de la scène
+        // 3D (lumières directionnelle + ambiante), jamais l'UI — et sans
+        // effet visible si la vue n'a pas été créée avec
+        // `enableShadows: true` (voir `setup`). Lève
+        // `Cannot apply given theme <name> as it isn't registered.` pour un
+        // id absent de `view.themes` : rapporté via `themeApplied`.
+        setTheme: function (name) {
+          if (!view) return;
+          try {
+            view.setTheme(name);
+            sendToNative('themeApplied', { success: true, theme: name });
+          } catch (error) {
+            console.error('[MapBridge] setTheme a échoué:', error);
+            sendToNative('themeApplied', {
+              success: false,
+              theme: name,
+              message: error && error.message ? error.message : String(error),
+            });
+          }
+        },
+
+        // `view.accentColor` / `view.textAccentColor` : propriétés
+        // assignables, appliquées en direct à l'UI du SDK (bouton "Go" de la
+        // fiche POI, "Add a step"...). Une valeur qui n'est ni hex, ni rgba,
+        // ni hsl lève `Invalid color format provided...` : rapporté via
+        // `accentColorsApplied`.
+        setAccentColors: function (accentColor, textAccentColor) {
+          if (!view) return;
+          try {
+            view.accentColor = accentColor;
+            view.textAccentColor = textAccentColor;
+            sendToNative('accentColorsApplied', { success: true });
+          } catch (error) {
+            console.error('[MapBridge] setAccentColors a échoué:', error);
+            sendToNative('accentColorsApplied', {
+              success: false,
+              message: error && error.message ? error.message : String(error),
+            });
+          }
         },
 
         // `add-locale` : ajoute une locale `'es'` jamais authorée dans

@@ -121,7 +121,13 @@ class VisioOneController {
   /// `null`. Ce n'est pas une propriété mutable sur une venue déjà
   /// chargée : la seule façon de la changer est de rappeler [setup], qui
   /// recharge entièrement la carte (même chemin que pour changer de hash).
-  Future<void> setup(String hash, {String? baseURL}) => _call('setup', [hash, baseURL]);
+  ///
+  /// `viewOptions` est passé tel quel en 3e argument de `createView`
+  /// (`null` = aucun, comportement par défaut du SDK). Seule `custom-theme`
+  /// le renseigne (`{'enableShadows': true}`), voir
+  /// `docs/features/custom-theme.md`.
+  Future<void> setup(String hash, {String? baseURL, Map<String, Object>? viewOptions}) =>
+      _call('setup', [hash, baseURL, viewOptions]);
 
   /// Recentre la caméra sur la vue globale du site.
   Future<void> goToGlobal() => _run('window.MapBridge.goToGlobal()');
@@ -629,6 +635,48 @@ class VisioOneController {
   Future<void> addSpanishLocale(String requestId, Map<String, String> resources) =>
       _call('addSpanishLocale', [requestId, resources]);
 
+  /// Thème de scène 3D par défaut du SDK (`view.setTheme`), et réglages
+  /// d'accent par défaut de la démo `custom-theme` (bleu Visioglobe / blanc).
+  static const String kDefaultTheme = 'day';
+  static const String kDefaultAccentColor = '#0094F0';
+  static const String kDefaultTextAccentColor = '#FFFFFF';
+
+  /// Ids des thèmes de scène 3D enregistrés (`view.themes`), ou `null` tant
+  /// que [getThemes] n'a pas répondu. Mis à jour ici, dans
+  /// [_handleRawMessage], à chaque message `themesLoaded`.
+  final ValueNotifier<List<String>?> themes = ValueNotifier<List<String>?>(null);
+
+  /// Thème appliqué par la démo `custom-theme` — suivi côté app : le SDK
+  /// 1.0.9 n'a pas de getter du thème courant. Porté ici (comme les couleurs
+  /// ci-dessous) pour survivre à la fermeture du bottom sheet.
+  final ValueNotifier<String> currentTheme = ValueNotifier<String>(kDefaultTheme);
+
+  /// `view.accentColor` appliqué par la démo `custom-theme`.
+  final ValueNotifier<String> accentColor = ValueNotifier<String>(kDefaultAccentColor);
+
+  /// `view.textAccentColor` appliqué par la démo `custom-theme`.
+  final ValueNotifier<String> textAccentColor = ValueNotifier<String>(kDefaultTextAccentColor);
+
+  /// Demande la liste des thèmes enregistrés (`view.themes`). Réponse en
+  /// message `themesLoaded` (`{requestId, themes}`), aussi reflétée dans
+  /// [themes]. Voir `docs/features/custom-theme.md`.
+  Future<void> getThemes(String requestId) => _call('getThemes', [requestId]);
+
+  /// `view.setTheme(name)` — [name] doit venir de [themes] (le SDK lève
+  /// sinon). Réponse en message `themeApplied` (`{success, theme, message?}`).
+  Future<void> setTheme(String name) {
+    currentTheme.value = name;
+    return _call('setTheme', [name]);
+  }
+
+  /// `view.accentColor = accent; view.textAccentColor = textAccent` (hex,
+  /// rgba ou hsl). Réponse en message `accentColorsApplied`.
+  Future<void> setAccentColors({required String accent, required String textAccent}) {
+    accentColor.value = accent;
+    textAccentColor.value = textAccent;
+    return _call('setAccentColors', [accent, textAccent]);
+  }
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -650,6 +698,10 @@ class VisioOneController {
     if (parsed == null) {
       debugPrint('VisioOneController: message JS illisible: ${message.message}');
       return;
+    }
+    if (parsed.type == 'themesLoaded') {
+      final list = parsed.data is Map ? (parsed.data as Map)['themes'] : null;
+      if (list is List) themes.value = list.whereType<String>().toList();
     }
     if (parsed.type == 'htmlBadgeTapped') {
       final count = parsed.data is Map ? (parsed.data as Map)['count'] : null;
@@ -677,6 +729,10 @@ class VisioOneController {
     htmlBadgeTapCount.dispose();
     currentLocale.dispose();
     spanishLocaleTranslations.dispose();
+    themes.dispose();
+    currentTheme.dispose();
+    accentColor.dispose();
+    textAccentColor.dispose();
     _messages.close();
   }
 }

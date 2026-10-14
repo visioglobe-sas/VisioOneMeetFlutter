@@ -12,6 +12,7 @@ import 'compute_navigation_overlay.dart';
 import 'custom_data_overlay.dart';
 import 'custom_navigation_trace_overlay.dart';
 import 'custom_text_label_overlay.dart';
+import 'custom_theme_overlay.dart';
 import 'dynamic_poi_crud_overlay.dart';
 import 'explore_mode_overlay.dart';
 import 'floor_selector_overlay.dart';
@@ -58,7 +59,8 @@ enum Feature {
   accessibleMode('accessible-mode'),
   iconMarker('3d-icon-marker'),
   customTextLabel('custom-text-label'),
-  htmlOverlayMarker('html-overlay-marker');
+  htmlOverlayMarker('html-overlay-marker'),
+  customTheme('custom-theme');
 
   const Feature(this.slug);
 
@@ -90,6 +92,7 @@ enum Feature {
     Feature.iconMarker => l10n.iconMarkerTitle,
     Feature.customTextLabel => l10n.customTextLabelTitle,
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerTitle,
+    Feature.customTheme => l10n.customThemeTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -118,6 +121,7 @@ enum Feature {
     Feature.iconMarker => l10n.iconMarkerDescription,
     Feature.customTextLabel => l10n.customTextLabelDescription,
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerDescription,
+    Feature.customTheme => l10n.customThemeDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -145,6 +149,7 @@ enum Feature {
     Feature.iconMarker => IconMarkerOverlay(controller: controller),
     Feature.customTextLabel => CustomTextLabelOverlay(controller: controller),
     Feature.htmlOverlayMarker => HtmlOverlayMarkerOverlay(controller: controller),
+    Feature.customTheme => CustomThemeOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -203,7 +208,8 @@ enum Feature {
   /// `textLabelPlaced`/`textLabelUpdated`/`textLabelRemoved`, voir
   /// [CustomTextLabelOverlay]. `html-overlay-marker` n'en a pas besoin non
   /// plus : le compteur de taps (`htmlBadgeTapped`) est tenu par
-  /// `VisioOneController.htmlBadgeTapCount`.
+  /// `VisioOneController.htmlBadgeTapCount`. `custom-theme` non plus :
+  /// `themesLoaded` est reflété dans `VisioOneController.themes`.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -232,6 +238,7 @@ enum Feature {
       case Feature.iconMarker:
       case Feature.customTextLabel:
       case Feature.htmlOverlayMarker:
+      case Feature.customTheme:
         break;
     }
   }
