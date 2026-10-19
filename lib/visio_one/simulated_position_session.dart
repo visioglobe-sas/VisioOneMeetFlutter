@@ -64,8 +64,8 @@ class SimulatedPositionSession {
   /// le choix de l'utilisateur aux réouvertures suivantes du bottom sheet.
   bool get hasRadius => _radiusMeters != null;
 
-  /// Style graphique (couleur hex + opacité) du point de position trackée et
-  /// de son cercle de précision, choisi par la démo `accuracy-circle-style`
+  /// Style graphique (couleur hex + opacité) du cercle de précision de la
+  /// position trackée (pas de la flèche centrale), choisi par la démo `accuracy-circle-style`
   /// (`null` = jamais choisi : les autres features gardent le style par
   /// défaut du SDK, aucun appel n'est fait). Porté ici, comme
   /// [isCameraLocked], pour survivre à la fermeture/réouverture du bottom
