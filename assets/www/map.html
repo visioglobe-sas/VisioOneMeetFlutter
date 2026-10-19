@@ -558,8 +558,8 @@
           view.lockCameraPositionOnTracking = !!locked;
         },
 
-        // `accuracy-circle-style` : couleur/opacité du point de position
-        // trackée ET de son cercle de précision. Le SDK ne fait que stocker
+        // `accuracy-circle-style` : couleur/opacité du cercle de précision de la
+        // position trackée (pas de la flèche centrale). Le SDK ne fait que stocker
         // ces options (appliquées au prochain injectTrackedPosition) et les
         // remet à ses valeurs par défaut (#0094f0, 0.3) dès que
         // `allowTracking` repasse à false — le natif les réapplique donc à

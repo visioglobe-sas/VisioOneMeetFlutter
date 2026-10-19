@@ -67,7 +67,7 @@
   "customThemeDescription": "Changez l'ambiance lumineuse 3D et recolorez les boutons du SDK en direct",
   "customThemeHint": "Touchez un lieu : le bouton « Y aller » de sa fiche utilise les couleurs d'accent.",
   "accuracyCircleStyleTitle": "Style du cercle de précision",
-  "accuracyCircleStyleDescription": "Recolorer le point de position et son cercle de précision, en direct",
+  "accuracyCircleStyleDescription": "Recolorer le cercle de précision de la position, en direct",
   "accuracyCircleStyleColorLabel": "Couleur",
   "accuracyCircleStyleOpacityLabel": "Opacité",
   "accuracyCircleStyleColorDefault": "Par défaut",

@@ -2,7 +2,7 @@
 
 ## Description
 
-Recolors the tracked-position marker (the "blue dot") **and** its precision circle at runtime, via `view.updatePositionTrackerGraphicOptions({ color, opacity })`. The circle's size is driven separately, by `precisionCircleRadius` (meters) on each `view.injectTrackedPosition(...)` call.
+Recolors the precision circle around the tracked position at runtime, via `view.updatePositionTrackerGraphicOptions({ color, opacity })`. The circle's size is driven separately, by `precisionCircleRadius` (meters) on each `view.injectTrackedPosition(...)` call.
 
 Like `camera-lock-on-position` and `geofencing`, this feature builds on `simulated-position`: a tracked position animated back and forth between two POIs (here `B4-UL00-ID0009` and `B4-UL00-ID0010` on the shared demo map), re-injected every ~150 ms. On top of it, the demo offers four color presets (SDK default `#0094f0`, red `#e53935`, green `#43a047`, purple `#8e24aa`), an opacity slider (0.1 to 1.0, default 0.3) and the precision radius slider (default 6 m).
 
@@ -50,7 +50,7 @@ _tick(); // -> injectTrackedPosition(...)
 
 ## Things to know
 
-- **One style for both shapes.** `color` and `opacity` apply to the dot *and* the precision circle together; there is no separate style for each.
+- **Only the precision circle is recolored, not the arrow in its center.** In SDK 1.1.0, `color`/`opacity` feed only the circle drawn with `precisionCircleRadius`; the tracked-position arrow at its center is a separate image that always keeps its default look. With no (or a `0`) radius there is nothing visible to recolor, despite the SDK typings describing the options as applying to "the dot and its precision circle".
 - **The options are stored, not applied immediately.** `updatePositionTrackerGraphicOptions` only records the new values; they become visible at the **next** `injectTrackedPosition` call. With a live position feed (here every ~150 ms) it looks instant; with a slow or stopped feed, nothing changes on screen until the next position arrives. Calling it while tracking is off is fine — the values are used at the next injection.
 - **The SDK resets the style whenever tracking stops.** Setting `view.allowTracking = false` (the only way to remove the dot/circle from the map) restores the SDK defaults (`#0094f0`, opacity `0.3`). Re-apply your style after every restart, before or together with the first `injectTrackedPosition`. Setting `allowTracking = true` again while it is already `true` does not reset anything.
 - **No getter.** The SDK exposes no way to read the current graphic options back; keep the selected color/opacity in your own app state.
