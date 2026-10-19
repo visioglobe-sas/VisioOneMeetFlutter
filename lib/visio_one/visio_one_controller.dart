@@ -647,7 +647,7 @@ class VisioOneController {
   final ValueNotifier<List<String>?> themes = ValueNotifier<List<String>?>(null);
 
   /// Thème appliqué par la démo `custom-theme` — suivi côté app : le SDK
-  /// 1.0.9 n'a pas de getter du thème courant. Porté ici (comme les couleurs
+  /// (1.1.0 inclus) n'a pas de getter du thème courant. Porté ici (comme les couleurs
   /// ci-dessous) pour survivre à la fermeture du bottom sheet.
   final ValueNotifier<String> currentTheme = ValueNotifier<String>(kDefaultTheme);
 
