@@ -27,9 +27,25 @@ const double _maxRadiusMeters = 20;
 /// session et refléter son état courant (`ValueListenableBuilder` sur
 /// `session.isRunning`).
 class SimulatedPositionOverlay extends StatefulWidget {
-  const SimulatedPositionOverlay({super.key, required this.controller});
+  const SimulatedPositionOverlay({
+    super.key,
+    required this.controller,
+    this.initialOriginId,
+    this.initialDestinationId,
+    this.initialRadiusMeters,
+  });
 
   final VisioOneController controller;
+
+  /// Préremplissage optionnel des champs Origin/Destination (ex. deux POI
+  /// connus pour bien démarrer sur la carte de démo partagée).
+  final String? initialOriginId;
+  final String? initialDestinationId;
+
+  /// Rayon par défaut imposé à la session si aucun rayon n'y a encore été
+  /// fixé (voir [SimulatedPositionSession.hasRadius]) ; `null` = celui de la
+  /// session ([SimulatedPositionSession.kDefaultRadiusMeters]).
+  final double? initialRadiusMeters;
 
   @override
   State<SimulatedPositionOverlay> createState() => _SimulatedPositionOverlayState();
@@ -58,7 +74,13 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
     // Reflète le rayon courant de la session (utile si le panneau est
     // rouvert pendant qu'une simulation tourne déjà), pas un rayon par
     // défaut recalculé à chaque ouverture.
+    final initialRadius = widget.initialRadiusMeters;
+    if (initialRadius != null && !_session.hasRadius) {
+      _session.radiusMeters = initialRadius;
+    }
     _radiusMeters = _session.radiusMeters;
+    _originController.text = widget.initialOriginId ?? '';
+    _destinationController.text = widget.initialDestinationId ?? '';
     _subscription = widget.controller.messages.listen(_onMessage);
   }
 

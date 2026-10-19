@@ -51,7 +51,40 @@ class SimulatedPositionSession {
   /// que la simulation tourne : pris en compte au prochain tick (voir
   /// [_tick]), pas besoin de relancer. Lu par l'overlay pour préremplir son
   /// slider si le panneau est rouvert pendant que la session tourne déjà.
-  double radiusMeters = 5;
+  double get radiusMeters => _radiusMeters ?? kDefaultRadiusMeters;
+  set radiusMeters(double value) => _radiusMeters = value;
+  double? _radiusMeters;
+
+  /// Rayon utilisé tant qu'aucun overlay n'en a fixé un (voir [radiusMeters]).
+  static const double kDefaultRadiusMeters = 5;
+
+  /// `true` si un rayon a déjà été fixé explicitement sur cette session —
+  /// permet à un overlay d'imposer son propre rayon par défaut à la première
+  /// ouverture seulement (ex. 6 m pour `accuracy-circle-style`), sans écraser
+  /// le choix de l'utilisateur aux réouvertures suivantes du bottom sheet.
+  bool get hasRadius => _radiusMeters != null;
+
+  /// Style graphique (couleur hex + opacité) du point de position trackée et
+  /// de son cercle de précision, choisi par la démo `accuracy-circle-style`
+  /// (`null` = jamais choisi : les autres features gardent le style par
+  /// défaut du SDK, aucun appel n'est fait). Porté ici, comme
+  /// [isCameraLocked], pour survivre à la fermeture/réouverture du bottom
+  /// sheet — et parce que le SDK n'expose aucun getter pour le relire.
+  String? get trackerColor => _trackerColor;
+  double? get trackerOpacity => _trackerOpacity;
+  String? _trackerColor;
+  double? _trackerOpacity;
+
+  /// Mémorise le style et l'envoie immédiatement au SDK
+  /// (`view.updatePositionTrackerGraphicOptions`). Sans danger hors tracking
+  /// : le SDK ne fait que stocker ces options, appliquées au prochain
+  /// `injectTrackedPosition` (donc au prochain tick, ~150 ms, si la
+  /// simulation tourne). Voir `docs/features/accuracy-circle-style.md`.
+  void setTrackerGraphicOptions({required String color, required double opacity}) {
+    _trackerColor = color;
+    _trackerOpacity = opacity;
+    _controller.updatePositionTrackerGraphicOptions(color: color, opacity: opacity);
+  }
 
   /// `true` tant que le va-et-vient tourne. Exposé en [ValueNotifier] pour
   /// que l'overlay affiche le bon état (Start/Stop) même s'il est recréé
@@ -117,6 +150,14 @@ class SimulatedPositionSession {
     // délibéré à chaque fois, pas un état qui traîne d'une simulation
     // précédente.
     _setCameraLocked(false);
+    // Le SDK remet couleur/opacité à ses valeurs par défaut à chaque
+    // `allowTracking = false` (voir [stop]) : on réapplique le style choisi
+    // avant le premier `injectTrackedPosition` de cette simulation.
+    final color = _trackerColor;
+    final opacity = _trackerOpacity;
+    if (color != null && opacity != null) {
+      _controller.updatePositionTrackerGraphicOptions(color: color, opacity: opacity);
+    }
     _tick();
     _timer = Timer.periodic(_tickInterval, (_) => _tick());
   }

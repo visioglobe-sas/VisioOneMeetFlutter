@@ -78,6 +78,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Custom text label](docs/features/custom-text-label.md)** — places your own text on the map next to a POI and restyles it live (color, size, rotation).
 - **[HTML overlay marker](docs/features/html-overlay-marker.md)** — pins a tappable HTML badge on the map, drawn above the 3D scene, whose taps reach the Dart side.
 - **[Custom theme](docs/features/custom-theme.md)** — switches the 3D scene's lighting theme (`view.setTheme`) and recolors the SDK's own UI buttons (`accentColor` / `textAccentColor`) live.
+- **[Accuracy circle style](docs/features/accuracy-circle-style.md)** — recolors the tracked position's dot and precision circle (`view.updatePositionTrackerGraphicOptions`) live, on top of "Simulated position".
 
 ## How it works
 

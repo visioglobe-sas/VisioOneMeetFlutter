@@ -65,5 +65,13 @@
   "htmlOverlayMarkerDescription": "Pin a tappable HTML badge on the map that's never hidden by 3D",
   "customThemeTitle": "Custom theme",
   "customThemeDescription": "Switch the 3D lighting theme and recolor the SDK's buttons live",
-  "customThemeHint": "Tap a place: its card's Go button uses the accent colors."
+  "customThemeHint": "Tap a place: its card's Go button uses the accent colors.",
+  "accuracyCircleStyleTitle": "Accuracy circle style",
+  "accuracyCircleStyleDescription": "Recolor the tracked position's dot and precision circle, live",
+  "accuracyCircleStyleColorLabel": "Color",
+  "accuracyCircleStyleOpacityLabel": "Opacity",
+  "accuracyCircleStyleColorDefault": "Default",
+  "accuracyCircleStyleColorRed": "Red",
+  "accuracyCircleStyleColorGreen": "Green",
+  "accuracyCircleStyleColorPurple": "Purple"
 }

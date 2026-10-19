@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 import 'accessible_mode_overlay.dart';
+import 'accuracy_circle_style_overlay.dart';
 import 'add_locale_overlay.dart';
 import 'camera_lock_on_position_overlay.dart';
 import 'category_highlight_overlay.dart';
@@ -60,7 +61,8 @@ enum Feature {
   iconMarker('3d-icon-marker'),
   customTextLabel('custom-text-label'),
   htmlOverlayMarker('html-overlay-marker'),
-  customTheme('custom-theme');
+  customTheme('custom-theme'),
+  accuracyCircleStyle('accuracy-circle-style');
 
   const Feature(this.slug);
 
@@ -93,6 +95,7 @@ enum Feature {
     Feature.customTextLabel => l10n.customTextLabelTitle,
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerTitle,
     Feature.customTheme => l10n.customThemeTitle,
+    Feature.accuracyCircleStyle => l10n.accuracyCircleStyleTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -122,6 +125,7 @@ enum Feature {
     Feature.customTextLabel => l10n.customTextLabelDescription,
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerDescription,
     Feature.customTheme => l10n.customThemeDescription,
+    Feature.accuracyCircleStyle => l10n.accuracyCircleStyleDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -150,6 +154,7 @@ enum Feature {
     Feature.customTextLabel => CustomTextLabelOverlay(controller: controller),
     Feature.htmlOverlayMarker => HtmlOverlayMarkerOverlay(controller: controller),
     Feature.customTheme => CustomThemeOverlay(controller: controller),
+    Feature.accuracyCircleStyle => AccuracyCircleStyleOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -210,6 +215,8 @@ enum Feature {
   /// plus : le compteur de taps (`htmlBadgeTapped`) est tenu par
   /// `VisioOneController.htmlBadgeTapCount`. `custom-theme` non plus :
   /// `themesLoaded` est reflété dans `VisioOneController.themes`.
+  /// `accuracy-circle-style` non plus : il réutilise [SimulatedPositionOverlay]
+  /// (résolution `poiPositionResolved`) et n'émet que des commandes.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -239,6 +246,7 @@ enum Feature {
       case Feature.customTextLabel:
       case Feature.htmlOverlayMarker:
       case Feature.customTheme:
+      case Feature.accuracyCircleStyle:
         break;
     }
   }
