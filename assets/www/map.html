@@ -558,6 +558,22 @@
           view.lockCameraPositionOnTracking = !!locked;
         },
 
+        // `accuracy-circle-style` : couleur/opacité du cercle de précision de la
+        // position trackée (pas de la flèche centrale). Le SDK ne fait que stocker
+        // ces options (appliquées au prochain injectTrackedPosition) et les
+        // remet à ses valeurs par défaut (#0094f0, 0.3) dès que
+        // `allowTracking` repasse à false — le natif les réapplique donc à
+        // chaque Start. Couleur invalide ou opacité non numérique => throw
+        // côté SDK, d'où le try/catch. Voir docs/features/accuracy-circle-style.md.
+        updatePositionTrackerGraphicOptions: function (color, opacity) {
+          if (!view) return;
+          try {
+            view.updatePositionTrackerGraphicOptions({ color: color, opacity: opacity });
+          } catch (error) {
+            console.error('[MapBridge] updatePositionTrackerGraphicOptions a échoué :', error);
+          }
+        },
+
         // Enchaîne les deux appels SDK de cette démo : `venue.refreshCustomData()`
         // ((re)charge le cache de CustomData métier depuis le serveur — vide tant
         // qu'il n'a jamais été appelé) puis, une fois résolu ou rejeté,

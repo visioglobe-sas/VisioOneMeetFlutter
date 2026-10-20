@@ -73,6 +73,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
 | `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
 | `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`). |
+| `updatePositionTrackerGraphicOptions(color, opacity)` | `String`, `double` | Couleur/opacité du cercle de précision de la position trackée (pas de la flèche centrale) (`view.updatePositionTrackerGraphicOptions`), appliquées au prochain `injectTrackedPosition`. |
 | `getThemes(requestId)` | `String` | Demande `view.themes` ; répond via `themesLoaded` (`{requestId, themes}`). |
 | `setTheme(name)` | `String` | `view.setTheme(name)` ; répond via `themeApplied` (`{success, theme, message?}`). |
 | `setAccentColors(accentColor, textAccentColor)` | `String`, `String` | `view.accentColor` / `view.textAccentColor` ; répond via `accentColorsApplied` (`{success, message?}`). |

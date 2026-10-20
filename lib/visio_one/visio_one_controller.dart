@@ -308,6 +308,18 @@ class VisioOneController {
   Future<void> setCameraLockOnPosition(bool locked) =>
       _call('setCameraLockOnPosition', [locked]);
 
+  /// Change la couleur/opacité du cercle de précision de la position trackée
+  /// (pas de la flèche centrale) (`view.updatePositionTrackerGraphicOptions`). Le SDK ne fait
+  /// que mémoriser ces options : elles s'appliquent au prochain
+  /// [injectTrackedPosition], et sont remises aux valeurs par défaut du SDK
+  /// (`#0094f0`, 0.3) à chaque `allowTracking = false` ([stopTrackedPosition])
+  /// — d'où leur réapplication par `SimulatedPositionSession.start`. Voir
+  /// `docs/features/accuracy-circle-style.md`.
+  Future<void> updatePositionTrackerGraphicOptions({
+    required String color,
+    required double opacity,
+  }) => _call('updatePositionTrackerGraphicOptions', [color, opacity]);
+
   /// Rend (ou non) les surfaces d'un POI interactives : quand `interactive`
   /// vaut `true`, le SDK gère lui-même le survol/tap sur la surface rendue
   /// (couleur au repos, de survol, de sélection) sans qu'aucun listener ne
