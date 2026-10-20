@@ -24,7 +24,7 @@ resolvePoiPosition: function (requestId, poiId) {
 
 injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
   if (!view) return;
-  view.allowTracking = true;
+  if (!view.allowTracking) view.allowTracking = true;
   view.injectTrackedPosition({
     position: { latitude: latitude, longitude: longitude },
     precisionCircleRadius: precisionCircleRadius,
@@ -55,7 +55,7 @@ Future<void> stopTrackedPosition() => _run('window.MapBridge.stopTrackedPosition
 
 ## Things to know
 
-- **`injectTrackedPosition` requires `view.allowTracking = true` beforehand**, or the SDK throws an exception (see the SDK's `View.ts`, comment on `allowTracking`: "Setting it to true is mandatory for the features to work"). This bridge sets it to `true` on every call rather than exposing a separate toggle, since the flag has no other use here.
+- **`injectTrackedPosition` requires `view.allowTracking = true` beforehand**, or the SDK throws an exception (see the SDK's `View.ts`, comment on `allowTracking`: "Setting it to true is mandatory for the features to work"). This bridge sets it inside `injectTrackedPosition` rather than exposing a separate toggle, since the flag has no other use here. It only sets it when the flag is still `false`: every `allowTracking = true` assignment also forces `lockCameraPositionOnTracking = true` (the camera follows the position again). Setting it on every update would undo any user pan or unlock every ~150 ms. See `camera-lock-on-position`.
 - **There's no dedicated SDK method to clear the simulated marker/circle.** Setting `allowTracking = false` is what removes them from the map — there's no `clearTrackedPosition`/`removeTrackedPosition` method. That's why `stopTrackedPosition()` only flips that flag.
 - **A POI doesn't expose latitude/longitude directly.** `POI` (see `POI.d.ts` in the `@visioglobe/visioone` package) only carries `markers`, `labels`, `images`, `surfaces` — the WGS84 position comes from whichever of `markers[0].position`, `labels[0].position`, or `images[0].position` exists first (all three are a `Position`, `{latitude, longitude, altitude?}`, the exact shape `injectTrackedPosition` expects). If none exist (a purely surface-based POI with no marker/label/image) or the ID doesn't resolve, `resolvePoiPosition` responds with `position: null`.
 - **`lockCameraPositionOnTracking` (see `camera-lock-on-position`) only has an effect once `allowTracking` is `true`** — unlike `injectTrackedPosition`, which throws if called too early, that one is a silent no-op if tracking isn't enabled yet.

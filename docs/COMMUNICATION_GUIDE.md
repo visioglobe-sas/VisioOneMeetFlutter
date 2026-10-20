@@ -72,7 +72,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `resolvePoiPosition(requestId, poiId)` | `String`, `String` | Demande la position WGS84 d'un POI ; répond en asynchrone via `poiPositionResolved` (voir ci-dessous). |
 | `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
 | `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
-| `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`). |
+| `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`) ; la nouvelle valeur revient via `cameraLockChanged`. |
 | `updatePositionTrackerGraphicOptions(color, opacity)` | `String`, `double` | Couleur/opacité du cercle de précision de la position trackée (pas de la flèche centrale) (`view.updatePositionTrackerGraphicOptions`), appliquées au prochain `injectTrackedPosition`. |
 | `getThemes(requestId)` | `String` | Demande `view.themes` ; répond via `themesLoaded` (`{requestId, themes}`). |
 | `setTheme(name)` | `String` | `view.setTheme(name)` ; répond via `themeApplied` (`{success, theme, message?}`). |
@@ -94,6 +94,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `themesLoaded` | `{requestId, themes}` | Réponse à `getThemes()` (`view.themes`, vide si la carte n'est pas prête). |
 | `themeApplied` | `{success, theme, message?}` | Réponse à `setTheme()` ; `success: false` + message du SDK pour un id non enregistré. |
 | `accentColorsApplied` | `{success, message?}` | Réponse à `setAccentColors()` ; `success: false` + message du SDK pour une couleur invalide. |
+| `cameraLockChanged` | `{locked}` | Valeur courante de `view.lockCameraPositionOnTracking`, relue à chaque event `view` `trackingon`/`trackingoff`/`trackingchanged` (Start, Stop, interrupteur, pan de la carte). |
 
 Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
 

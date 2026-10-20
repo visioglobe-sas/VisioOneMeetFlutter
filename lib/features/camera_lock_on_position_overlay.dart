@@ -50,9 +50,12 @@ class CameraLockOnPositionOverlay extends StatelessWidget {
                   // SDK lui-même n'a aucun effet visible tant que
                   // `view.allowTracking` est à `false` (voir
                   // `view.lockCameraPositionOnTracking`, commentaire de
-                  // View.ts). Repasse aussi à `false` automatiquement dès
-                  // que la simulation s'arrête (Stop, "POI not found", ou
-                  // sortie de l'écran) — voir `SimulatedPositionSession.stop`.
+                  // View.ts). La valeur affichée est un miroir de l'état
+                  // SDK (events `trackingon`/`trackingoff`/`trackingchanged`,
+                  // voir `SimulatedPositionSession.isCameraLocked`) : ON dès
+                  // Start (le SDK verrouille de lui-même), OFF après un pan
+                  // de la carte ou un Stop. `onChanged` ne fait qu'envoyer
+                  // la nouvelle valeur au SDK, l'interrupteur suit l'event.
                   title: const Text('Camera lock'),
                   subtitle: const Text('Recenter camera on tracked position'),
                   value: isLocked,

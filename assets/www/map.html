@@ -153,6 +153,22 @@
         v.addEventListener('exploremodechanged', function (event) {
           sendToNative('exploreModeChanged', { currentExploreMode: event.currentExploreMode });
         });
+
+        // `camera-lock-on-position` : le SDK modifie lui-même
+        // `lockCameraPositionOnTracking` — `allowTracking = true` le force à
+        // `true` (event `trackingon`), `allowTracking = false` à `false`
+        // (`trackingoff`), et un pan/une manipulation de la carte pendant le
+        // tracking le repasse à `false` (`trackingchanged`, émis aussi par le
+        // setter). Aucun de ces events ne porte la valeur : on relit la
+        // propriété et on la relaie au natif, qui en fait la seule source de
+        // vérité de l'interrupteur (pas d'état parallèle côté app). Voir
+        // docs/features/camera-lock-on-position.md.
+        function forwardCameraLock() {
+          sendToNative('cameraLockChanged', { locked: !!v.lockCameraPositionOnTracking });
+        }
+        v.addEventListener('trackingon', forwardCameraLock);
+        v.addEventListener('trackingoff', forwardCameraLock);
+        v.addEventListener('trackingchanged', forwardCameraLock);
       }
 
       // ---------------------------------------------------------------
@@ -524,12 +540,16 @@
         // Injecte/actualise une position simulée trackée + son cercle de
         // précision (mètres). `view.allowTracking` doit être à `true` avant
         // le premier appel à `injectTrackedPosition`, sans quoi le SDK lève
-        // une exception (voir View.ts) : on l'active systématiquement ici
-        // plutôt que d'exposer une commande séparée, ce booléen n'ayant pas
-        // d'autre usage dans cette démo.
+        // une exception (voir View.ts) : on l'active ici plutôt que
+        // d'exposer une commande séparée, ce booléen n'ayant pas d'autre
+        // usage dans cette démo — mais UNIQUEMENT à la transition
+        // false -> true : chaque `allowTracking = true` force aussi
+        // `lockCameraPositionOnTracking = true` côté SDK, le réaffecter à
+        // chaque tick (~150 ms) reverrouillerait la caméra en permanence
+        // (interrupteur "Camera lock" ou pan de la carte annulés aussitôt).
         injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
           if (!view) return;
-          view.allowTracking = true;
+          if (!view.allowTracking) view.allowTracking = true;
           view.injectTrackedPosition({
             position: { latitude: latitude, longitude: longitude },
             precisionCircleRadius: precisionCircleRadius,
@@ -549,7 +569,9 @@
         // commentaire de View.ts côté SDK, ce booléen "won't have any effect
         // if flag 'allowTracking' isn't set to true" : contrairement à
         // `injectTrackedPosition`, aucune exception n'est levée si on
-        // l'active avant — pas besoin de garde ici. Ne gère pas
+        // l'active avant — pas besoin de garde ici. L'interrupteur natif ne
+        // change pas sa valeur lui-même : il suit l'event `trackingchanged`
+        // que ce setter déclenche (voir forwardViewEvents). Ne gère pas
         // `lockCameraOrientationOnTracking` (verrouillage de l'orientation,
         // nécessite les données du capteur d'orientation de l'appareil) :
         // hors scope, voir docs/features/camera-lock-on-position.md.

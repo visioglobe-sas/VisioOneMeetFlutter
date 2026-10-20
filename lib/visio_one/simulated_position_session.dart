@@ -97,9 +97,12 @@ class SimulatedPositionSession {
   /// Portée ici plutôt que par l'overlay de cette feature, pour la même
   /// raison que [isRunning] : elle doit rester cohérente même si l'overlay
   /// est recréé (réouverture du bottom sheet) pendant que la session tourne.
-  /// Toujours remise à `false` par [start] et [stop] — voir
-  /// `docs/features/camera-lock-on-position.md`, "Points d'attention", pour
-  /// pourquoi ce verrou ne doit jamais survivre à un redémarrage/arrêt.
+  ///
+  /// Simple MIROIR de l'état SDK, jamais écrit par l'app elle-même : mis à
+  /// jour uniquement par [onCameraLockChanged], sur les events SDK
+  /// `trackingon` (Start : le SDK verrouille de lui-même), `trackingoff`
+  /// (Stop : déverrouillé) et `trackingchanged` (interrupteur, ou pan de la
+  /// carte qui déverrouille). Voir `docs/features/camera-lock-on-position.md`.
   final ValueNotifier<bool> isCameraLocked = ValueNotifier<bool>(false);
 
   /// Id du POI zone actuellement surveillé par la démo `geofencing` (ou
@@ -146,10 +149,6 @@ class SimulatedPositionSession {
     _t = 0;
     _direction = 1;
     isRunning.value = true;
-    // Chaque (re)démarrage repart verrouillage désactivé : un opt-in
-    // délibéré à chaque fois, pas un état qui traîne d'une simulation
-    // précédente.
-    _setCameraLocked(false);
     // Le SDK remet couleur/opacité à ses valeurs par défaut à chaque
     // `allowTracking = false` (voir [stop]) : on réapplique le style choisi
     // avant le premier `injectTrackedPosition` de cette simulation.
@@ -165,14 +164,22 @@ class SimulatedPositionSession {
   /// Verrouille/déverrouille la caméra sur la position trackée courante.
   /// N'a d'effet visible côté SDK que si la simulation tourne déjà
   /// (`view.allowTracking = true`, activé par [start]) — voir
-  /// `docs/features/camera-lock-on-position.md`.
-  void setCameraLocked(bool locked) => _setCameraLocked(locked);
+  /// `docs/features/camera-lock-on-position.md`. Ne touche pas
+  /// [isCameraLocked] : c'est l'event SDK `trackingchanged` en retour (via
+  /// [onCameraLockChanged]) qui le met à jour.
+  void setCameraLocked(bool locked) => _controller.setCameraLockOnPosition(locked);
 
-  void _setCameraLocked(bool locked) {
-    if (isCameraLocked.value == locked) return;
+  /// Appelé par `VisioOneController` à chaque message `cameraLockChanged`
+  /// (relais des events SDK `trackingon`/`trackingoff`/`trackingchanged`,
+  /// voir `assets/www/map.html`).
+  /// Ignoré après [dispose] (un dernier event peut encore arriver de la
+  /// WebView pendant la destruction de l'écran).
+  void onCameraLockChanged(bool locked) {
+    if (_disposed) return;
     isCameraLocked.value = locked;
-    _controller.setCameraLockOnPosition(locked);
   }
+
+  bool _disposed = false;
 
   void _tick() {
     final origin = _origin;
@@ -213,10 +220,8 @@ class SimulatedPositionSession {
   /// (`allowTracking = false`, voir `VisioOneController.stopTrackedPosition`
   /// — pas de méthode dédiée côté SDK pour les effacer autrement).
   ///
-  /// Déverrouille aussi systématiquement la caméra (`isCameraLocked`) : un
-  /// Stop explicite doit laisser la prochaine simulation repartir
-  /// déverrouillée (voir aussi [start], qui fait la même remise à zéro à
-  /// chaque (re)démarrage).
+  /// `isCameraLocked` repasse à `false` tout seul : `allowTracking = false`
+  /// déverrouille côté SDK et émet `trackingoff` (voir [onCameraLockChanged]).
   void stop() {
     final wasRunning = _timer != null;
     _timer?.cancel();
@@ -227,26 +232,24 @@ class SimulatedPositionSession {
       _controller.stopTrackedPosition();
     }
     isRunning.value = false;
-    _setCameraLocked(false);
     // Revert l'alerte visuelle de zone (si elle était active) mais garde la
     // zone elle-même configurée (`_zonePlaceId`/`_zonePositions`) : un
-    // redémarrage doit reprendre la surveillance sans ressaisir le POI zone
-    // — contrairement à `isCameraLocked`, ce n'est pas un opt-in à refaire
-    // à chaque (re)démarrage.
+    // redémarrage doit reprendre la surveillance sans ressaisir le POI zone.
     _updateZoneAlert(false);
   }
 
   /// À appeler depuis `VisioOneController.dispose()` — annule le `Timer` en
   /// cours plutôt que de le laisser tourner sur un contrôleur/WebView détruit.
-  /// Pas d'appel `stopTrackedPosition`/`setCameraLockOnPosition(false)` ici,
-  /// comme pour [stop] : la WebView est de toute façon en train d'être
-  /// détruite avec le reste de l'écran de feature. La sortie de l'écran
+  /// Pas d'appel `stopTrackedPosition` ici, contrairement à [stop] : la
+  /// WebView est de toute façon en train d'être détruite avec le reste de
+  /// l'écran de feature. La sortie de l'écran
   /// (Retour depuis `FeatureScreen`) reste couverte côté UX : chaque écran de
   /// feature recrée son propre `VisioOneController`/`SimulatedPositionSession`
   /// (voir `VisioOneMapShell`), donc `isCameraLocked` redémarre toujours à
   /// `false` à la prochaine ouverture, sans état qui traverserait deux
   /// visites de l'écran.
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
     isRunning.dispose();
     isCameraLocked.dispose();
