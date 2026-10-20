@@ -46,7 +46,7 @@ cp package/dist/visioone.umd.cjs assets/www/visioone.umd.cjs
 rm -rf package visioglobe-visioone-*.tgz
 ```
 
-The bundle currently vendored is `@visioglobe/visioone@1.1.0`. No Dart code changes are needed for a minor SDK bump — only if the bundle's public surface (`window.MapBridge` calls, `view` events, `loadVenue` options) changes, which would also require editing `assets/www/map.html`. For example, SDK 1.0.9 renamed the `loadVenue` option `hash` to `vg_maphash` (a `hash` key is silently ignored and the map fails to load).
+The bundle currently vendored is `@visioglobe/visioone@1.1.0`. No Dart code changes are needed for a minor SDK bump — only if the bundle's public surface (`window.MapBridge` calls, `view` events, `loadVenue` options) changes, which would also require editing `assets/www/map.html`. For example, SDK 1.0.6 renamed the `loadVenue` option `hash` to `vg_maphash` (a `hash` key is silently ignored and the map fails to load).
 
 ## Features
 
