@@ -22,7 +22,7 @@ updatePositionTrackerGraphicOptions: function (color, opacity) {
 // Existing simulated-position entry point, called on every tick:
 injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
   if (!view) return;
-  view.allowTracking = true;
+  if (!view.allowTracking) view.allowTracking = true;
   view.injectTrackedPosition({
     position: { latitude: latitude, longitude: longitude },
     precisionCircleRadius: precisionCircleRadius,

@@ -304,7 +304,9 @@ class VisioOneController {
   /// (`view.lockCameraPositionOnTracking`). Sans effet tant que
   /// `view.allowTracking` est encore à `false` (no-op documenté côté SDK, pas
   /// d'exception contrairement à [injectTrackedPosition]) — voir
-  /// `docs/features/camera-lock-on-position.md`.
+  /// `docs/features/camera-lock-on-position.md`. La nouvelle valeur revient
+  /// via le message `cameraLockChanged` (event SDK `trackingchanged`), qui
+  /// met à jour `simulatedPosition.isCameraLocked`.
   Future<void> setCameraLockOnPosition(bool locked) =>
       _call('setCameraLockOnPosition', [locked]);
 
@@ -714,6 +716,10 @@ class VisioOneController {
     if (parsed.type == 'themesLoaded') {
       final list = parsed.data is Map ? (parsed.data as Map)['themes'] : null;
       if (list is List) themes.value = list.whereType<String>().toList();
+    }
+    if (parsed.type == 'cameraLockChanged') {
+      final locked = parsed.data is Map ? (parsed.data as Map)['locked'] : null;
+      if (locked is bool) simulatedPosition.onCameraLockChanged(locked);
     }
     if (parsed.type == 'htmlBadgeTapped') {
       final count = parsed.data is Map ? (parsed.data as Map)['count'] : null;
