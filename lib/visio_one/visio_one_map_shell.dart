@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -132,6 +134,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
   }
 
   void _onMessage(VisioOneMessage message) {
+    if (const bool.fromEnvironment('HARNESS')) debugPrint('HARNESS ${DateTime.now().toIso8601String()} msg ${message.type} ${message.data}');
     switch (message.type) {
       case 'loading':
         // Émis au début de chaque `setup` JS, y compris un rechargement
@@ -141,6 +144,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         if (_state != _MapLoadState.loading) setState(() => _state = _MapLoadState.loading);
       case 'ready':
         setState(() => _state = _MapLoadState.ready);
+        _harnessOnReady(message);
       case 'error':
         final data = message.data;
         final text = data is Map ? data['message'] as String? : null;
@@ -155,6 +159,39 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         // pour `poiSelected`) — ce squelette partagé n'a pas à les connaître
         // individuellement.
         if (mounted) widget.onMessage?.call(context, message);
+    }
+  }
+
+  int _harnessReadyCount = 0;
+  Future<void> _harnessOnReady(VisioOneMessage message) async {
+    if (!const bool.fromEnvironment('HARNESS')) return;
+    final c = _controller!;
+    final n = _harnessReadyCount++;
+    debugPrint('HARNESS ready#$n');
+    await Future<void>.delayed(const Duration(seconds: 4));
+    var asked = false;
+    final sub = c.messages.listen((m) {
+      if (m.type == 'venueLayout') {
+        final d = m.data as Map;
+        debugPrint('HARNESS ready#$n layout current=${d['currentBuildingId']}/${d['currentFloorId']}');
+        if (asked) return;
+        asked = true;
+        debugPrint('HARNESS ready#$n goToFloor B1/B1-UL2');
+        c.goToFloor(buildingId: 'B1', floorId: 'B1-UL2');
+      }
+    });
+    await c.getVenueLayout();
+    await Future<void>.delayed(const Duration(seconds: 6));
+    await c.getVenueLayout();
+    await Future<void>.delayed(const Duration(seconds: 1));
+    await sub.cancel();
+    const switches = int.fromEnvironment('HSWITCH');
+    if (n < switches) {
+      final p = n.isEven ? 'orthographic' : 'perspective';
+      debugPrint('HARNESS ${DateTime.now().toIso8601String()} switch -> $p');
+      await (c as dynamic).setCameraProjection(p);
+    } else {
+      debugPrint('HARNESS done');
     }
   }
 
