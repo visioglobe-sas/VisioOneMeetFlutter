@@ -137,7 +137,6 @@
         });
 
         v.addEventListener('currentfloorchanged', function (event) {
-          console.log('[T] currentfloorchanged raw floor=' + (event.floor && event.floor.id) + ' keys=' + Object.keys(event || {}).join(','));
           sendToNative('floorChanged', {
             buildingId: event.floor && event.floor.building ? event.floor.building.id : null,
             floorId: event.floor ? event.floor.id : null,
@@ -216,7 +215,6 @@
         // accroché à la vue (listeners de `forwardViewEvents`, objets créés
         // par les démos) est perdu et réinstallé ci-dessous.
         setup: function (hash, baseURL, viewOptions) {
-          window.__t0 = performance.now(); console.log('[T] setup start');
           try {
             console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', viewOptions =', viewOptions, ', typeof VisioOne =', typeof VisioOne);
             lastSetup = { hash: hash, baseURL: baseURL, viewOptions: viewOptions };
@@ -238,24 +236,24 @@
             sendToNative('loading', { hash: hash });
 
             Promise.resolve()
-              .then(function () { if (oldView) return visioOne.destroyView(oldView); }).then(function () { console.log('[T] destroyView done +' + Math.round(performance.now() - window.__t0)); })
-              .then(function () { if (oldVenue) return visioOne.unloadVenue(oldVenue); }).then(function () { console.log('[T] unloadVenue done +' + Math.round(performance.now() - window.__t0)); })
+              .then(function () { if (oldView) return visioOne.destroyView(oldView); })
+              .then(function () { if (oldVenue) return visioOne.unloadVenue(oldVenue); })
               .then(function () {
-                console.log('[T] loadVenue start +' + Math.round(performance.now() - window.__t0)); console.log('[MapBridge] appel loadVenue...');
+                console.log('[MapBridge] appel loadVenue...');
                 return visioOne.loadVenue(
                   baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash },
                   container
                 );
               })
               .then(function (v) {
-                console.log('[T] loadVenue done +' + Math.round(performance.now() - window.__t0)); console.log('[MapBridge] loadVenue résolu, appel createView...');
+                console.log('[MapBridge] loadVenue résolu, appel createView...');
                 venue = v;
                 return viewOptions
                   ? visioOne.createView(container, venue, viewOptions)
                   : visioOne.createView(container, venue);
               })
               .then(function (createdView) {
-                view = createdView; console.log('[T] createView done +' + Math.round(performance.now() - window.__t0));
+                view = createdView;
                 console.log('[MapBridge] createView résolu, carte prête, cameraProjection =', view.cameraProjection);
                 forwardViewEvents(view);
                 // `view.cameraProjection` (lecture seule) : la projection avec

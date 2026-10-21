@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'features/feature.dart';
 import 'features/feature_menu_screen.dart';
-import 'features/feature_screen.dart';
 import 'l10n/app_localizations.dart';
 
 void main() {
@@ -14,12 +12,12 @@ class VisioOneMeetApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'VisioOne Meet',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const bool.fromEnvironment('HARNESS') ? FeatureScreen(feature: Feature.values.firstWhere((f) => f.slug == const String.fromEnvironment('HFEATURE'))) : const FeatureMenuScreen(),
+      home: FeatureMenuScreen(),
     );
   }
 }
