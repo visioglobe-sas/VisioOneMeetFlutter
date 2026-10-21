@@ -73,5 +73,10 @@
   "accuracyCircleStyleColorDefault": "Par défaut",
   "accuracyCircleStyleColorRed": "Rouge",
   "accuracyCircleStyleColorGreen": "Vert",
-  "accuracyCircleStyleColorPurple": "Violet"
+  "accuracyCircleStyleColorPurple": "Violet",
+  "cameraProjectionTitle": "Projection de la caméra",
+  "cameraProjectionDescription": "Basculer entre une vue 3D en perspective et une vue à plat orthographique",
+  "cameraProjectionHint": "Changer de projection recharge la carte (la projection ne se choisit qu'à la création de la vue).",
+  "cameraProjectionPerspectiveLabel": "Perspective",
+  "cameraProjectionOrthographicLabel": "Orthographique"
 }

@@ -7,6 +7,7 @@ import 'accessible_mode_overlay.dart';
 import 'accuracy_circle_style_overlay.dart';
 import 'add_locale_overlay.dart';
 import 'camera_lock_on_position_overlay.dart';
+import 'camera_projection_toggle_overlay.dart';
 import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
@@ -62,7 +63,8 @@ enum Feature {
   customTextLabel('custom-text-label'),
   htmlOverlayMarker('html-overlay-marker'),
   customTheme('custom-theme'),
-  accuracyCircleStyle('accuracy-circle-style');
+  accuracyCircleStyle('accuracy-circle-style'),
+  cameraProjectionToggle('camera-projection-toggle');
 
   const Feature(this.slug);
 
@@ -96,6 +98,7 @@ enum Feature {
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerTitle,
     Feature.customTheme => l10n.customThemeTitle,
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleTitle,
+    Feature.cameraProjectionToggle => l10n.cameraProjectionTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -126,6 +129,7 @@ enum Feature {
     Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerDescription,
     Feature.customTheme => l10n.customThemeDescription,
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleDescription,
+    Feature.cameraProjectionToggle => l10n.cameraProjectionDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -155,6 +159,7 @@ enum Feature {
     Feature.htmlOverlayMarker => HtmlOverlayMarkerOverlay(controller: controller),
     Feature.customTheme => CustomThemeOverlay(controller: controller),
     Feature.accuracyCircleStyle => AccuracyCircleStyleOverlay(controller: controller),
+    Feature.cameraProjectionToggle => CameraProjectionToggleOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -217,6 +222,8 @@ enum Feature {
   /// `themesLoaded` est reflété dans `VisioOneController.themes`.
   /// `accuracy-circle-style` non plus : il réutilise [SimulatedPositionOverlay]
   /// (résolution `poiPositionResolved`) et n'émet que des commandes.
+  /// `camera-projection-toggle` non plus : `view.cameraProjection` (message
+  /// `ready`) est reflété dans `VisioOneController.cameraProjection`.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -247,6 +254,7 @@ enum Feature {
       case Feature.htmlOverlayMarker:
       case Feature.customTheme:
       case Feature.accuracyCircleStyle:
+      case Feature.cameraProjectionToggle:
         break;
     }
   }

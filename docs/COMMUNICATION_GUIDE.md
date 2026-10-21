@@ -84,7 +84,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 |---|---|---|
 | `pageReady` | — | `map.html` a fini de charger (avant même `setup`) — utile en debug hors WebView. |
 | `loading` | `{hash}` | `setup()` vient de démarrer `loadVenue()`. |
-| `ready` | — | `createView()` a réussi : la carte est affichée. |
+| `ready` | `{ cameraProjection }` | `createView()` a réussi : la carte est affichée. `cameraProjection` = `view.cameraProjection` (`"perspective"` / `"orthographic"`, voir `docs/features/camera-projection-toggle.md`). |
 | `error` | `{message}` | `loadVenue()`/`createView()` a échoué. |
 | `poiSelected` | `{id, name}` | L'utilisateur a tapé un POI dans la carte (`view` event `poiclick`). |
 | `floorChanged` | `{buildingId, floorId}` | Changement d'étage courant (`view` event `currentfloorchanged`). |

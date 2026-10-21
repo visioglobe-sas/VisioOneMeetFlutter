@@ -42,6 +42,8 @@
       var visioOne = null;
       var venue = null;
       var view = null;
+      // Derniers arguments de `setup()`, rejoués par `setCameraProjection`.
+      var lastSetup = null;
       var container = document.getElementById('container');
 
       // État de la démo `dynamic-poi-crud` : le POI (et son label) créés à
@@ -203,30 +205,46 @@
         // `view.setTheme` n'a aucun effet visible) ; toutes les autres
         // features gardent un `createView(container, venue)` inchangé. Voir
         // docs/features/custom-theme.md.
+        //
+        // Rechargement (2e appel et suivants) : la vue ET la venue courantes
+        // sont détruites dans l'ordre, en attendant chaque promesse, avant de
+        // recharger -- jamais `destroyView` puis `createView` sur la MÊME
+        // venue, qui lève `Error: Cannot fetch model` (non intercepté) et
+        // laisse la promesse de `createView` pendante à jamais (SDK 1.1.0,
+        // voir docs/features/camera-projection-toggle.md). Tout ce qui est
+        // accroché à la vue (listeners de `forwardViewEvents`, objets créés
+        // par les démos) est perdu et réinstallé ci-dessous.
         setup: function (hash, baseURL, viewOptions) {
           try {
             console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', viewOptions =', viewOptions, ', typeof VisioOne =', typeof VisioOne);
+            lastSetup = { hash: hash, baseURL: baseURL, viewOptions: viewOptions };
 
-            if (visioOne) {
-              // setup() déjà appelé : on repart d'un état propre avant de recharger.
-              if (view) { visioOne.destroyView(view); view = null; }
-              if (venue) { visioOne.unloadVenue(venue); venue = null; }
-              dynamicPoi = null;
-              dynamicPoiLabel = null;
-              currentNavigationTrace = null;
-              iconImages = {};
-              textLabel = null;
-              textLabelOptions = null;
-              htmlBadge = null;
-              htmlBadgeTapCount = 0;
-            }
+            var oldView = view;
+            var oldVenue = venue;
+            view = null;
+            venue = null;
+            dynamicPoi = null;
+            dynamicPoiLabel = null;
+            currentNavigationTrace = null;
+            iconImages = {};
+            textLabel = null;
+            textLabelOptions = null;
+            htmlBadge = null;
+            htmlBadgeTapCount = 0;
 
-            visioOne = VisioOne.createVisioOne();
+            if (!visioOne) visioOne = VisioOne.createVisioOne();
             sendToNative('loading', { hash: hash });
 
-            console.log('[MapBridge] appel loadVenue...');
-            visioOne
-              .loadVenue(baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash }, container)
+            Promise.resolve()
+              .then(function () { if (oldView) return visioOne.destroyView(oldView); })
+              .then(function () { if (oldVenue) return visioOne.unloadVenue(oldVenue); })
+              .then(function () {
+                console.log('[MapBridge] appel loadVenue...');
+                return visioOne.loadVenue(
+                  baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash },
+                  container
+                );
+              })
               .then(function (v) {
                 console.log('[MapBridge] loadVenue résolu, appel createView...');
                 venue = v;
@@ -235,10 +253,14 @@
                   : visioOne.createView(container, venue);
               })
               .then(function (createdView) {
-                console.log('[MapBridge] createView résolu, carte prête.');
                 view = createdView;
+                console.log('[MapBridge] createView résolu, carte prête, cameraProjection =', view.cameraProjection);
                 forwardViewEvents(view);
-                sendToNative('ready', null);
+                // `view.cameraProjection` (lecture seule) : la projection avec
+                // laquelle la vue a réellement été créée -- relayée pour que la
+                // démo `camera-projection-toggle` affiche la valeur du SDK, pas
+                // celle demandée.
+                sendToNative('ready', { cameraProjection: view.cameraProjection });
               })
               .catch(function (error) {
                 console.error('[MapBridge] échec loadVenue/createView:', error);
@@ -253,6 +275,19 @@
               message: error && error.message ? error.message : String(error),
             });
           }
+        },
+
+        // Démo `camera-projection-toggle` : `cameraProjection` est une option
+        // de `createView` uniquement (`view.cameraProjection` est en lecture
+        // seule, aucun changement à chaud) -- changer de projection rejoue
+        // donc `setup` (destroyView -> unloadVenue -> loadVenue -> createView)
+        // avec les mêmes hash/baseURL/options de vue, plus `cameraProjection`.
+        // Réponse : `loading` puis `ready` ({ cameraProjection }) ou `error`.
+        // Voir docs/features/camera-projection-toggle.md.
+        setCameraProjection: function (projection) {
+          if (!lastSetup) return;
+          var options = Object.assign({}, lastSetup.viewOptions || {}, { cameraProjection: projection });
+          window.MapBridge.setup(lastSetup.hash, lastSetup.baseURL, options);
         },
 
         goToGlobal: function () {
