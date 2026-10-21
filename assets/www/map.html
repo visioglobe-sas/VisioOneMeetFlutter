@@ -136,10 +136,14 @@
           });
         });
 
+        // L'événement (`VenueEvent` côté SDK) porte `newBuilding`/`newFloor`
+        // (et `oldBuilding`/`oldFloor`), pas de champ `floor` : lire
+        // `event.floor` renvoyait toujours null et désélectionnait l'étage
+        // du floor-selector natif à chaque changement.
         v.addEventListener('currentfloorchanged', function (event) {
           sendToNative('floorChanged', {
-            buildingId: event.floor && event.floor.building ? event.floor.building.id : null,
-            floorId: event.floor ? event.floor.id : null,
+            buildingId: event.newBuilding ? event.newBuilding.id : null,
+            floorId: event.newFloor ? event.newFloor.id : null,
           });
         });
 
