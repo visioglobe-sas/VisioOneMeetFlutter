@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
 /// POI de la carte de démo partagée qui a une position utilisable (un
 /// label) — "Restaurant", rez-de-chaussée du bâtiment B4.
-const String _kDefaultAnchorId = 'B4-UL00-ID0009';
+const String _kDefaultAnchorId = DemoMap.anchorPoiId;
 
 /// Couleurs proposées (hex, format accepté par le SDK), dans l'ordre des chips.
 const List<(String label, String hex)> _kColors = [
@@ -66,8 +68,21 @@ class _CustomTextLabelOverlayState extends State<CustomTextLabelOverlay> {
   void initState() {
     super.initState();
     _anchorIdController = TextEditingController(text: _c.textLabelAnchorId.value ?? _kDefaultAnchorId);
-    _textController = TextEditingController(text: _c.textLabelText.value);
+    _textController = TextEditingController(text: _c.textLabelText.value ?? '');
     _subscription = _c.messages.listen(_onMessage);
+  }
+
+  // Texte par défaut localisé (l10n indisponible dans initState).
+  bool _defaultTextApplied = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultTextApplied) return;
+    _defaultTextApplied = true;
+    if (_c.textLabelText.value == null) {
+      _textController.text = AppLocalizations.of(context)!.textLabelDefaultText;
+    }
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
@@ -37,10 +38,10 @@ class CustomDataOverlay extends StatefulWidget {
 /// `docs/features/custom-data.md`) — proposés en accès rapide ci-dessous
 /// pour ne pas obliger à connaître/taper un Place ID à la main pour voir un
 /// résultat non vide.
-const List<String> _kKnownPoiIdsWithCustomData = ['B1', 'B3-UL00-ID0065', 'B3-UL00-ID0064'];
+const List<String> _kKnownPoiIdsWithCustomData = DemoMap.customDataQuickIds;
 
 class _CustomDataOverlayState extends State<CustomDataOverlay> {
-  final TextEditingController _placeIdController = TextEditingController();
+  final TextEditingController _placeIdController = TextEditingController(text: DemoMap.customDataPlaceId);
 
   // Requête/réponse par `requestId` sur `controller.messages` (même idiom
   // que `poiPositionResolved` pour `simulated-position`).

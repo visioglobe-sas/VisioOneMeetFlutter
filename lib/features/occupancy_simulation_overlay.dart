@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 // Stand-in for a real occupancy sensor feed: cycles a POI's surface through
@@ -23,7 +24,7 @@ class OccupancySimulationOverlay extends StatefulWidget {
 }
 
 class _OccupancySimulationOverlayState extends State<OccupancySimulationOverlay> {
-  final TextEditingController _placeIdController = TextEditingController();
+  final TextEditingController _placeIdController = TextEditingController(text: DemoMap.occupancyPlaceId);
   Timer? _occupancyTimer;
   bool _simulateOccupancy = false;
   int _occupancyColorIndex = 0;

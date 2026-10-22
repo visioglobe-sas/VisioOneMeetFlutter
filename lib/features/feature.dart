@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
@@ -145,9 +146,17 @@ enum Feature {
     Feature.poiClick => const PoiClickOverlay(),
     Feature.gotoPoi => GotoPoiOverlay(controller: controller),
     Feature.floorSelector => FloorSelectorOverlay(controller: controller),
-    Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
+    Feature.computeNavigation => ComputeNavigationOverlay(
+        controller: controller,
+        initialOriginId: DemoMap.itineraryFrom,
+        initialDestinationId: DemoMap.itineraryTo,
+      ),
     Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
-    Feature.simulatedPosition => SimulatedPositionOverlay(controller: controller),
+    Feature.simulatedPosition => SimulatedPositionOverlay(
+        controller: controller,
+        initialOriginId: DemoMap.trackingFrom,
+        initialDestinationId: DemoMap.trackingTo,
+      ),
     Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
     Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
     Feature.customData => CustomDataOverlay(controller: controller),

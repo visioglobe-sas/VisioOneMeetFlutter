@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Overlay de la feature `goto-poi` : un champ Place ID + deux boutons
@@ -18,7 +19,7 @@ class GotoPoiOverlay extends StatefulWidget {
 }
 
 class _GotoPoiOverlayState extends State<GotoPoiOverlay> {
-  final TextEditingController _placeIdController = TextEditingController();
+  final TextEditingController _placeIdController = TextEditingController(text: DemoMap.gotoPoiId);
 
   @override
   void dispose() {

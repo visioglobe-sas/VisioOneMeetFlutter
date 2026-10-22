@@ -519,8 +519,10 @@ class VisioOneController {
   /// bottom sheet — même raison que [iconMarkerAnchorId].
   final ValueNotifier<String?> textLabelAnchorId = ValueNotifier<String?>(null);
 
-  /// Dernier texte appliqué au label de `custom-text-label`.
-  final ValueNotifier<String> textLabelText = ValueNotifier<String>('Lunch 12:00–14:00');
+  /// Dernier texte appliqué au label de `custom-text-label`, `null` tant
+  /// qu'aucun n'a été appliqué (l'overlay préremplit alors le texte par
+  /// défaut localisé `textLabelDefaultText`).
+  final ValueNotifier<String?> textLabelText = ValueNotifier<String?>(null);
 
   /// Couleur (hex `#RRGGBB`) choisie pour le label de `custom-text-label`.
   final ValueNotifier<String> textLabelColor = ValueNotifier<String>('#E53935');
@@ -575,8 +577,10 @@ class VisioOneController {
   /// bottom sheet — même raison que [textLabelAnchorId].
   final ValueNotifier<String?> htmlBadgeAnchorId = ValueNotifier<String?>(null);
 
-  /// Dernier texte appliqué au badge de `html-overlay-marker`.
-  final ValueNotifier<String> htmlBadgeText = ValueNotifier<String>('Open now · 12:00–14:00');
+  /// Dernier texte appliqué au badge de `html-overlay-marker`, `null` tant
+  /// qu'aucun n'a été appliqué (l'overlay préremplit alors le texte par
+  /// défaut localisé `htmlBadgeDefaultText`).
+  final ValueNotifier<String?> htmlBadgeText = ValueNotifier<String?>(null);
 
   /// Visibilité du badge placé (`venue.updateMarker(marker, { isVisible })`).
   final ValueNotifier<bool> htmlBadgeVisible = ValueNotifier<bool>(true);

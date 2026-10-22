@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
@@ -29,8 +31,8 @@ class DynamicPoiCrudOverlay extends StatefulWidget {
 }
 
 class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
-  final TextEditingController _newIdController = TextEditingController();
-  final TextEditingController _anchorIdController = TextEditingController();
+  final TextEditingController _newIdController = TextEditingController(text: DemoMap.dynamicPoiNewId);
+  final TextEditingController _anchorIdController = TextEditingController(text: DemoMap.anchorPoiId);
   final TextEditingController _labelTextController = TextEditingController();
 
   // Requête/réponse par `requestId` sur `controller.messages` (même idiom
@@ -52,7 +54,21 @@ class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
     // actuellement affiché sur la carte.
     final tracked = widget.controller.dynamicPoi.value;
     if (tracked != null) {
+      _newIdController.text = tracked.id;
       _labelTextController.text = tracked.labelText;
+    }
+  }
+
+  // Texte par défaut localisé (l10n indisponible dans initState).
+  bool _defaultTextApplied = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultTextApplied) return;
+    _defaultTextApplied = true;
+    if (widget.controller.dynamicPoi.value == null) {
+      _labelTextController.text = AppLocalizations.of(context)!.dynamicPoiDefaultLabelText;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../demo_map.dart';
 import 'visio_one_controller.dart';
 
 /// État de la visite caméra `camera-showcase-carousel`, tel que rapporté par
@@ -62,7 +63,7 @@ class CameraCarouselSession {
 
   /// Arrêts de la visite sur la carte de démo partagée (3 bâtiments,
   /// 4 étages), visités dans cet ordre, en boucle.
-  static const List<String> kStops = ['B4-UL00-ID0009', 'B1-LL01-ID0152', 'B3-UL00-ID0064', 'B4-UL03-ID0015'];
+  static const List<String> kStops = DemoMap.carouselStopIds;
 
   final VisioOneController _controller;
   bool _disposed = false;

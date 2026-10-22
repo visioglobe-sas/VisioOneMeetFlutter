@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
@@ -16,7 +17,7 @@ const String _kImageId = '3d-icon-marker';
 
 /// POI de la carte de démo partagée qui a une position utilisable (un
 /// label) — "Restaurant", rez-de-chaussée du bâtiment B4.
-const String _kDefaultAnchorId = 'B4-UL00-ID0009';
+const String _kDefaultAnchorId = DemoMap.anchorPoiId;
 
 /// Overlay de la feature `3d-icon-marker` : champ "Anchor POI ID",
 /// sélecteur d'orientation (Fixed / Flat / Facing camera) et actions

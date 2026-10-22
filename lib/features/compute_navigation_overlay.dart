@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Overlay de la feature `compute-navigation` : deux champs Place ID
@@ -11,17 +12,28 @@ import '../visio_one/visio_one_controller.dart';
 /// relié à un bouton) — cette classe est la dernière étape manquante, comme
 /// pour `goto-poi`. Voir `docs/features/compute-navigation.md`.
 class ComputeNavigationOverlay extends StatefulWidget {
-  const ComputeNavigationOverlay({super.key, required this.controller});
+  const ComputeNavigationOverlay({
+    super.key,
+    required this.controller,
+    this.initialOriginId = DemoMap.itineraryFrom,
+    this.initialDestinationId = DemoMap.itineraryTo,
+  });
 
   final VisioOneController controller;
+
+  /// Prefilled "From" / "To" place ids (per screen embedding this overlay).
+  final String initialOriginId;
+  final String initialDestinationId;
 
   @override
   State<ComputeNavigationOverlay> createState() => _ComputeNavigationOverlayState();
 }
 
 class _ComputeNavigationOverlayState extends State<ComputeNavigationOverlay> {
-  final TextEditingController _originController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
+  late final TextEditingController _originController = TextEditingController(text: widget.initialOriginId);
+  late final TextEditingController _destinationController = TextEditingController(
+    text: widget.initialDestinationId,
+  );
 
   @override
   void dispose() {
