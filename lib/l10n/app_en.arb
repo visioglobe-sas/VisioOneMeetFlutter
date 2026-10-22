@@ -78,5 +78,14 @@
   "cameraProjectionDescription": "Switch between a 3D perspective view and a flat orthographic view",
   "cameraProjectionHint": "Switching reloads the map (the projection can only be set when the view is created).",
   "cameraProjectionPerspectiveLabel": "Perspective",
-  "cameraProjectionOrthographicLabel": "Orthographic"
+  "cameraProjectionOrthographicLabel": "Orthographic",
+  "cameraShowcaseCarouselTitle": "Camera showcase",
+  "cameraShowcaseCarouselDescription": "Automatic camera tour of the map, for kiosks and lobby screens",
+  "cameraShowcaseCarouselStart": "Start",
+  "cameraShowcaseCarouselStop": "Stop",
+  "cameraShowcaseCarouselStatusRunning": "Running — stop {index}/{total}: {poiId}",
+  "@cameraShowcaseCarouselStatusRunning": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}, "poiId": {"type": "String"}}},
+  "cameraShowcaseCarouselStatusPaused": "Paused — resumes after 10 s without touch",
+  "cameraShowcaseCarouselStatusStopped": "Stopped",
+  "cameraShowcaseCarouselHint": "Touching the map pauses the tour; it resumes on its own after 10 s."
 }

@@ -77,6 +77,8 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `getThemes(requestId)` | `String` | Demande `view.themes` ; répond via `themesLoaded` (`{requestId, themes}`). |
 | `setTheme(name)` | `String` | `view.setTheme(name)` ; répond via `themeApplied` (`{success, theme, message?}`). |
 | `setAccentColors(accentColor, textAccentColor)` | `String`, `String` | `view.accentColor` / `view.textAccentColor` ; répond via `accentColorsApplied` (`{success, message?}`). |
+| `startCarousel(poiIds)` | `List<String>` | Démarre la visite caméra en boucle (`goToFloor` puis `goToPOI` par arrêt, pause sur toucher, reprise après 10 s) ; l'état revient via `carouselState`. |
+| `stopCarousel()` | — | Arrête la visite (l'animation en cours va à son terme) ; répond via `carouselState` (`stopped`). |
 
 ### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
 
@@ -95,6 +97,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `themeApplied` | `{success, theme, message?}` | Réponse à `setTheme()` ; `success: false` + message du SDK pour un id non enregistré. |
 | `accentColorsApplied` | `{success, message?}` | Réponse à `setAccentColors()` ; `success: false` + message du SDK pour une couleur invalide. |
 | `cameraLockChanged` | `{locked}` | Valeur courante de `view.lockCameraPositionOnTracking`, relue à chaque event `view` `trackingon`/`trackingoff`/`trackingchanged` (Start, Stop, interrupteur, pan de la carte). |
+| `carouselState` | `{state, index, total, poiId}` | Changement d'état de la visite `camera-showcase-carousel` (`running` à chaque arrêt, `paused` sur toucher de la carte, `running` à la reprise après 10 s, `stopped`) — y compris quand il ne vient pas du natif. |
 
 Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
 
