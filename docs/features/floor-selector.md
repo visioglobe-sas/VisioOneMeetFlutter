@@ -57,7 +57,7 @@ Future<void> getVenueLayout() => _run('window.MapBridge.getVenueLayout()');
 - **Changing building without specifying a floor** (`floorId: null`) falls back to the building's default floor (`view.goToBuilding(building)`, which uses `defaultFloorID` internally) — that's SDK behavior, not something this bridge recomputes.
 - **`goToFloor` fails silently if `buildingId`/`floorId` doesn't match anything** (same `Array.find` pattern as `goToPOI`) — no error surfaces back.
 - **`venue.venueLayout.buildings[].floors` order is not documented as sorted** — the JS side sorts floors by descending `levelIndex` itself before sending them, to present them like a classic elevator panel (highest floor first); don't assume the SDK returns them pre-sorted.
-- The SDK emits `currentfloorchanged` on `view` whenever the floor changes, from any source (this call, the SDK's own floor selector, or `goToPOI` elsewhere) — listen to it to keep a custom UI in sync rather than tracking floor state only from your own calls.
+- The SDK emits `currentfloorchanged` on `view` whenever the floor changes, from any source (this call, the SDK's own floor selector, or `goToPOI` elsewhere) — listen to it to keep a custom UI in sync rather than tracking floor state only from your own calls. The event object (`VenueEvent`) carries `newFloor`/`newBuilding` (and `oldFloor`/`oldBuilding`); there is no `floor` field.
 
 ## Learn more
 
