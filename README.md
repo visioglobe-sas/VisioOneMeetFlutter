@@ -80,6 +80,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[Custom theme](docs/features/custom-theme.md)** — switches the 3D scene's lighting theme (`view.setTheme`) and recolors the SDK's own UI buttons (`accentColor` / `textAccentColor`) live.
 - **[Accuracy circle style](docs/features/accuracy-circle-style.md)** — recolors the tracked position's precision circle (`view.updatePositionTrackerGraphicOptions`) live, on top of "Simulated position".
 - **[Camera projection](docs/features/camera-projection-toggle.md)** — switches between a 3D perspective view and a flat orthographic view (`createView`'s `cameraProjection` option, which reloads the map).
+- **[Camera showcase](docs/features/camera-showcase-carousel.md)** — automatic camera tour of a list of POIs (`goToFloor` + `goToPOI` with orientation), for kiosks and lobby screens; pauses on touch and resumes after 10 s idle.
 
 ## How it works
 

@@ -78,5 +78,13 @@
   "cameraProjectionDescription": "Basculer entre une vue 3D en perspective et une vue à plat orthographique",
   "cameraProjectionHint": "Changer de projection recharge la carte (la projection ne se choisit qu'à la création de la vue).",
   "cameraProjectionPerspectiveLabel": "Perspective",
-  "cameraProjectionOrthographicLabel": "Orthographique"
+  "cameraProjectionOrthographicLabel": "Orthographique",
+  "cameraShowcaseCarouselTitle": "Vitrine caméra",
+  "cameraShowcaseCarouselDescription": "Visite caméra automatique de la carte, pour bornes et écrans d'accueil",
+  "cameraShowcaseCarouselStart": "Démarrer",
+  "cameraShowcaseCarouselStop": "Arrêter",
+  "cameraShowcaseCarouselStatusRunning": "En cours — arrêt {index}/{total} : {poiId}",
+  "cameraShowcaseCarouselStatusPaused": "En pause — reprise après 10 s sans toucher",
+  "cameraShowcaseCarouselStatusStopped": "Arrêtée",
+  "cameraShowcaseCarouselHint": "Toucher la carte met la visite en pause ; elle reprend seule après 10 s."
 }

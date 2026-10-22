@@ -7,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
+import 'camera_carousel_session.dart';
 import 'simulated_position_session.dart';
 import 'visio_one_message.dart';
 
@@ -48,6 +49,7 @@ const String kVisioOneBridgeChannel = 'VisioOneBridge';
 class VisioOneController {
   VisioOneController._(this._webViewController) {
     simulatedPosition = SimulatedPositionSession(this);
+    cameraCarousel = CameraCarouselSession(this);
   }
 
   final WebViewController _webViewController;
@@ -58,6 +60,11 @@ class VisioOneController {
   /// tête pour pourquoi cette session vit ici plutôt que dans l'overlay de la
   /// feature : elle doit survivre à la fermeture du bottom sheet.
   late final SimulatedPositionSession simulatedPosition;
+
+  /// Pilote la visite caméra `camera-showcase-carousel` (état miroir de la
+  /// boucle JS de `map.html`). Portée ici, comme [simulatedPosition], pour
+  /// survivre à la fermeture du bottom sheet.
+  late final CameraCarouselSession cameraCarousel;
 
   /// Crée le contrôleur et son [WebViewController] sous-jacent.
   ///
@@ -709,6 +716,16 @@ class VisioOneController {
   Future<void> setCameraProjection(String projection) =>
       _call('setCameraProjection', [projection]);
 
+  /// Démarre la visite caméra automatique sur [poiIds], dans l'ordre, en
+  /// boucle (`view.goToFloor` puis `view.goToPOI` pour chaque arrêt). L'état
+  /// revient en messages `carouselState`, reflétés dans
+  /// [cameraCarousel]. Voir `docs/features/camera-showcase-carousel.md`.
+  Future<void> startCarousel(List<String> poiIds) => _call('startCarousel', [poiIds]);
+
+  /// Arrête la visite : plus aucun arrêt programmé ; l'animation en cours
+  /// (s'il y en a une) va à son terme.
+  Future<void> stopCarousel() => _run('window.MapBridge.stopCarousel()');
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -744,6 +761,7 @@ class VisioOneController {
       final locked = parsed.data is Map ? (parsed.data as Map)['locked'] : null;
       if (locked is bool) simulatedPosition.onCameraLockChanged(locked);
     }
+    if (parsed.type == 'carouselState') cameraCarousel.onStateMessage(parsed.data);
     if (parsed.type == 'htmlBadgeTapped') {
       final count = parsed.data is Map ? (parsed.data as Map)['count'] : null;
       if (count is int) htmlBadgeTapCount.value = count;
@@ -754,6 +772,7 @@ class VisioOneController {
   /// Libère les ressources. À appeler depuis `dispose()` du widget hôte.
   void dispose() {
     simulatedPosition.dispose();
+    cameraCarousel.dispose();
     highlightedCategoryId.dispose();
     selectedNavigationTracePresetKey.dispose();
     dynamicPoi.dispose();

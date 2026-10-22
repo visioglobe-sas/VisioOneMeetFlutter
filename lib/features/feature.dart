@@ -8,6 +8,7 @@ import 'accuracy_circle_style_overlay.dart';
 import 'add_locale_overlay.dart';
 import 'camera_lock_on_position_overlay.dart';
 import 'camera_projection_toggle_overlay.dart';
+import 'camera_showcase_carousel_overlay.dart';
 import 'category_highlight_overlay.dart';
 import 'clickable_surface_overlay.dart';
 import 'compute_navigation_overlay.dart';
@@ -64,7 +65,8 @@ enum Feature {
   htmlOverlayMarker('html-overlay-marker'),
   customTheme('custom-theme'),
   accuracyCircleStyle('accuracy-circle-style'),
-  cameraProjectionToggle('camera-projection-toggle');
+  cameraProjectionToggle('camera-projection-toggle'),
+  cameraShowcaseCarousel('camera-showcase-carousel');
 
   const Feature(this.slug);
 
@@ -99,6 +101,7 @@ enum Feature {
     Feature.customTheme => l10n.customThemeTitle,
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleTitle,
     Feature.cameraProjectionToggle => l10n.cameraProjectionTitle,
+    Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -130,6 +133,7 @@ enum Feature {
     Feature.customTheme => l10n.customThemeDescription,
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleDescription,
     Feature.cameraProjectionToggle => l10n.cameraProjectionDescription,
+    Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -160,6 +164,7 @@ enum Feature {
     Feature.customTheme => CustomThemeOverlay(controller: controller),
     Feature.accuracyCircleStyle => AccuracyCircleStyleOverlay(controller: controller),
     Feature.cameraProjectionToggle => CameraProjectionToggleOverlay(controller: controller),
+    Feature.cameraShowcaseCarousel => CameraShowcaseCarouselOverlay(controller: controller),
     // Jamais réellement appelé : `baseURL` n'est pas une propriété de
     // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
     // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
@@ -224,6 +229,8 @@ enum Feature {
   /// (résolution `poiPositionResolved`) et n'émet que des commandes.
   /// `camera-projection-toggle` non plus : `view.cameraProjection` (message
   /// `ready`) est reflété dans `VisioOneController.cameraProjection`.
+  /// `camera-showcase-carousel` non plus : `carouselState` est reflété dans
+  /// `VisioOneController.cameraCarousel`.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
     switch (this) {
       case Feature.poiClick:
@@ -255,6 +262,7 @@ enum Feature {
       case Feature.customTheme:
       case Feature.accuracyCircleStyle:
       case Feature.cameraProjectionToggle:
+      case Feature.cameraShowcaseCarousel:
         break;
     }
   }
