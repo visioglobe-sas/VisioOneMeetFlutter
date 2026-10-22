@@ -9,7 +9,7 @@ It is built on the camera animation methods of the view — `view.goToFloor(floo
 For each stop, the tour does:
 
 1. `await view.goToFloor(poi.floor, { duration: 800 })`
-2. `await view.goToPOI(poi, { duration: 2500, easing: 'easeInOutQuad', orientation: { heading: index * 90, pitch: 45 } })`
+2. `await view.goToPOI(poi, { duration: 2500, easing: 'easeInOutQuad', orientation: { heading: index * 90, pitch: 30 } })`
 3. wait 3 s, then move on to the next stop (back to the first one after the last).
 
 ## SDK usage
@@ -49,7 +49,7 @@ async function carouselLoop(runId) {
     var toPoi = (carousel.animation = view.goToPOI(poi, {
       duration: 2500,
       easing: 'easeInOutQuad',
-      orientation: { heading: index * 90, pitch: 45 }, // degrees
+      orientation: { heading: index * 90, pitch: 30 }, // degrees
     }));
     await toPoi;
     if (!alive(toPoi)) return;
@@ -90,8 +90,9 @@ Stopping — `stopCarousel` only stops scheduling (run id incremented, timers cl
 - **`AnimationOptions.orientation`** sets the final camera orientation: `{ heading?: number | 'initial', pitch?: number | 'initial' }`, in degrees (heading relative to north; pitch 0 = looking straight down, 90 = horizon). `easing` takes an animejs Penner function name (e.g. `'easeInOutQuad'`, `'linear'`); `duration` is in milliseconds.
 - **A new camera animation interrupts the running one.** Starting `goToFloor`/`goToPOI`/`goToViewpoint`/`goToGlobal` while another camera animation runs makes the running one's promise resolve with `isCanceled === true`, and the camera continues from where it was. A loop must therefore check `isCanceled` (and its own "still running?" state) after every `await`, or it will happily start its next hop on top of whatever interrupted it.
 - **User gestures do not interrupt SDK animations, and there is no "camera moved by the user" event.** A drag on the map during a `goToPOI` animation does not stop it — the animation keeps running to its end and the user fights the camera. To give the user's gesture priority, detect touches yourself (pointer events on the map container, capture phase) and interrupt the animation.
-- **`cancel()` vs. the documentation.** The SDK's typings say `cancel()` "puts the animation target in its final state". In this app (SDK 1.1.0, iOS WKWebView), `cancel()` instead **stopped the camera where it was**, every time: cancelled synchronously right after starting, after 50 ms, 300 ms or 1.8 s, on both `goToPOI` and `goToFloor` — position, target, heading and pitch stayed on their mid-flight values (e.g. heading 41.6° kept, versus 120° at the destination), confirmed on screenshots; the promise resolved with `isCanceled === true`. Other integrations have observed `cancel()` jumping to the destination, so check on your target platform before relying on either behavior.
+- **`cancel()` vs. the documentation.** The SDK's public typing says `cancel()` "puts the animation target in its final state": that wording is wrong. The SDK core implementation (1.1.0) documents and implements `cancel()` as leaving the animation target in the state it is in at the moment of the call, and live measurements confirm it. In this app (SDK 1.1.0, iOS WKWebView), `cancel()` instead **stopped the camera where it was**, every time: cancelled synchronously right after starting, after 50 ms, 300 ms or 1.8 s, on both `goToPOI` and `goToFloor` — position, target, heading and pitch stayed on their mid-flight values (e.g. heading 41.6° kept, versus 120° at the destination), confirmed on screenshots; the promise resolved with `isCanceled === true`. The same was measured in an Android `WebView`.
 - **A zero-length `goToViewpoint` is not a clean "stop here".** `view.goToViewpoint({ positions: [view.camera.target], targetAltitude: view.camera.target.altitude }, { duration: 0, orientation: { heading: view.camera.heading, pitch: view.camera.pitch } })` does interrupt the running animation (it resolves with `isCanceled === true`), but the resulting view is shifted: about 20 m sideways and 2° of heading at ~160 m camera altitude, about 45 m at ~525 m — proportional to the camera distance, so visible on screen. It is also applied asynchronously (`view.camera` still reports the old values right after the call), so it cannot be corrected in the same tick. That is why this demo pauses with `cancel()`.
+- **Known SDK issue (1.1.0): the camera can break after a drag on an underground floor.** Observed on another platform: after `goToPOI` with `orientation: { heading: 90 or 180, pitch: 45 }` on the underground POI `B1-LL01-ID0152` (floor `B1-LL1`, camera at its 10 m minimum altitude), one or two user drags turned `view.camera.heading` into `NaN` and `pitch` into `0`, and the map rendered black until the view was reloaded. It is not systematically reproducible; pitch 30 did not trigger it in the attempts made, so the demo uses `pitch: 30`.
 - **`view.camera.heading`/`pitch` setters don't interrupt an animation.** Assigning the current value back (`view.camera.heading = view.camera.heading`) has no effect on a running `goToPOI`: it continues to its destination.
 - **A view reload kills the tour.** Everything is tied to the current `view`: if the view is destroyed and recreated (e.g. to change projection), stop the loop first and start it again on the new view.
 - **Synthetic pointer events in tests.** Dispatching a synthetic `PointerEvent('pointerdown')` directly on the SDK's `<canvas>` (as an automated test might) makes the SDK throw an uncaught error (reported as `Script error.` from the SDK bundle), presumably because the pointer id is not a real active pointer. Real touches don't. Dispatch test events on the container instead.
