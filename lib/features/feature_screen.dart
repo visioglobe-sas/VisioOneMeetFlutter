@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_map_shell.dart';
+import 'auth_token_screen.dart';
 import 'custom_base_url_overlay.dart';
 import 'feature.dart';
 
@@ -29,6 +30,10 @@ class _FeatureScreenState extends State<FeatureScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final feature = widget.feature;
+    // `auth-token` : exemple de code uniquement, aucune carte protégée à
+    // charger -- page de texte, pas de `VisioOneMapShell` (donc aucun
+    // `loadVenue` avec les valeurs fictives). Voir `auth_token_sample.dart`.
+    if (feature == Feature.authToken) return AuthTokenScreen(title: feature.title(l10n));
     final isCustomBaseUrl = feature == Feature.customBaseUrl;
     final baseUrl = isCustomBaseUrl ? (_customBaseUrl ?? kDefaultMapServerBaseUrl) : null;
 
