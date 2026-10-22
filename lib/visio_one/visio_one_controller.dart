@@ -691,6 +691,24 @@ class VisioOneController {
     return _call('setAccentColors', [accent, textAccent]);
   }
 
+  /// Projection caméra de la vue courante, telle que rapportée par le SDK
+  /// (`view.cameraProjection`, en lecture seule : `'perspective'` ou
+  /// `'orthographic'`), ou `null` pendant un (re)chargement de la carte.
+  /// Mis à jour ici, dans [_handleRawMessage], à chaque message `loading`
+  /// (-> `null`) et `ready` (-> valeur du SDK). Voir
+  /// `docs/features/camera-projection-toggle.md`.
+  final ValueNotifier<String?> cameraProjection = ValueNotifier<String?>(null);
+
+  /// Recrée la carte avec `createView(..., { cameraProjection: projection })`.
+  ///
+  /// `cameraProjection` n'est qu'une option de création de vue (aucun
+  /// setter) : côté JS, `MapBridge.setCameraProjection` rejoue tout [setup]
+  /// (destroyView -> unloadVenue -> loadVenue -> createView) avec les mêmes
+  /// hash/baseURL/options de vue. Réponse : `loading`, puis `ready`
+  /// (`{cameraProjection}`, reflété dans [cameraProjection]) ou `error`.
+  Future<void> setCameraProjection(String projection) =>
+      _call('setCameraProjection', [projection]);
+
   Future<void> _call(String method, List<Object?> args) {
     final encodedArgs = args.map(jsonEncode).join(', ');
     return _run('window.MapBridge.$method($encodedArgs)');
@@ -712,6 +730,11 @@ class VisioOneController {
     if (parsed == null) {
       debugPrint('VisioOneController: message JS illisible: ${message.message}');
       return;
+    }
+    if (parsed.type == 'loading') cameraProjection.value = null;
+    if (parsed.type == 'ready') {
+      final projection = parsed.data is Map ? (parsed.data as Map)['cameraProjection'] : null;
+      cameraProjection.value = projection is String ? projection : null;
     }
     if (parsed.type == 'themesLoaded') {
       final list = parsed.data is Map ? (parsed.data as Map)['themes'] : null;
@@ -751,6 +774,7 @@ class VisioOneController {
     currentTheme.dispose();
     accentColor.dispose();
     textAccentColor.dispose();
+    cameraProjection.dispose();
     _messages.close();
   }
 }

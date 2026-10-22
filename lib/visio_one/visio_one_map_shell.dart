@@ -133,6 +133,12 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
 
   void _onMessage(VisioOneMessage message) {
     switch (message.type) {
+      case 'loading':
+        // Émis au début de chaque `setup` JS, y compris un rechargement
+        // déclenché depuis la carte déjà prête (`camera-projection-toggle`
+        // recrée la vue sans remonter ce shell) : on repasse en "loading"
+        // pour masquer le FAB et afficher le spinner jusqu'au `ready` suivant.
+        if (_state != _MapLoadState.loading) setState(() => _state = _MapLoadState.loading);
       case 'ready':
         setState(() => _state = _MapLoadState.ready);
       case 'error':

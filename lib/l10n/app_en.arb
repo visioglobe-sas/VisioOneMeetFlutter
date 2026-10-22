@@ -73,5 +73,10 @@
   "accuracyCircleStyleColorDefault": "Default",
   "accuracyCircleStyleColorRed": "Red",
   "accuracyCircleStyleColorGreen": "Green",
-  "accuracyCircleStyleColorPurple": "Purple"
+  "accuracyCircleStyleColorPurple": "Purple",
+  "cameraProjectionTitle": "Camera projection",
+  "cameraProjectionDescription": "Switch between a 3D perspective view and a flat orthographic view",
+  "cameraProjectionHint": "Switching reloads the map (the projection can only be set when the view is created).",
+  "cameraProjectionPerspectiveLabel": "Perspective",
+  "cameraProjectionOrthographicLabel": "Orthographic"
 }

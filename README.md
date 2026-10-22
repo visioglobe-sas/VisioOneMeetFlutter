@@ -79,6 +79,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 - **[HTML overlay marker](docs/features/html-overlay-marker.md)** — pins a tappable HTML badge on the map, drawn above the 3D scene, whose taps reach the Dart side.
 - **[Custom theme](docs/features/custom-theme.md)** — switches the 3D scene's lighting theme (`view.setTheme`) and recolors the SDK's own UI buttons (`accentColor` / `textAccentColor`) live.
 - **[Accuracy circle style](docs/features/accuracy-circle-style.md)** — recolors the tracked position's precision circle (`view.updatePositionTrackerGraphicOptions`) live, on top of "Simulated position".
+- **[Camera projection](docs/features/camera-projection-toggle.md)** — switches between a 3D perspective view and a flat orthographic view (`createView`'s `cameraProjection` option, which reloads the map).
 
 ## How it works
 
