@@ -133,8 +133,33 @@ class VisioOneController {
   /// (`null` = aucun, comportement par défaut du SDK). Seule `custom-theme`
   /// le renseigne (`{'enableShadows': true}`), voir
   /// `docs/features/custom-theme.md`.
-  Future<void> setup(String hash, {String? baseURL, Map<String, Object>? viewOptions}) =>
-      _call('setup', [hash, baseURL, viewOptions]);
+  ///
+  /// `authorizationToken` (`null` par défaut) : jeton d'autorisation d'une
+  /// carte protégée (`LoadOptions.authorizationToken`, envoyé par le SDK en
+  /// `Authorization: Bearer <token>`), seul le code d'exemple `auth-token` le
+  /// renseigne — voir `lib/features/auth_token_sample.dart`. Un jeton
+  /// invalide, expiré ou absent répond `error` avec `unauthorized: true`
+  /// (voir [isUnauthorizedError]).
+  Future<void> setup(
+    String hash, {
+    String? baseURL,
+    Map<String, Object>? viewOptions,
+    String? authorizationToken,
+  }) => _call('setup', [hash, baseURL, viewOptions, authorizationToken]);
+
+  /// Code d'exemple `auth-token` : remplace le jeton de la venue déjà chargée
+  /// (`venue.setAuthorizationToken`) pour les requêtes suivantes, sans
+  /// recharger la carte. À appeler avant l'expiration du jeton courant.
+  Future<void> setAuthorizationToken(String freshToken) =>
+      _call('setAuthorizationToken', [freshToken]);
+
+  /// `true` si [message] est un `error` dû à un jeton d'autorisation
+  /// invalide, expiré ou absent (`UnauthorizedError` du SDK), par opposition
+  /// aux autres échecs de chargement.
+  static bool isUnauthorizedError(VisioOneMessage message) {
+    final data = message.data;
+    return message.type == 'error' && data is Map && data['unauthorized'] == true;
+  }
 
   /// Recentre la caméra sur la vue globale du site.
   Future<void> goToGlobal() => _run('window.MapBridge.goToGlobal()');

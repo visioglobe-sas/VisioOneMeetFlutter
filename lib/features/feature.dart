@@ -66,7 +66,8 @@ enum Feature {
   customTheme('custom-theme'),
   accuracyCircleStyle('accuracy-circle-style'),
   cameraProjectionToggle('camera-projection-toggle'),
-  cameraShowcaseCarousel('camera-showcase-carousel');
+  cameraShowcaseCarousel('camera-showcase-carousel'),
+  authToken('auth-token');
 
   const Feature(this.slug);
 
@@ -102,6 +103,7 @@ enum Feature {
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleTitle,
     Feature.cameraProjectionToggle => l10n.cameraProjectionTitle,
     Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselTitle,
+    Feature.authToken => l10n.authTokenTitle,
   };
 
   String description(AppLocalizations l10n) => switch (this) {
@@ -134,6 +136,7 @@ enum Feature {
     Feature.accuracyCircleStyle => l10n.accuracyCircleStyleDescription,
     Feature.cameraProjectionToggle => l10n.cameraProjectionDescription,
     Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselDescription,
+    Feature.authToken => l10n.authTokenDescription,
   };
 
   Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
@@ -172,6 +175,12 @@ enum Feature {
     // plutôt que d'appeler `buildOverlay` pour cette feature.
     Feature.customBaseUrl => throw UnsupportedError(
       'custom-base-url: overlay construit directement par FeatureScreen',
+    ),
+    // Jamais appelé non plus : `auth-token` est un exemple de code sans
+    // carte -- `FeatureScreen` affiche directement [AuthTokenScreen] (page
+    // de texte), sans `VisioOneMapShell`. Voir `auth_token_sample.dart`.
+    Feature.authToken => throw UnsupportedError(
+      'auth-token: écran de texte construit directement par FeatureScreen',
     ),
   };
 
@@ -263,6 +272,7 @@ enum Feature {
       case Feature.accuracyCircleStyle:
       case Feature.cameraProjectionToggle:
       case Feature.cameraShowcaseCarousel:
+      case Feature.authToken:
         break;
     }
   }

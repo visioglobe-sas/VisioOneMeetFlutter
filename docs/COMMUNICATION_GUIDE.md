@@ -60,7 +60,8 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 
 | Méthode | Arguments (JSON-encodés) | Rôle |
 |---|---|---|
-| `setup(hash, baseURL, viewOptions)` | `String`, `String?`, `Map?` | (Ré)initialise `venue`/`view` pour ce hash ; `viewOptions` est passé tel quel à `createView` (seul `custom-theme` le renseigne : `{enableShadows: true}`). |
+| `setup(hash, baseURL, viewOptions, authorizationToken)` | `String`, `String?`, `Map?`, `String?` | (Ré)initialise `venue`/`view` pour ce hash ; `viewOptions` est passé tel quel à `createView` (seul `custom-theme` le renseigne : `{enableShadows: true}`). `authorizationToken` = `LoadOptions.authorizationToken` d'une carte protégée (seul l'exemple `auth-token` le renseigne, voir `docs/features/auth-token.md`). |
+| `setAuthorizationToken(freshToken)` | `String` | `venue.setAuthorizationToken(freshToken)` sur la venue chargée (exemple `auth-token`) : jeton utilisé pour les requêtes suivantes, sans rechargement. |
 | `goToGlobal()` | — | Recentre sur la vue globale du site. |
 | `goToPOI(poiId)` | `String` | Centre la caméra sur un POI et le sélectionne. |
 | `goToFloor(buildingId, floorId)` | `String`, `String?` | Change de bâtiment/étage. |
@@ -87,7 +88,7 @@ Les deux canaux sont bidirectionnels et réutilisables (contrairement au query p
 | `pageReady` | — | `map.html` a fini de charger (avant même `setup`) — utile en debug hors WebView. |
 | `loading` | `{hash}` | `setup()` vient de démarrer `loadVenue()`. |
 | `ready` | `{ cameraProjection }` | `createView()` a réussi : la carte est affichée. `cameraProjection` = `view.cameraProjection` (`"perspective"` / `"orthographic"`, voir `docs/features/camera-projection-toggle.md`). |
-| `error` | `{message}` | `loadVenue()`/`createView()` a échoué. |
+| `error` | `{message, unauthorized}` | `loadVenue()`/`createView()` a échoué. `unauthorized: true` si le SDK a rejeté avec `UnauthorizedError` (jeton invalide, expiré ou absent, voir `docs/features/auth-token.md`). |
 | `poiSelected` | `{id, name}` | L'utilisateur a tapé un POI dans la carte (`view` event `poiclick`). |
 | `floorChanged` | `{buildingId, floorId}` | Changement d'étage courant (`view` event `currentfloorchanged`). |
 | `itineraryComputed` | `{instructions}` | `startItinerary()` a terminé son calcul. |

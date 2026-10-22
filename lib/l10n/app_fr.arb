@@ -86,5 +86,10 @@
   "cameraShowcaseCarouselStatusRunning": "En cours — arrêt {index}/{total} : {poiId}",
   "cameraShowcaseCarouselStatusPaused": "En pause — reprise après 10 s sans toucher",
   "cameraShowcaseCarouselStatusStopped": "Arrêtée",
-  "cameraShowcaseCarouselHint": "Toucher la carte met la visite en pause ; elle reprend seule après 10 s."
+  "cameraShowcaseCarouselHint": "Toucher la carte met la visite en pause ; elle reprend seule après 10 s.",
+  "authTokenTitle": "Carte protégée (jeton)",
+  "authTokenDescription": "Exemple de code : charger une carte protégée par un jeton d'autorisation",
+  "authTokenScreenText": "Cette feature est uniquement un exemple de code : cette démo n'a aucune carte protégée à charger. Voir lib/features/auth_token_sample.dart (valeurs fictives et widget d'exemple), lib/visio_one/visio_one_controller.dart et assets/www/map.html (côté pont), ainsi que docs/features/auth-token.md, puis remplacer le hash de carte et le jeton fictifs par vos propres valeurs.",
+  "authTokenUnauthorizedError": "Jeton d'autorisation invalide, expiré ou absent (UnauthorizedError).",
+  "authTokenRefreshButton": "Renouveler le jeton"
 }

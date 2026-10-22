@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../l10n/app_localizations.dart';
+
 import 'visio_one_controller.dart';
 import 'visio_one_message.dart';
 
@@ -46,6 +48,7 @@ class VisioOneMapShell extends StatefulWidget {
     required this.hash,
     this.baseURL,
     this.viewOptions,
+    this.authorizationToken,
     required this.overlayBuilder,
     this.mapOverlayBuilder,
     this.onMessage,
@@ -68,6 +71,12 @@ class VisioOneMapShell extends StatefulWidget {
   /// défaut du SDK). Seule `custom-theme` le renseigne
   /// (`{'enableShadows': true}`) ; toutes les autres features laissent `null`.
   final Map<String, Object>? viewOptions;
+
+  /// Jeton d'autorisation d'une carte protégée (`LoadOptions.authorizationToken`),
+  /// ou `null` (carte publique, cas de toutes les features). Seul le code
+  /// d'exemple `auth-token` le renseigne — voir
+  /// `lib/features/auth_token_sample.dart` et `docs/features/auth-token.md`.
+  final String? authorizationToken;
 
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
@@ -119,7 +128,12 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
     controller.messages.listen(_onMessage);
     await controller.webViewController.setNavigationDelegate(
       NavigationDelegate(
-        onPageFinished: (_) => controller.setup(widget.hash, baseURL: widget.baseURL, viewOptions: widget.viewOptions),
+        onPageFinished: (_) => controller.setup(
+          widget.hash,
+          baseURL: widget.baseURL,
+          viewOptions: widget.viewOptions,
+          authorizationToken: widget.authorizationToken,
+        ),
       ),
     );
     await controller.loadMapPage();
@@ -143,7 +157,14 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         setState(() => _state = _MapLoadState.ready);
       case 'error':
         final data = message.data;
-        final text = data is Map ? data['message'] as String? : null;
+        var text = data is Map ? data['message'] as String? : null;
+        // `UnauthorizedError` du SDK (carte protégée, code d'exemple
+        // `auth-token`) : signalé distinctement des autres échecs de chargement.
+        if (VisioOneController.isUnauthorizedError(message)) {
+          final l10n = AppLocalizations.of(context)!;
+          text = '${l10n.authTokenUnauthorizedError}\n${text ?? ''}';
+          debugPrint('VisioOneMapShell: UnauthorizedError -- $text');
+        }
         setState(() {
           _state = _MapLoadState.error;
           _errorMessage = text ?? 'Erreur inconnue du SDK VisioOne';
@@ -169,7 +190,12 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       _state = _MapLoadState.loading;
       _errorMessage = null;
     });
-    _controller?.setup(widget.hash, baseURL: widget.baseURL, viewOptions: widget.viewOptions);
+    _controller?.setup(
+      widget.hash,
+      baseURL: widget.baseURL,
+      viewOptions: widget.viewOptions,
+      authorizationToken: widget.authorizationToken,
+    );
   }
 
   void _showFeatureControls(BuildContext context, VisioOneController controller) {

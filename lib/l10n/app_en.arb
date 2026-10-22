@@ -87,5 +87,10 @@
   "@cameraShowcaseCarouselStatusRunning": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}, "poiId": {"type": "String"}}},
   "cameraShowcaseCarouselStatusPaused": "Paused — resumes after 10 s without touch",
   "cameraShowcaseCarouselStatusStopped": "Stopped",
-  "cameraShowcaseCarouselHint": "Touching the map pauses the tour; it resumes on its own after 10 s."
+  "cameraShowcaseCarouselHint": "Touching the map pauses the tour; it resumes on its own after 10 s.",
+  "authTokenTitle": "Protected map (token)",
+  "authTokenDescription": "Code sample: load a map protected by an authorization token",
+  "authTokenScreenText": "This feature is a code sample only: this demo has no protected map to load. See lib/features/auth_token_sample.dart (placeholders and sample widget), lib/visio_one/visio_one_controller.dart and assets/www/map.html (bridge side), and docs/features/auth-token.md, then replace the placeholder map hash and token with your own values.",
+  "authTokenUnauthorizedError": "Authorization token invalid, expired or missing (UnauthorizedError).",
+  "authTokenRefreshButton": "Refresh token"
 }

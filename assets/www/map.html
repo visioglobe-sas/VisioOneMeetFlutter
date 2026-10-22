@@ -139,6 +139,19 @@
         return { poi: poi, position: source.position };
       }
 
+      // `UnauthorizedError` (jeton invalide, expiré ou absent) n'est pas
+      // exporté par le bundle UMD (seuls `VisioOne`/`createVisioOne` le
+      // sont), donc pas de `instanceof` possible : et comme c'est une simple
+      // `class UnauthorizedError extends Error {}`, `error.name` vaut
+      // `'Error'`. Son nom de constructeur l'identifie (non minifié dans le
+      // bundle UMD 1.1.0), avec repli sur son message, propre à ce cas (réponse
+      // 403 du serveur de cartes sur `descriptor.json`).
+      function isUnauthorizedError(error) {
+        if (!error) return false;
+        if (error.constructor && error.constructor.name === 'UnauthorizedError') return true;
+        return error.message === 'This venue needs an Authorization token to be loaded';
+      }
+
       function sendToNative(type, data) {
         var bridge = window.VisioOneBridge;
         if (!bridge) {
@@ -363,10 +376,16 @@
         // voir docs/features/camera-projection-toggle.md). Tout ce qui est
         // accroché à la vue (listeners de `forwardViewEvents`, objets créés
         // par les démos) est perdu et réinstallé ci-dessous.
-        setup: function (hash, baseURL, viewOptions) {
+        //
+        // `authorizationToken` (optionnel) : seul le code d'exemple
+        // `auth-token` le renseigne (carte protégée, voir
+        // docs/features/auth-token.md) ; rejeté avec `UnauthorizedError` si
+        // invalide/expiré/absent -> `error` avec `unauthorized: true`.
+        // Jamais journalisé en clair (c'est un secret de session).
+        setup: function (hash, baseURL, viewOptions, authorizationToken) {
           try {
-            console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', viewOptions =', viewOptions, ', typeof VisioOne =', typeof VisioOne);
-            lastSetup = { hash: hash, baseURL: baseURL, viewOptions: viewOptions };
+            console.log('[MapBridge] setup, hash =', hash, ', baseURL =', baseURL, ', viewOptions =', viewOptions, ', authorizationToken =', authorizationToken ? '(set)' : '(none)', ', typeof VisioOne =', typeof VisioOne);
+            lastSetup = { hash: hash, baseURL: baseURL, viewOptions: viewOptions, authorizationToken: authorizationToken };
 
             var oldView = view;
             var oldVenue = venue;
@@ -390,10 +409,12 @@
               .then(function () { if (oldVenue) return visioOne.unloadVenue(oldVenue); })
               .then(function () {
                 console.log('[MapBridge] appel loadVenue...');
-                return visioOne.loadVenue(
-                  baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash },
-                  container
-                );
+                var loadOptions = { vg_maphash: hash };
+                if (baseURL) loadOptions.baseURL = baseURL;
+                // Envoyé par le SDK en en-tête `Authorization: Bearer <token>`
+                // sur chaque requête de carte -- voir docs/features/auth-token.md.
+                if (authorizationToken) loadOptions.authorizationToken = authorizationToken;
+                return visioOne.loadVenue(loadOptions, container);
               })
               .then(function (v) {
                 console.log('[MapBridge] loadVenue résolu, appel createView...');
@@ -417,6 +438,8 @@
                 visioOne.showError(error, container);
                 sendToNative('error', {
                   message: error && error.message ? error.message : String(error),
+                  // `true` => jeton invalide, expiré ou absent (démo `auth-token`).
+                  unauthorized: isUnauthorizedError(error),
                 });
               });
           } catch (error) {
@@ -437,7 +460,24 @@
         setCameraProjection: function (projection) {
           if (!lastSetup) return;
           var options = Object.assign({}, lastSetup.viewOptions || {}, { cameraProjection: projection });
-          window.MapBridge.setup(lastSetup.hash, lastSetup.baseURL, options);
+          window.MapBridge.setup(lastSetup.hash, lastSetup.baseURL, options, lastSetup.authorizationToken);
+        },
+
+        // Code d'exemple `auth-token` : remplace le jeton utilisé pour les
+        // requêtes suivantes de la venue déjà chargée (à appeler AVANT
+        // l'expiration du jeton courant), sans recharger la carte.
+        setAuthorizationToken: function (freshToken) {
+          if (!venue) {
+            console.warn('[MapBridge] setAuthorizationToken: aucune venue chargée');
+            return;
+          }
+          try {
+            venue.setAuthorizationToken(freshToken);
+            if (lastSetup) lastSetup.authorizationToken = freshToken;
+            console.log('[MapBridge] setAuthorizationToken OK');
+          } catch (error) {
+            console.error('[MapBridge] setAuthorizationToken a échoué:', error);
+          }
         },
 
         goToGlobal: function () {
