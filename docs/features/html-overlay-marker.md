@@ -36,24 +36,34 @@ The SDK's `Marker` object and its DOM element can't cross the bridge, so the JS 
 var htmlBadge = null;
 var htmlBadgeTapCount = 0;
 
-// Shared with dynamic-poi-crud, 3d-icon-marker and custom-text-label: resolve an existing POI and the
-// position to copy from it. `ignoredLabel` / `ignoredMarker`: a label / marker we created ourselves and
-// still attached to the POI — never use it as the position source.
-function resolveAnchor(anchorId, ignoredLabel, ignoredMarker) {
+// Display position of a POI, same priority everywhere in this repo: first label,
+// else first image or marker, else the centre of its first surface.
+// `ignored`: objects created by the demos themselves, never used as a source.
+function poiDisplayPosition(poi, ignored) {
+  var skip = ignored || [];
+  function first(list) { return list.filter(function (o) { return skip.indexOf(o) === -1; })[0]; }
+  var source = first(poi.labels) || first(poi.images) || first(poi.markers);
+  if (source) return source.position;
+  var surface = poi.surfaces[0];
+  if (!surface || !surface.positions.length) return null;
+  var lat = 0, lng = 0;
+  surface.positions.forEach(function (p) { lat += p.latitude; lng += p.longitude; });
+  return { latitude: lat / surface.positions.length, longitude: lng / surface.positions.length };
+}
+
+// Resolve an existing anchor POI and the position to copy from it.
+function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
-  var ownMarkers = poi.markers.filter(function (m) { return m !== ignoredMarker; });
-  var source = ownLabels[0] || ownMarkers[0];
-  if (!source) return { poi: poi, error: 'noPosition' };
-  return { poi: poi, position: source.position };
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  if (!position) return { poi: poi, error: 'noPosition' };
+  return { poi: poi, position: position };
 }
 
 placeHtmlBadge: function (requestId, anchorId, text) {
   // 1. Validate everything first: a failed placement leaves the current badge untouched.
   if (!text || !String(text).trim()) { /* reply error: 'textRequired' */ return; }
-  // skip our own overlays still attached to the anchor (custom-text-label's label, our badge)
-  var anchor = resolveAnchor(anchorId, textLabel, htmlBadge);   // error: 'notFound' | 'noPosition'
+  var anchor = resolveAnchor(anchorId);   // error: 'notFound' | 'noPosition'
   // ... report anchor.error
   var position = {
     latitude: anchor.position.latitude + 0.00004,   // ~4 m offset, so the badge doesn't
@@ -132,7 +142,7 @@ interface MarkerUpdateOptions {
 - **Only displayed on its POI's floor.** While another floor is displayed, the SDK sets `display: none` on the element. Move the camera to the anchor (`view.goToFloor(poi.floor)` then `view.goToPOI(poi)`) after placing it.
 - **`updateMarker` only accepts `position` and `isVisible`.** `isVisible: false` sets `display: none`; the element stays in the DOM. Content changes are plain DOM edits on `marker.element` — it is a live node, no SDK call needed.
 - **A removed marker is no longer registered.** `removeMarker` detaches the element from the DOM; a second `removeMarker()`, or an `updateMarker()` after removal, throws `Provided marker is not registered` — forget your reference once removed.
-- **The marker belongs to the anchor POI.** `createMarker` appends it to `poi.markers`. If you later copy a position from that POI's markers (as `resolveAnchor` does when the POI has no label), skip your own marker, or you would get your badge's offset position instead of the map's data.
+- **The marker belongs to the anchor POI.** `createMarker` appends it to `poi.markers`. If you later copy a position from that POI's markers (as `resolveAnchor` does when the POI has no label or image), skip your own marker, or you would get your badge's offset position instead of the map's data.
 - **Validate before replacing.** Check the text and resolve the anchor before `removeMarker()`-ing the badge you already placed, so that a rejected placement (blank text, unknown POI, no position) leaves the current badge on the map.
 
 ## Learn more

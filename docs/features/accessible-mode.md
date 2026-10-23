@@ -37,7 +37,7 @@ Future<void> startItinerary({
 }
 ```
 
-No new bridge method was needed for this feature: `isAccessible` was already a first-class parameter of `startItinerary`/`window.MapBridge.startItinerary`, forwarded straight into `venue.computeNavigation({ ..., isAccessible })` (added alongside [`compute-navigation`](./compute-navigation.md) and reused as-is by [`navigation-exclude-modalities`](./navigation-exclude-modalities.md)) — this demo's `AccessibleModeOverlay` just reads a switch and passes its value through to the existing call.
+`isAccessible` is a plain parameter of `startItinerary`/`window.MapBridge.startItinerary`, forwarded straight into `venue.computeNavigation({ ..., isAccessible })` — the same call as [`compute-navigation`](./compute-navigation.md) and [`navigation-exclude-modalities`](./navigation-exclude-modalities.md).
 
 `isAccessible?: boolean` (`NavigationRequest`, default `false`) is documented by the SDK's own JSDoc as: "If set to true, computed route will only use accessible route." Internally, this excludes the venue's own published accessible-route attributes/modalities list from the routing graph — the mirror image of what [`navigation-exclude-modalities`](./navigation-exclude-modalities.md) does with an explicit `excludedAttributes` list, except here the excluded set is picked automatically by the SDK from data authored in VisioMapEditor, not passed by the caller.
 

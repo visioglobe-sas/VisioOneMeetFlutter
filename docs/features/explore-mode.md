@@ -36,11 +36,11 @@ Future<void> setExploreMode(String mode) => _call('setExploreMode', [mode]);
 Future<void> getExploreMode() => _run('window.MapBridge.getExploreMode()');
 ```
 
-`mode` is one of the 3 exact, case-sensitive `ExploreMode` string values the SDK accepts: `'global'`, `'building'`, `'floor'` (`ExploreMode.ts` in the `@visioglobe/visioone` package). `getExploreMode()` is fire-and-forget on the Dart side; its result arrives asynchronously as an `exploreMode` message (`{currentExploreMode}`) on `VisioOneController.messages`. Live changes — from this call or from any other source — arrive the same way as an `exploreModeChanged` message with the same shape.
+`mode` is one of the 3 exact, case-sensitive `ExploreMode` string values the SDK accepts: `'global'`, `'building'`, `'floor'` (type `ExploreMode` in the `@visioglobe/visioone` typings). `getExploreMode()` is fire-and-forget on the Dart side; its result arrives asynchronously as an `exploreMode` message (`{currentExploreMode}`) on `VisioOneController.messages`. Live changes — from this call or from any other source — arrive the same way as an `exploreModeChanged` message with the same shape.
 
 ## Things to know
 
-- **The 3 modes' actual semantics** (from `ExploreMode.ts`):
+- **The 3 modes' actual semantics** (from the `ExploreMode` typings):
   - `'global'` — the normal outside view. While the camera is outside, moving it in/out of a building opens/closes that building. While navigating a specific floor, moving the camera outside that floor closes the building.
   - `'building'` — the outside is hidden and every currently opened building is presented as a "carousel": the active floor within a building can be picked with the mouse wheel or by sliding the pointer up/down. A click on the screen switches to `'floor'` mode, making the floor under the pointer the new "current" floor.
   - `'floor'` — only the current floor is displayed; the SDK's own UI is expected to offer a way back to `'building'` mode.

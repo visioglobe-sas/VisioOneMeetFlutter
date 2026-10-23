@@ -1,101 +1,100 @@
-# Architecture — VisioOne dans une app Flutter
+# Architecture — VisioOne in a Flutter app
 
-## 1. Le problème de fond
+## 1. The constraint
 
-Le SDK [`@visioglobe/visioone`](https://www.npmjs.com/package/@visioglobe/visioone) est un SDK **JavaScript/WebGL** (rendu Three.js dans un `<canvas>`). Il n'existe et n'existera pas de portage Dart natif : sur **toutes** les plateformes (Android, iOS, React Native, Flutter), l'intégration consiste à embarquer une `WebView` qui exécute le SDK, et à construire un pont de communication entre le code natif et ce SDK.
+[`@visioglobe/visioone`](https://www.npmjs.com/package/@visioglobe/visioone) is a **JavaScript/WebGL** SDK (Three.js rendering in a `<canvas>`). There is no native Dart port: a Flutter app embeds a `WebView` that runs the SDK, and talks to it through a bridge.
 
-Ce document explique les choix faits pour la version Flutter, en s'appuyant sur ce qui a déjà été appris — et parfois découvert à ses dépens — sur d'autres implémentations du SDK sur d'autres plateformes :
+| Piece | Choice in this repo |
+|---|---|
+| WebView | [`webview_flutter`](https://pub.dev/packages/webview_flutter) |
+| SDK build | **UMD** (`visioone.umd.cjs`), vendored in `assets/www/` |
+| Page loading | `WebViewController.loadFlutterAsset('assets/www/map.html')` |
 
-| Plateforme | WebView | Build du SDK utilisé |
-|---|---|---|
-| Natif Android (Kotlin/Compose) | `android.webkit.WebView` + `WebViewAssetLoader` | ESM (`visioone.js`), servi en `https://appassets.androidx.local/...` |
-| Natif iOS (Swift/SwiftUI) | `WKWebView` | **UMD** (`visioone.umd.cjs`), servi en `file://` |
-| React Native | `react-native-webview` | ESM chargé dynamiquement depuis un **CDN** (`cdn.visioglobe.com`) |
-| Flutter (Dart, ce projet) | `webview_flutter` | **UMD** (`visioone.umd.cjs`), vendored, servi via `loadFlutterAsset` |
+## 2. Why the UMD bundle, not the ESM build
 
-## 2. Pourquoi le bundle UMD, pas l'ESM
+- The ESM build (`dist/visioone.js`) is small but loads additional chunks through dynamic `import()`. Under WebKit, ES module imports from `file://` fail because of the CORS rules applied to modules — and on iOS, `loadFlutterAsset` serves the page from `file://`.
+- The **UMD** build (`dist/visioone.umd.cjs`, ~8 MB) is a self-contained bundle loaded with a classic `<script>` tag (not `type="module"`). It does no dynamic `import()`, so it works whatever origin serves the page (`file://` on iOS, the internal asset origin on Android).
 
-C'est la décision la plus importante du projet, et elle n'est pas arbitraire : elle vient d'un problème réel, déjà constaté et documenté sur d'autres implémentations natives du SDK.
+The same JS runs unchanged on Android and iOS, so the UMD bundle is the one choice that works on both without a local HTTP server.
 
-- Le build ESM (`dist/visioone.js`) est petit (~8 Ko) mais référence des chunks additionnels chargés par des `import()` dynamiques (ex. `visioOne-*.js`, ~6 Mo). Sous WebKit, des imports de modules ES en `file://` échouent à cause des restrictions CORS appliquées aux modules — un problème constaté et documenté explicitement sur une implémentation native iOS du SDK (« Ne pas utiliser `dist/visioone.js`... ce fichier échoue en `file://` »).
-- Une intégration React Native a rencontré une variante du même problème en chargeant l'ESM depuis un CDN plutôt qu'en local (« latest loads a large module graph »), ce qui a nécessité un mode diagnostic dédié pour isoler la cause.
-- Le build **UMD** (`dist/visioone.umd.cjs`, ~8 Mo) est un bundle autonome, chargé comme un `<script>` classique (pas `type="module"`). Il ne fait aucun `import()` dynamique et fonctionne donc **indépendamment de l'origine** servant la page (`file://`, `https://`, ou l'origine interne utilisée par `webview_flutter`).
+> If a future SDK release stops shipping a UMD build, the fallback is to serve the page from a real local HTTP server (for example `shelf` embedded in the app) instead of `file://`.
 
-Flutter doit tourner de façon identique sur Android *et* iOS avec le même code JS embarqué (pas de fork par plateforme comme sur Android/iOS natifs) : le bundle UMD est donc le seul choix qui évite de refaire l'enquête déjà menée sur iOS et sur RN.
-
-> Si une future version du SDK ne publie plus de build UMD, la solution de repli est de servir la page via un vrai serveur HTTP local (par ex. via `shelf` embarqué dans l'app, ou l'équivalent de `WebViewAssetLoader` côté Android) plutôt que `file://` — c'est ce qui permet à l'ESM de fonctionner côté Android natif.
-
-## 3. Chargement de la page hôte
+## 3. Loading the host page
 
 ```mermaid
 graph LR
-  A["assets/www/map.html<br/>assets/www/visioone.umd.cjs"] -->|déclarés dans pubspec.yaml| B["Asset bundle Flutter"]
-  B -->|WebViewController.loadFlutterAsset| C["WebView (Android: origine interne<br/>iOS: file:// sandboxé)"]
-  C --> D["main.dart / VisioOneMapScreen"]
+  A["assets/www/map.html<br/>assets/www/visioone.umd.cjs"] -->|declared in pubspec.yaml| B["Flutter asset bundle"]
+  B -->|WebViewController.loadFlutterAsset| C["WebView (Android: internal origin<br/>iOS: sandboxed file://)"]
+  C --> D["VisioOneMapShell"]
 ```
 
-`WebViewController.loadFlutterAsset('assets/www/map.html')` (voir [`visio_one_controller.dart`](../lib/visio_one/visio_one_controller.dart)) est l'équivalent Flutter de :
-- `WebViewAssetLoader` + `https://appassets.androidx.local/...` côté Android natif,
-- `webView.loadFileURL(url, allowingReadAccessTo:)` côté iOS natif.
+`map.html` and `visioone.umd.cjs` must stay in the **same folder** (`assets/www/`): the page loads the bundle by relative path (`<script src="visioone.umd.cjs">`). Flutter does not include asset sub-folders recursively: a new sub-folder must be added to `pubspec.yaml`.
 
-`map.html` et `visioone.umd.cjs` doivent être dans le **même dossier** (`assets/www/`) : `map.html` référence le second par chemin relatif (`<script src="visioone.umd.cjs">`).
-
-## 4. Le pont de communication
-
-Deux canaux indépendants, inspirés du meilleur de chaque implémentation existante :
+## 4. The bridge
 
 ```mermaid
 graph LR
-  subgraph Natif["Dart (VisioOneController)"]
-    N1["runJavaScript()<br/>appelle window.MapBridge.*"]
-    N2["JavaScriptChannel 'VisioOneBridge'<br/>reçoit {type, data}"]
+  subgraph Native["Dart (VisioOneController)"]
+    N1["runJavaScript()<br/>calls window.MapBridge.*"]
+    N2["JavaScriptChannel 'VisioOneBridge'<br/>receives {type, data}"]
   end
   subgraph Web["JS (map.html)"]
     J1["window.MapBridge = { setup, goToPOI, ... }"]
     J2["sendToNative(type, data)"]
-    SDK["SDK VisioOne<br/>(venue, view)"]
+    SDK["VisioOne SDK<br/>(venue, view)"]
   end
 
   N1 --> J1 --> SDK
   SDK -->|addEventListener| J2 --> N2
 ```
 
-- **Native → JS** : `window.MapBridge`, une méthode par commande (`setup`, `goToPOI`, `goToFloor`, `startItinerary`, ...) — repris d'un pattern déjà documenté sur une implémentation native iOS du SDK (« ne jamais appeler `venue`/`view` directement depuis le natif, toujours via un petit objet-pont »). Chaque argument structuré est encodé en JSON (`dart:convert.jsonEncode`) avant d'être interpolé dans le script — jamais de concaténation de texte brut, pour éviter toute injection JS (même mise en garde que sur cette implémentation iOS).
-- **JS → Native** : un seul `JavaScriptChannel` (`VisioOneBridge`), avec une enveloppe `{type, data}` — repris du contrat `{type, data}` constaté sur une implémentation React Native plutôt que la méthode-par-événement d'Android (`@JavascriptInterface` avec `onMapReady()`/`onMapError()`), parce qu'un seul canal typé est plus simple à étendre (ajouter un événement = ajouter un `case` côté Dart, pas une nouvelle méthode de pont).
+- **Native → JS**: `window.MapBridge`, one method per command. Dart never touches `venue`/`view` directly. Every argument is JSON-encoded (`jsonEncode`) before being interpolated into the script, never concatenated as raw text.
+- **JS → Native**: a single `JavaScriptChannel` (`VisioOneBridge`) with a `{type, data}` envelope. Adding an event means adding a message type, not a new channel.
 
-Détail complet, y compris la liste des messages et les pièges de threading : [`COMMUNICATION_GUIDE.md`](COMMUNICATION_GUIDE.md).
+The full contract (every command and message) is in [`COMMUNICATION_GUIDE.md`](COMMUNICATION_GUIDE.md).
 
-## 5. Cycle de vie d'un affichage de carte
+## 5. App structure
+
+- `FeatureMenuScreen` lists the features (`Feature` enum in `lib/features/feature.dart`).
+- `FeatureScreen` opens one feature: a fresh `VisioOneMapShell` (new WebView, new map) per screen. Nothing is shared between two screens.
+- `VisioOneMapShell` owns the `VisioOneController`, shows the loading spinner and the error screen, and opens the feature's panel (a modal bottom sheet) from the floating action button.
+- The panel is rebuilt each time it is opened. Anything that must survive closing it lives on the controller, which lives as long as the screen:
+  - long-running loops: `SimulatedPositionSession`, `OccupancySimulationSession`, `CameraCarouselSession`;
+  - SDK state mirrored for the panel (placed label/badge/icon, current theme, highlighted category...): `ValueNotifier`s on `VisioOneController`;
+  - values typed in the panel (fields, switches, last result): `PanelState` (`controller.panel`).
+- Leaving the screen disposes the controller, which stops every loop.
+
+## 6. Map display lifecycle
 
 ```mermaid
 sequenceDiagram
-  participant UI as VisioOneMapScreen
+  participant UI as VisioOneMapShell
   participant Ctrl as VisioOneController
   participant WV as WebView
   participant JS as map.html
-  participant SDK as SDK VisioOne
+  participant SDK as VisioOne SDK
 
   UI->>Ctrl: VisioOneController.create()
   Ctrl->>WV: setJavaScriptMode, addJavaScriptChannel, setInspectable (debug)
   UI->>Ctrl: loadMapPage()
   Ctrl->>WV: loadFlutterAsset('assets/www/map.html')
-  WV->>JS: charge et exécute map.html + visioone.umd.cjs
+  WV->>JS: loads map.html + visioone.umd.cjs
   WV->>UI: onPageFinished
   UI->>Ctrl: setup(hash)
-  Ctrl->>JS: runJavaScript("window.MapBridge.setup('...')")
+  Ctrl->>JS: runJavaScript('window.MapBridge.setup("...")')
   JS->>SDK: createVisioOne() / loadVenue({vg_maphash}) / createView(container, venue)
-  SDK-->>JS: Promise résolue (carte prête)
+  SDK-->>JS: promise resolved (map ready)
   JS->>WV: VisioOneBridge.postMessage('{"type":"ready"}')
   WV->>Ctrl: JavaScriptChannel.onMessageReceived
   Ctrl->>UI: messages stream -> VisioOneMessage(type: 'ready')
-  UI->>UI: setState -> masque le spinner, affiche la WebView
+  UI->>UI: setState -> hides the spinner, shows the FAB
 ```
 
-## 6. Ce que ce squelette ne couvre pas (volontairement)
+## 7. Out of scope
 
-Ce projet est un point de départ d'intégration, pas une application produit. Restent hors périmètre, à ajouter selon les besoins de l'app hôte (des patterns similaires existent sur d'autres implémentations du SDK, à adapter) :
+This repo is an integration starting point, not a product. Not covered:
 
-- UI native pilotant la recherche de POI, un tiroir de détails, un sélecteur d'étage natif (le SDK fournit sa propre UI overlay, désactivable partiellement via `setUIPartVisible`) ;
-- gestion multi-cartes / changement de site à chaud ;
-- authentification (`authorizationToken` de `loadVenue`) pour les cartes privées ;
-- récupération et affichage d'un statut d'occupation temps réel (pattern `updateOccupancy` déjà câblé côté pont dans ce projet mais sans source de données).
+- real indoor positioning (BLE, Wi-Fi, UWB): positions are simulated;
+- real occupancy or IoT feeds: occupancy is simulated;
+- a backend issuing authorization tokens: `auth-token` is a code sample with placeholder values;
+- switching between several maps on the same screen.
