@@ -4,7 +4,7 @@
 
 Hides the SDK's own built-in floor selector (a UI part named `floorSelector`, see `ui-part-visibility`) via `view.setUIPartVisible('floorSelector', false)`, and shows that the app's existing native floor/building picker — the one built for `floor-selector` — is, on its own, a complete and fully-functional replacement.
 
-This feature reuses `floor-selector`'s native picker as-is (same `FloorSelectorOverlay` widget, same `goToFloor`/`getVenueLayout` calls) rather than reimplementing floor switching; see `floor-selector` for that call's SDK usage. The only thing this feature adds is a second toggle that reveals the SDK's own `floorSelector` UI part again, so both controls can be compared side by side while driving the same floor state — kept in sync the same way `floor-selector` already is, by listening for `currentfloorchanged`.
+This feature reuses `floor-selector`'s native picker as-is (same `goToFloor`/`getVenueLayout` calls) rather than reimplementing floor switching; see `floor-selector` for that call's SDK usage. The only thing this feature adds is a second toggle that reveals the SDK's own `floorSelector` UI part again, so both controls can be compared side by side while driving the same floor state — kept in sync the same way `floor-selector` already is, by listening for `currentfloorchanged`.
 
 ## SDK usage
 

@@ -5,9 +5,8 @@
 // *texts* shown in fields (label / badge text) are localized and live in
 // `lib/l10n/app_*.arb` instead (keys `dynamicPoiDefaultLabelText`, `textLabelDefaultText`, `htmlBadgeDefaultText`).
 
-/// Demo map hash (41 characters), the same map as the other VisioOneMeet
-/// demo repos. See docs/INTEGRATION_GUIDE.md, part D, to get YOUR map's hash
-/// from my.visioglobe.com.
+/// Demo map hash (41 characters). See the README ("Configure your own map")
+/// to get YOUR map's hash from my.visioglobe.com.
 const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';
 
 /// Map dedicated to the `custom-data` demo (see `docs/features/custom-data.md`):

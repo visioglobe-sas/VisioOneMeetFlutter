@@ -44,7 +44,7 @@ loadCustomData: function (requestId, poiId) {
 
 This is a request/response round trip (same `requestId` pattern as `resolvePoiPosition` / `poiPositionResolved`, used by `simulated-position`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously on the bridge with a `customDataLoaded` message carrying the same `requestId`, `found` (whether `poiId` resolved to a POI), and `customData`.
 
-The two real SDK calls involved, both on `Venue` (`visioone/src/VisioOne/Venue/Venue.ts`):
+The two real SDK calls involved, both on `Venue` (`Venue.d.ts` in the SDK's typings):
 
 ```ts
 // (Re)loads all CustomData from the server into the venue's cache.
@@ -63,7 +63,7 @@ interface CustomData {
 
 This feature demo loads a dedicated map hash (`kd9426d8cb3f1c532f22b5bcbd325c280bd351feb`, `kCustomDataMapHash` in `lib/demo_map.dart`), distinct from the rest of the app's shared demo map (`kDefaultMapHash`) — see the conditional in `lib/features/feature_screen.dart`. The shared demo map has no `CustomData` published yet, so it would only ever demonstrate the empty-state described above; every other feature screen keeps using `kDefaultMapHash` unchanged.
 
-Three Place IDs are confirmed to carry real `CustomData` on that dedicated map (`DemoMap.customDataQuickIds` in `lib/demo_map.dart`, surfaced as quick-select chips in `CustomDataOverlay`; the Place ID field opens prefilled with `B3-UL00-ID0065`):
+Three Place IDs are confirmed to carry real `CustomData` on that dedicated map (`DemoMap.customDataQuickIds` in `lib/demo_map.dart`):
 
 - `B1` → `{"CSM ID":"BLBLA"}`
 - `B3-UL00-ID0065` → `{"Sensor X":"17718393"}`

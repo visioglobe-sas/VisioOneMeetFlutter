@@ -6,21 +6,21 @@ import '../demo_map.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
+import 'shared/bridge_error_text.dart';
 
 /// Overlay de la feature `dynamic-poi-crud` : trois champs ("New POI ID",
 /// "Anchor POI ID", "Label text") + trois actions (Create / Update text /
 /// Remove), affichés dans le bottom sheet ouvert par le FAB de
-/// [VisioOneMapShell]. Chaque action est une commande Native -> JS
-/// corrélée par `requestId` sur `controller.messages` (même idiom que
-/// `custom-data`/`category-highlight`) — voir
+/// `VisioOneMapShell`. Chaque action est une commande Native -> JS
+/// corrélée par `requestId` sur `controller.messages` — voir
 /// [VisioOneController.createDynamicPOI]/[VisioOneController.updateDynamicPoiLabelText]/
 /// [VisioOneController.removeDynamicPOI].
 ///
 /// L'état "un POI dynamique suivi ou pas" vit sur
-/// [VisioOneController.dynamicPoi] plutôt que dans ce `State`, pour
-/// survivre à la fermeture du bottom sheet — même raison que
-/// `CategoryHighlightOverlay.highlightedCategoryId` — cet overlay est
-/// recréé à chaque ouverture. Voir `docs/features/dynamic-poi-crud.md`.
+/// [VisioOneController.dynamicPoi] et les champs dans `controller.panel`,
+/// pour survivre à la fermeture du bottom sheet (cet overlay est recréé à
+/// chaque ouverture). Une réponse arrivée panneau fermé met quand même cet
+/// état à jour. Voir `docs/features/dynamic-poi-crud.md`.
 class DynamicPoiCrudOverlay extends StatefulWidget {
   const DynamicPoiCrudOverlay({super.key, required this.controller});
 
@@ -31,12 +31,12 @@ class DynamicPoiCrudOverlay extends StatefulWidget {
 }
 
 class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
-  final TextEditingController _newIdController = TextEditingController(text: DemoMap.dynamicPoiNewId);
-  final TextEditingController _anchorIdController = TextEditingController(text: DemoMap.anchorPoiId);
-  final TextEditingController _labelTextController = TextEditingController();
+  late final TextEditingController _newIdController =
+      widget.controller.panel.text('dynamic-poi-crud.newId', DemoMap.dynamicPoiNewId);
+  late final TextEditingController _anchorIdController =
+      widget.controller.panel.text('dynamic-poi-crud.anchorId', DemoMap.anchorPoiId);
+  TextEditingController? _labelTextController;
 
-  // Requête/réponse par `requestId` sur `controller.messages` (même idiom
-  // que `CustomDataOverlay`).
   final Map<String, Completer<Map<String, Object?>>> _pendingRequests = {};
   StreamSubscription<VisioOneMessage>? _subscription;
   int _requestCounter = 0;
@@ -48,36 +48,21 @@ class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
   void initState() {
     super.initState();
     _subscription = widget.controller.messages.listen(_onMessage);
-    // Préremplit le champ texte avec le label du POI dynamique déjà suivi,
-    // si le panneau est rouvert alors qu'un POI a déjà été créé — sinon
-    // "Update text" partirait d'un champ vide sans rapport avec le texte
-    // actuellement affiché sur la carte.
-    final tracked = widget.controller.dynamicPoi.value;
-    if (tracked != null) {
-      _newIdController.text = tracked.id;
-      _labelTextController.text = tracked.labelText;
-    }
   }
-
-  // Texte par défaut localisé (l10n indisponible dans initState).
-  bool _defaultTextApplied = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_defaultTextApplied) return;
-    _defaultTextApplied = true;
-    if (widget.controller.dynamicPoi.value == null) {
-      _labelTextController.text = AppLocalizations.of(context)!.dynamicPoiDefaultLabelText;
-    }
+    // Texte par défaut localisé (l10n indisponible dans initState).
+    _labelTextController ??= widget.controller.panel.text(
+      'dynamic-poi-crud.labelText',
+      AppLocalizations.of(context)!.dynamicPoiDefaultLabelText,
+    );
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
-    _newIdController.dispose();
-    _anchorIdController.dispose();
-    _labelTextController.dispose();
     super.dispose();
   }
 
@@ -91,113 +76,86 @@ class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
     completer?.complete(data.map((key, value) => MapEntry(key.toString(), value)));
   }
 
-  Future<Map<String, Object?>> _sendAndAwait(String requestId, void Function() send) {
-    final completer = Completer<Map<String, Object?>>();
-    _pendingRequests[requestId] = completer;
-    send();
-    // Un aller-retour perdu ne doit jamais bloquer indéfiniment ce panneau
-    // (même garde-fou que `CustomDataOverlay`).
-    return completer.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        _pendingRequests.remove(requestId);
-        return <String, Object?>{'success': false, 'message': 'Timed out waiting for the map.'};
-      },
-    );
-  }
-
-  String _newRequestId(String tag) => 'dynamic-poi-crud-$tag-${_requestCounter++}';
-
-  Future<void> _create() async {
-    if (widget.controller.dynamicPoi.value != null) return; // un seul POI dynamique à la fois.
-
-    final newId = _newIdController.text.trim();
+  /// Envoie une commande, attend sa réponse (5 s max), applique [onResult]
+  /// à l'état du contrôleur même si le panneau a été fermé entre-temps, puis
+  /// affiche l'éventuelle erreur si le panneau est toujours ouvert.
+  Future<void> _perform(
+    String tag,
+    void Function(String requestId) send,
+    void Function(Map<String, Object?> result) onResult,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
     final anchorId = _anchorIdController.text.trim();
-    final labelText = _labelTextController.text.trim();
-    if (newId.isEmpty || anchorId.isEmpty || labelText.isEmpty) return;
-
     setState(() {
       _busy = true;
       _errorMessage = null;
     });
+    final requestId = 'dynamic-poi-crud-$tag-${_requestCounter++}';
+    final completer = Completer<Map<String, Object?>>();
+    _pendingRequests[requestId] = completer;
+    send(requestId);
+    final result = await completer.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        _pendingRequests.remove(requestId);
+        return kBridgeTimeoutResult;
+      },
+    );
+    onResult(result);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (result['success'] != true) _errorMessage = bridgeErrorText(l10n, result, anchorId: anchorId);
+    });
+  }
 
-    final requestId = _newRequestId('create');
-    final result = await _sendAndAwait(
-      requestId,
-      () => widget.controller.createDynamicPOI(
+  Future<void> _create() async {
+    if (widget.controller.dynamicPoi.value != null) return; // un seul POI dynamique à la fois.
+    final newId = _newIdController.text.trim();
+    final anchorId = _anchorIdController.text.trim();
+    final labelText = _labelTextController!.text.trim();
+    if (newId.isEmpty || anchorId.isEmpty || labelText.isEmpty) return;
+    await _perform(
+      'create',
+      (requestId) => widget.controller.createDynamicPOI(
         requestId,
         newId: newId,
         anchorId: anchorId,
         labelText: labelText,
       ),
+      (result) {
+        if (result['success'] == true) {
+          widget.controller.dynamicPoi.value = DynamicPoiInfo(id: newId, labelText: labelText);
+        }
+      },
     );
-
-    if (!mounted) return;
-    final success = result['success'] == true;
-    setState(() {
-      _busy = false;
-      if (success) {
-        widget.controller.dynamicPoi.value = DynamicPoiInfo(id: newId, labelText: labelText);
-      } else {
-        _errorMessage = result['message'] as String? ?? 'Could not create the POI.';
-      }
-    });
   }
 
   Future<void> _updateText() async {
     final tracked = widget.controller.dynamicPoi.value;
     if (tracked == null) return;
-    final text = _labelTextController.text.trim();
+    final text = _labelTextController!.text.trim();
     if (text.isEmpty) return;
-
-    setState(() {
-      _busy = true;
-      _errorMessage = null;
-    });
-
-    final requestId = _newRequestId('update');
-    final result = await _sendAndAwait(
-      requestId,
-      () => widget.controller.updateDynamicPoiLabelText(requestId, text),
+    await _perform(
+      'update',
+      (requestId) => widget.controller.updateDynamicPoiLabelText(requestId, text),
+      (result) {
+        if (result['success'] == true) widget.controller.dynamicPoi.value = tracked.withLabelText(text);
+        if (result['error'] == 'noPoi') widget.controller.dynamicPoi.value = null;
+      },
     );
-
-    if (!mounted) return;
-    final success = result['success'] == true;
-    setState(() {
-      _busy = false;
-      if (success) {
-        widget.controller.dynamicPoi.value = tracked.withLabelText(text);
-      } else {
-        _errorMessage = result['message'] as String? ?? 'Could not update the label.';
-      }
-    });
   }
 
   Future<void> _remove() async {
     if (widget.controller.dynamicPoi.value == null) return;
-
-    setState(() {
-      _busy = true;
-      _errorMessage = null;
-    });
-
-    final requestId = _newRequestId('remove');
-    final result = await _sendAndAwait(requestId, () => widget.controller.removeDynamicPOI(requestId));
-
-    if (!mounted) return;
-    final success = result['success'] == true;
-    setState(() {
-      _busy = false;
-      if (success) {
-        widget.controller.dynamicPoi.value = null;
-      } else {
-        _errorMessage = result['message'] as String? ?? 'Could not remove the POI.';
-      }
+    await _perform('remove', (requestId) => widget.controller.removeDynamicPOI(requestId), (result) {
+      if (result['success'] == true || result['error'] == 'noPoi') widget.controller.dynamicPoi.value = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ValueListenableBuilder<DynamicPoiInfo?>(
       valueListenable: widget.controller.dynamicPoi,
       builder: (context, tracked, _) {
@@ -207,29 +165,29 @@ class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              hasTracked ? 'Created: ${tracked.id} — "${tracked.labelText}"' : 'No dynamic POI created yet.',
+              hasTracked ? l10n.dynamicPoiStatusCreated(tracked.id, tracked.labelText) : l10n.dynamicPoiStatusNone,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _newIdController,
               enabled: !hasTracked,
-              decoration: const InputDecoration(labelText: 'New POI ID', isDense: true),
+              decoration: InputDecoration(labelText: l10n.dynamicPoiNewIdLabel, isDense: true),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _anchorIdController,
               enabled: !hasTracked,
-              decoration: const InputDecoration(
-                labelText: 'Anchor POI ID',
-                helperText: 'Existing POI to copy the position from',
+              decoration: InputDecoration(
+                labelText: l10n.anchorPoiIdLabel,
+                helperText: l10n.dynamicPoiAnchorHelper,
                 isDense: true,
               ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _labelTextController,
-              decoration: const InputDecoration(labelText: 'Label text', isDense: true),
+              decoration: InputDecoration(labelText: l10n.dynamicPoiLabelTextLabel, isDense: true),
             ),
             const SizedBox(height: 12),
             if (_errorMessage != null) ...[
@@ -241,21 +199,21 @@ class _DynamicPoiCrudOverlayState extends State<DynamicPoiCrudOverlay> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _busy || hasTracked ? null : _create,
-                    child: const Text('Create'),
+                    child: Text(l10n.createButton),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _busy || !hasTracked ? null : _updateText,
-                    child: const Text('Update text'),
+                    child: Text(l10n.updateTextButton),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _busy || !hasTracked ? null : _remove,
-                    child: const Text('Remove'),
+                    child: Text(l10n.removeButton),
                   ),
                 ),
               ],

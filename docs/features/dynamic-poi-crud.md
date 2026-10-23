@@ -25,19 +25,15 @@ Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [re
 // window.MapBridge, JS side (assets/www/map.html)
 createDynamicPOI: function (requestId, newId, anchorId, labelText) {
   if (!venue) {
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Map not ready.' });
+    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'notReady' });
     return;
   }
 
-  // resolveAnchor(): venue.pois.find(p => p.id === anchorId), then its
-  // labels[0] || markers[0] position (shared with 3d-icon-marker).
+  // resolveAnchor(): venue.pois.find(p => p.id === anchorId), then its display
+  // position — first label, else image/marker, else surface centre.
   var anchor = resolveAnchor(anchorId);
-  if (anchor.error === 'notFound') {
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Anchor POI "' + anchorId + '" not found.' });
-    return;
-  }
-  if (anchor.error === 'noPosition') {
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Anchor POI "' + anchorId + '" has no label or marker to copy a position from.' });
+  if (anchor.error) {   // 'notFound' | 'noPosition'
+    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: anchor.error });
     return;
   }
 
@@ -46,7 +42,7 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
     poi = venue.createPOI({ id: newId });
   } catch (error) {
     // POIAlreadyExistsError — a normal, demoable state, not a crash.
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: error && error.message ? error.message : 'Could not create POI "' + newId + '".' });
+    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'alreadyExists', message: error.message });
     return;
   }
 
@@ -59,7 +55,7 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
 
 updateDynamicPoiLabelText: function (requestId, text) {
   if (!dynamicPoiLabel) {
-    sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, message: 'No dynamic POI tracked.' });
+    sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, error: 'noPoi' });
     return;
   }
   venue.updateLabel(dynamicPoiLabel, { text: text });
@@ -68,7 +64,7 @@ updateDynamicPoiLabelText: function (requestId, text) {
 
 removeDynamicPOI: function (requestId) {
   if (!dynamicPoi) {
-    sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, message: 'No dynamic POI tracked.' });
+    sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, error: 'noPoi' });
     return;
   }
   venue.removePOI(dynamicPoi);
@@ -80,7 +76,7 @@ removeDynamicPOI: function (requestId) {
 
 Each action is a request/response round trip (same `requestId`-correlated pattern as `custom-data`'s `loadCustomData` / `customDataLoaded`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously with `dynamicPoiCreated` / `dynamicPoiLabelUpdated` / `dynamicPoiRemoved`, each carrying the same `requestId` and a `success` boolean, plus a `message` explaining any failure.
 
-The real SDK surface involved, all on `Venue` (`visioone/src/VisioOne/Venue/Venue.ts`), `POI` (`POI.ts`), and `Label` (`Label.ts`):
+The real SDK surface involved, from the SDK's typings (`Venue.d.ts`, `POI.d.ts`, `Label.d.ts`):
 
 ```ts
 // Venue
@@ -131,15 +127,15 @@ interface LabelUpdateOptions {
 }
 ```
 
-The anchor POI's position is resolved the same way `resolvePoiPosition` (used by `simulated-position`) does it: `venue.pois.find(p => p.id === anchorId)`, then that POI's first `Label`'s `.position`, falling back to its first `Marker`'s `.position` if it has no label. There is no "tap the map to place a pin" UI in this demo — the new POI's position is always copied from an existing POI, never freehand.
+The anchor POI's position is resolved the same way `resolvePoiPosition` (used by `simulated-position`) does it: `venue.pois.find(p => p.id === anchorId)`, then that POI's first label's `.position`, else its first image's or marker's, else the centre of its first surface's `positions`. There is no "tap the map to place a pin" UI in this demo — the new POI's position is always copied from an existing POI, never freehand.
 
 ## Things to know
 
 - **A freshly created POI has no visual footprint by itself.** `venue.createPOI({ id })` only registers a logical id (+ optional floor/categories) in the venue — `images`, `labels`, `lines`, `surfaces`, and `markers` are all empty arrays on the object it returns. Nothing appears on the map until you separately attach a visual element (here, `venue.createLabel({ poi, ... })`) to that POI. This is why the demo immediately follows `createPOI` with `createLabel` rather than treating the POI alone as "done".
 - **`updatePOI` can only change categories — nothing visual.** `POIUpdateOptions` has exactly one field, `categories: Category[]`; there is no way to move a POI, resize it, or touch any of its attached visual elements through `updatePOI`. Passing `[]` clears all of a POI's categories rather than being a no-op. The "Update text" action in this demo therefore calls `venue.updateLabel()` on the POI's attached `Label` instead — that is the actual "edit a dynamic POI's content" story for this SDK.
 - **`removePOI` cascades to its visual elements.** Removing a POI automatically removes any `Image`/`Label`/`Line`/`Marker`/`Surface` still attached to it from the view — there is no need to separately call `removeLabel()` on the label created above before calling `removePOI()`.
-- **`createPOI` throws `POIAlreadyExistsError` synchronously** (`visioone/src/VisioOne/Venue/Errors/POIAlreadyExistsError.ts`) when `id` is already used anywhere in the venue — including an id that belongs to a POI authored in VisioMapEditor itself, not just one created dynamically. The JS bridge code above wraps the call in try/catch and reports it back as a normal `success: false` state (with the SDK's own message, e.g. "Cannot create POI, provided ID already exist."), not as a crash.
-- The anchor-position lookup (`anchorPoi.labels[0]?.position` / `anchorPoi.markers[0]?.position`) can come up empty for a POI that has neither — e.g. a POI that only has a `Surface`/`Line`/`Image`. That is reported back as a normal "no position to copy" failure rather than throwing, since `Image` isn't checked as a further fallback here (kept simple; a production app could add it).
+- **`createPOI` throws `POIAlreadyExistsError` synchronously** when `id` is already used anywhere in the venue — including an id that belongs to a POI authored in VisioMapEditor itself, not just one created dynamically. The JS bridge code above wraps the call in try/catch and reports it back as a normal `success: false` state (`error: 'alreadyExists'`, plus the SDK's own message, e.g. "Cannot create POI, provided ID already exist."), not as a crash. `POIAlreadyExistsError` is not exported by the UMD bundle, so no `instanceof` check is possible.
+- The anchor-position lookup can come up empty for a POI with no label, image, marker or surface (e.g. one that only has a `Line`). That is reported back as a normal `noPosition` failure rather than throwing.
 
 ## Learn more
 

@@ -29,13 +29,28 @@ The SDK's `Image` object can't cross the bridge, so the JS side keeps it in a ma
 // window.MapBridge, JS side (assets/www/map.html)
 var iconImages = {};
 
-// Shared with dynamic-poi-crud: resolve an existing POI and the position to copy from it.
+// Display position of a POI, same priority everywhere in this repo: first label,
+// else first image or marker, else the centre of its first surface.
+// `ignored`: objects created by the demos themselves, never used as a source.
+function poiDisplayPosition(poi, ignored) {
+  var skip = ignored || [];
+  function first(list) { return list.filter(function (o) { return skip.indexOf(o) === -1; })[0]; }
+  var source = first(poi.labels) || first(poi.images) || first(poi.markers);
+  if (source) return source.position;
+  var surface = poi.surfaces[0];
+  if (!surface || !surface.positions.length) return null;
+  var lat = 0, lng = 0;
+  surface.positions.forEach(function (p) { lat += p.latitude; lng += p.longitude; });
+  return { latitude: lat / surface.positions.length, longitude: lng / surface.positions.length };
+}
+
+// Resolve an existing anchor POI and the position to copy from it.
 function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var source = poi.labels[0] || poi.markers[0];
-  if (!source) return { poi: poi, error: 'noPosition' };
-  return { poi: poi, position: source.position };
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  if (!position) return { poi: poi, error: 'noPosition' };
+  return { poi: poi, position: position };
 }
 
 placeIconImage: function (requestId, imageId, anchorId, url, orientationType) {
@@ -82,7 +97,7 @@ After a successful placement, the demo calls the existing `goToPOI(anchorId)` br
 
 Each action is a `requestId`-correlated request/response round trip (same pattern as `dynamic-poi-crud`): `iconImagePlaced` / `iconImageUpdated` / `iconImageRemoved`, each with `success` and, on failure, an `error` code (`notFound`, `noPosition`, `noImage`, or `sdk` with the SDK's own `message`).
 
-The real SDK surface, on `Venue` (`Venue.ts`), `Image` (`Image.ts`), and `OrientationType` (`OrientationType.ts`):
+The real SDK surface, from the SDK's typings (`Venue.d.ts`, `Image.d.ts`, `OrientationType.d.ts`):
 
 ```ts
 createImage(options: ImageCreateOptions): Image;
@@ -124,7 +139,7 @@ type OrientationType =
 - **Runtime `'flat'`/`'facing'` images require SDK ≥ 1.0.9.** In `@visioglobe/visioone` 1.0.5, an image created at runtime with `'flat'` or `'facing'` was not oriented by the camera (it lay on the ground under the anchor's label); this SDK bug is fixed in 1.0.9. `'fixed'` works on both versions.
 - **Validation errors are thrown synchronously.** `createImage` throws `InvalidCreateOptionsError` for a missing/blank `url`, a missing `position` or `width`, a non-positive size, or an unknown `orientationType` (e.g. `updateImage(image, { orientationType: 'bogus' })` throws `Invalid orientation type`), and `POINotFoundError` if `poi` is not part of the venue. Wrap the calls in try/catch.
 - **Sizes are in meters.** `width`/`height` are world sizes, so the icon's on-screen size follows the camera zoom.
-- A POI with neither `labels[0]` nor `markers[0]` has no position to copy — report it as an explicit "no position" state rather than passing `undefined` to `createImage`.
+- A POI has no latitude/longitude of its own; take one from its label, image, marker or surface (see `poiDisplayPosition` above). A POI with none of them has no position to copy — report it as an explicit "no position" state rather than passing `undefined` to `createImage`.
 
 ## Learn more
 

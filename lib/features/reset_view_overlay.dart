@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Overlay de la feature `reset-view` : un bouton qui recentre la caméra sur
@@ -14,7 +15,7 @@ class ResetViewOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton(
       onPressed: controller.goToGlobal,
-      child: const Text('Reset view'),
+      child: Text(AppLocalizations.of(context)!.resetViewButton),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -86,7 +88,7 @@ class VisioOneMapShell extends StatefulWidget {
   /// l'état "prête" habituel. Seule `custom-base-url` en a besoin : sans
   /// ça, une `baseURL` invalide ferait échouer le chargement et masquerait
   /// le seul moyen d'en taper une nouvelle (le FAB n'ouvre le panneau que si
-  /// la carte est "ready" par défaut) -- le bouton "Réessayer" de l'état
+  /// la carte est "ready" par défaut) -- le bouton "Retry" de l'état
   /// d'erreur, lui, ne fait que rejouer la même valeur. Voir
   /// `docs/features/custom-base-url.md`.
   final bool showControlsOnError;
@@ -97,8 +99,11 @@ class VisioOneMapShell extends StatefulWidget {
 
 class _VisioOneMapShellState extends State<VisioOneMapShell> {
   VisioOneController? _controller;
+  StreamSubscription<VisioOneMessage>? _subscription;
   _MapLoadState _state = _MapLoadState.loading;
-  String? _errorMessage;
+  // Message brut du SDK (non traduit), `null` s'il n'en a fourni aucun.
+  String? _errorDetail;
+  bool _unauthorized = false;
 
   @override
   void initState() {
@@ -108,7 +113,11 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
 
   Future<void> _bootstrap() async {
     final controller = await VisioOneController.create();
-    controller.messages.listen(_onMessage);
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    _subscription = controller.messages.listen(_onMessage);
     await controller.webViewController.setNavigationDelegate(
       NavigationDelegate(
         onPageFinished: (_) => controller.setup(
@@ -122,6 +131,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
     await controller.loadMapPage();
 
     if (!mounted) {
+      _subscription?.cancel();
       controller.dispose();
       return;
     }
@@ -129,6 +139,8 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
   }
 
   void _onMessage(VisioOneMessage message) {
+    // Un message tardif peut arriver pendant la destruction de l'écran.
+    if (!mounted) return;
     switch (message.type) {
       case 'loading':
         // Émis au début de chaque `setup` JS, y compris un rechargement
@@ -140,17 +152,14 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         setState(() => _state = _MapLoadState.ready);
       case 'error':
         final data = message.data;
-        var text = data is Map ? data['message'] as String? : null;
         // `UnauthorizedError` du SDK (carte protégée, code d'exemple
         // `auth-token`) : signalé distinctement des autres échecs de chargement.
-        if (VisioOneController.isUnauthorizedError(message)) {
-          final l10n = AppLocalizations.of(context)!;
-          text = '${l10n.authTokenUnauthorizedError}\n${text ?? ''}';
-          debugPrint('VisioOneMapShell: UnauthorizedError -- $text');
-        }
+        final unauthorized = VisioOneController.isUnauthorizedError(message);
+        if (unauthorized) debugPrint('VisioOneMapShell: UnauthorizedError');
         setState(() {
           _state = _MapLoadState.error;
-          _errorMessage = text ?? 'Erreur inconnue du SDK VisioOne';
+          _errorDetail = data is Map ? data['message'] as String? : null;
+          _unauthorized = unauthorized;
         });
       default:
         // Les autres types (poiSelected, floorChanged, itineraryComputed...)
@@ -158,12 +167,13 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
         // à la feature affichée (voir `lib/features/poi_click_overlay.dart`
         // pour `poiSelected`) — ce squelette partagé n'a pas à les connaître
         // individuellement.
-        if (mounted) widget.onMessage?.call(context, message);
+        widget.onMessage?.call(context, message);
     }
   }
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _controller?.dispose();
     super.dispose();
   }
@@ -171,7 +181,8 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
   void _retry() {
     setState(() {
       _state = _MapLoadState.loading;
-      _errorMessage = null;
+      _errorDetail = null;
+      _unauthorized = false;
     });
     _controller?.setup(
       widget.hash,
@@ -186,9 +197,17 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: widget.overlayBuilder(context, controller),
+      // Hauteur selon le contenu (jusqu'au plein écran, pas plafonnée à 9/16)
+      // et remontée au-dessus du clavier ; le contenu défile s'il dépasse.
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: widget.overlayBuilder(sheetContext, controller),
+          ),
+        ),
       ),
     );
   }
@@ -208,7 +227,8 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
             ?mapOverlay,
             if (_state == _MapLoadState.loading)
               const Center(child: CircularProgressIndicator(color: Colors.white)),
-            if (_state == _MapLoadState.error) _ErrorOverlay(message: _errorMessage!, onRetry: _retry),
+            if (_state == _MapLoadState.error)
+              _ErrorOverlay(detail: _errorDetail, unauthorized: _unauthorized, onRetry: _retry),
           ],
         ),
       ),
@@ -226,13 +246,20 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
 }
 
 class _ErrorOverlay extends StatelessWidget {
-  const _ErrorOverlay({required this.message, required this.onRetry});
+  const _ErrorOverlay({required this.detail, required this.unauthorized, required this.onRetry});
 
-  final String message;
+  final String? detail;
+  final bool unauthorized;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final lines = [
+      l10n.mapLoadErrorTitle,
+      if (unauthorized) l10n.authTokenUnauthorizedError,
+      detail ?? l10n.mapLoadErrorUnknown,
+    ];
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
@@ -244,12 +271,12 @@ class _ErrorOverlay extends StatelessWidget {
               const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
               const SizedBox(height: 12),
               Text(
-                'Impossible de charger la carte VisioOne\n$message',
+                lines.join('\n'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white),
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: onRetry, child: const Text('Réessayer')),
+              FilledButton(onPressed: onRetry, child: Text(l10n.mapLoadErrorRetry)),
             ],
           ),
         ),

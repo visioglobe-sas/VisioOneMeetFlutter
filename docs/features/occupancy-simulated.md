@@ -32,6 +32,7 @@ Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
 
 - **`planId` must be a real POI ID from the loaded map.** `venue.pois.find(...)` fails silently (no error surfaced) if the ID doesn't match anything.
 - **`color: null` resets the surface's appearance** — the same mechanism `clearSelection` uses with `selectionColor: undefined` (see `goto-poi`). It's how you "return" a place to its normal look, not a hardcoded default color; always send `color: null` when a simulation/feed stops, or the surface stays stuck on the last color it was given.
+- **The simulation must outlive the panel.** In this demo the timer and the id of the simulated place live on a per-screen session (`OccupancySimulationSession`), not in the panel: closing the panel to look at the map keeps the colors cycling, and reopening it shows Stop. Leaving the screen cancels the timer.
 - **Never call `JSON.parse()` on an argument received inside `window.MapBridge.*`.** Dart already encodes arguments via `jsonEncode` before interpolating them into the generated script, so by the time the JS method body runs, the argument is already a native JS value (here, a list of objects), not JSON text to re-parse. Calling `JSON.parse()` on it throws.
 
 ## Learn more

@@ -26,10 +26,7 @@ class SimulatedPosition {
 /// le panneau est fermé. Seul un Stop explicite, ou la sortie de l'écran de
 /// feature (qui détruit tout, `VisioOneController` et `WebView` comprises),
 /// doit l'arrêter. C'est la même mécanique de `Timer.periodic` que
-/// `OccupancySimulationOverlay` (voir `docs/features/occupancy-simulated.md`),
-/// juste déplacée d'un `State` de `StatefulWidget` (qui ne survit pas à la
-/// fermeture du bottom sheet) vers un objet porté par le contrôleur (qui y
-/// survit).
+/// `OccupancySimulationSession`, portée elle aussi par le contrôleur.
 class SimulatedPositionSession {
   SimulatedPositionSession(this._controller);
 
@@ -106,10 +103,12 @@ class SimulatedPositionSession {
   final ValueNotifier<bool> isCameraLocked = ValueNotifier<bool>(false);
 
   /// Id du POI zone actuellement surveillé par la démo `geofencing` (ou
-  /// `null` si aucune zone n'est configurée), et le polygone WGS84 déjà
-  /// résolu pour ce POI (`poi.surfaces[0].positions`, via
-  /// `VisioOneController.resolvePoiZone`) — voir [setZone].
-  String? _zonePlaceId;
+  /// `null` si aucune zone n'est configurée) — voir [setZone]. Observable
+  /// pour que le panneau rouvert affiche la zone surveillée.
+  final ValueNotifier<String?> zonePlaceId = ValueNotifier<String?>(null);
+
+  /// Polygone WGS84 déjà résolu pour [zonePlaceId] (`poi.surfaces[0].positions`,
+  /// via `VisioOneController.resolvePoiZone`).
   List<SimulatedPosition>? _zonePositions;
 
   /// `true` si la position trackée courante est à l'intérieur de la zone
@@ -128,15 +127,16 @@ class SimulatedPositionSession {
   /// simplement mémorisé, testé dès le prochain tick si/quand [start] tourne
   /// déjà ou tourne plus tard — voir `docs/features/geofencing.md`.
   void setZone({required String? placeId, required List<SimulatedPosition>? positions}) {
-    _zonePlaceId = placeId;
-    _zonePositions = positions;
+    // Retire l'alerte de l'ancienne zone avant d'en changer.
     _updateZoneAlert(false);
+    zonePlaceId.value = placeId;
+    _zonePositions = positions;
   }
 
   void _updateZoneAlert(bool inside) {
-    if (isInsideZone.value == inside) return;
+    if (_disposed || isInsideZone.value == inside) return;
     isInsideZone.value = inside;
-    final placeId = _zonePlaceId;
+    final placeId = zonePlaceId.value;
     if (placeId != null) _controller.setZoneAlert(placeId, inside);
   }
 
@@ -223,6 +223,7 @@ class SimulatedPositionSession {
   /// `isCameraLocked` repasse à `false` tout seul : `allowTracking = false`
   /// déverrouille côté SDK et émet `trackingoff` (voir [onCameraLockChanged]).
   void stop() {
+    if (_disposed) return;
     final wasRunning = _timer != null;
     _timer?.cancel();
     _timer = null;
@@ -233,7 +234,7 @@ class SimulatedPositionSession {
     }
     isRunning.value = false;
     // Revert l'alerte visuelle de zone (si elle était active) mais garde la
-    // zone elle-même configurée (`_zonePlaceId`/`_zonePositions`) : un
+    // zone elle-même configurée (`zonePlaceId`/`_zonePositions`) : un
     // redémarrage doit reprendre la surveillance sans ressaisir le POI zone.
     _updateZoneAlert(false);
   }
@@ -254,5 +255,6 @@ class SimulatedPositionSession {
     isRunning.dispose();
     isCameraLocked.dispose();
     isInsideZone.dispose();
+    zonePlaceId.dispose();
   }
 }

@@ -31,7 +31,7 @@ addSpanishLocale: function (requestId, resources) {
 },
 ```
 
-The relevant `Translator` surface (`visioone/src/VisioOne/Content/Translator.ts`):
+The relevant `Translator` surface (`Translator.d.ts` in the SDK's typings):
 
 ```ts
 interface Translator {
@@ -66,9 +66,7 @@ interface Resources {
 }
 ```
 
-The demo's `AddLocaleOverlay` (`lib/features/add_locale_overlay.dart`) calls `addSpanishLocale` once, on tap of "Add Spanish locale", with a fixed two-entry dictionary (`kSpanishResources`): `'search-for-anything'` (a predefined SDK UI key) and `'welcome-message'` (a custom app key). `addLocale` and the `translate` readback for both keys are chained in the same JS handler — one bridge round trip, the same idiom `loadCustomData` already uses to chain `refreshCustomData`/`getPOICustomData` (see `docs/features/custom-data.md`) — rather than two separate native calls. The response (`spanishLocaleAdded`, correlated by `requestId`) carries the translated value for each key; the panel displays each one next to its key, replacing a "(not added yet)" placeholder shown before the button is pressed. A second, optional button, "Switch to Spanish", reuses `venue.setCurrentLocale('es')` (the exact same call `runtime-locale` uses — see `docs/features/runtime-locale.md`) to make the newly-added locale "live", in case any of the SDK's own default UI parts happen to be visible on screen.
-
-`VisioOneController.spanishLocaleTranslations` is a `ValueNotifier<Map<String, String>?>` held on the controller rather than the overlay, for the same reason as `currentLocale`/`highlightedCategoryId` (see `docs/features/runtime-locale.md`/`docs/features/category-highlight.md`): `addLocale` has already taken effect on the SDK side the first time it runs, so reopening the bottom sheet must keep showing the "added" state instead of resetting to "(not added yet)".
+The demo calls `addSpanishLocale` once with a fixed two-entry dictionary: `'search-for-anything'` (a predefined SDK UI key) and `'welcome-message'` (a custom app key). `addLocale` and the `translate` readback for both keys are chained in the same JS handler — one bridge round trip, the same idiom `loadCustomData` uses to chain `refreshCustomData`/`getPOICustomData` (see `custom-data`). The response (`spanishLocaleAdded`, correlated by `requestId`) carries the translated value for each key. `venue.setCurrentLocale('es')` (the same call `runtime-locale` uses) then makes the new locale current, for any SDK UI part visible on screen.
 
 ## Things to know
 

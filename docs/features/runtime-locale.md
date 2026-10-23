@@ -40,7 +40,7 @@ setCurrentLocale: function (locale) {
 },
 ```
 
-The relevant `Venue`/`Translator` surface (`visioone/src/VisioOne/Venue/Venue.ts`, `visioone/src/VisioOne/Content/Translator.ts`):
+The relevant `Venue`/`Translator` surface (`Venue.d.ts`, `Translator.d.ts` in the SDK's typings):
 
 ```ts
 interface Venue {
@@ -69,8 +69,6 @@ interface Translator {
 ```
 
 `getLocales` is a request/response round trip (same `requestId`-correlated pattern as `category-highlight`'s `getCategories` / `categoriesLoaded`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously with a `localesLoaded` message carrying the same `requestId`, the venue's `currentLocale`, and its full `allLocales` list. `setCurrentLocale` is a plain fire-and-forget one-way call — no response message is needed, since the effect (POI/label text changing) is directly observable on the map once the underlying `Promise` resolves.
-
-The demo's `RuntimeLocaleOverlay` (`lib/features/runtime_locale_overlay.dart`) calls `getLocales` once when it mounts, to read the venue's current locale and preselect the matching chip, then calls `setCurrentLocale` on tap. `VisioOneController.currentLocale` is a `ValueNotifier<String?>` held on the controller (not the overlay), for the same reason as `highlightedCategoryId` (see `docs/features/category-highlight.md`): it must survive the bottom sheet being closed and reopened.
 
 ## Things to know
 

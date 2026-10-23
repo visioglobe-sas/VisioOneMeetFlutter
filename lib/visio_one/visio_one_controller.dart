@@ -8,6 +8,8 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import 'camera_carousel_session.dart';
+import 'occupancy_simulation_session.dart';
+import 'panel_state.dart';
 import 'simulated_position_session.dart';
 import 'visio_one_message.dart';
 
@@ -33,8 +35,7 @@ class DynamicPoiInfo {
 ///
 /// Un seul canal JS -> Native, avec une enveloppe `{type, data}` (voir
 /// [VisioOneMessage]) plutôt qu'un canal par événement : garde la surface
-/// de pont minimale, comme recommandé dans les guides des autres plateformes
-/// (`GUIDE_COMMUNICATION_SDK.md`, `APP_SDK_COMMUNICATION.md`).
+/// de pont minimale (voir `docs/COMMUNICATION_GUIDE.md`).
 const String kVisioOneBridgeChannel = 'VisioOneBridge';
 
 /// Pont typé Native <-> SDK VisioOne (exécuté en JS dans la WebView).
@@ -50,6 +51,7 @@ class VisioOneController {
   VisioOneController._(this._webViewController) {
     simulatedPosition = SimulatedPositionSession(this);
     cameraCarousel = CameraCarouselSession(this);
+    occupancy = OccupancySimulationSession(this);
   }
 
   final WebViewController _webViewController;
@@ -65,6 +67,17 @@ class VisioOneController {
   /// boucle JS de `map.html`). Portée ici, comme [simulatedPosition], pour
   /// survivre à la fermeture du bottom sheet.
   late final CameraCarouselSession cameraCarousel;
+
+  /// Pilote la simulation `occupancy-simulated` (minuteur), pour la même
+  /// raison que [simulatedPosition] : elle doit survivre à la fermeture du
+  /// bottom sheet.
+  late final OccupancySimulationSession occupancy;
+
+  /// Valeurs saisies dans le panneau de la feature (champs, interrupteurs,
+  /// derniers résultats), conservées entre deux ouvertures du bottom sheet.
+  final PanelState panel = PanelState();
+
+  bool _disposed = false;
 
   /// Crée le contrôleur et son [WebViewController] sous-jacent.
   ///
@@ -111,7 +124,7 @@ class VisioOneController {
 
   /// Charge la page hôte bundlée (`assets/www/map.html`, référencée dans
   /// `pubspec.yaml`). Le SDK VisioOne lui-même n'est initialisé qu'à l'appel
-  /// de [setup], déclenché depuis `onPageFinished` par [VisioOneMapScreen].
+  /// de [setup], déclenché depuis `onPageFinished` par `VisioOneMapShell`.
   Future<void> loadMapPage() {
     return _webViewController.loadFlutterAsset('assets/www/map.html');
   }
@@ -119,7 +132,7 @@ class VisioOneController {
   /// Initialise (ou réinitialise) la carte pour le hash donné.
   ///
   /// `hash` est la chaîne de 41 caractères identifiant une carte publiée
-  /// sur my.visioglobe.com (voir docs/INTEGRATION_GUIDE.md, partie D).
+  /// sur my.visioglobe.com (voir le README, « Configure your own map »).
   ///
   /// `baseURL` correspond à l'option `baseURL` de `loadVenue` (voir
   /// `docs/features/custom-base-url.md`) : le serveur de cartes à
@@ -274,26 +287,28 @@ class VisioOneController {
       _call('setUIPartVisible', [part, visible]);
 
   /// Met à jour l'apparence d'un ou plusieurs POI pour refléter un statut
-  /// d'occupation (ex. `{'planId': 'B1-UL00-01', 'color': '#E74C3C'}').
+  /// d'occupation (ex. `{'planId': 'B3-UL00-ID0065', 'color': '#E74C3C'}`).
   /// `color: null` réinitialise la surface à son apparence normale.
   Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
       _call('updateOccupancy', [occupancy]);
 
-  /// Demande la position WGS84 d'un POI (issue de son marker/label/image —
-  /// un POI n'expose pas de lat/lng directement, voir `assets/www/map.html`).
+  /// Demande la position WGS84 d'affichage d'un POI — un POI n'expose pas de
+  /// lat/lng directement : son premier label, sinon sa première image ou son
+  /// premier marker, sinon le centre de sa première surface (helper JS
+  /// `poiDisplayPosition` de `assets/www/map.html`).
   ///
   /// Fire-and-forget comme [getVenueLayout]/[startItinerary] : la réponse
   /// arrive de façon asynchrone sur [messages] sous la forme d'un message
   /// `poiPositionResolved` portant le même `requestId`, avec `position: null`
-  /// si `poiId` ne correspond à aucun POI (ou à un POI sans marker/label/
-  /// image). `requestId` permet de distinguer plusieurs requêtes concurrentes
+  /// si `poiId` ne correspond à aucun POI (ou à un POI sans label, image,
+  /// marker ni surface). `requestId` permet de distinguer plusieurs requêtes concurrentes
   /// (ex. origine + destination pour `simulated-position`).
   Future<void> resolvePoiPosition(String requestId, String poiId) =>
       _call('resolvePoiPosition', [requestId, poiId]);
 
   /// Résout le polygone WGS84 de la première surface d'un POI ("zone" pour
   /// la démo `geofencing`) — contrairement à [resolvePoiPosition] (position
-  /// ponctuelle marker/label/image), lit `poi.surfaces[0].positions`, même
+  /// ponctuelle), lit `poi.surfaces[0].positions`, même
   /// forme `{latitude, longitude}` que celle attendue par
   /// [injectTrackedPosition].
   ///
@@ -442,10 +457,11 @@ class VisioOneController {
   /// Requête/réponse par `requestId` (même schéma que [loadCustomData]) : la
   /// réponse arrive de façon asynchrone sur [messages] sous la forme d'un
   /// message `dynamicPoiCreated` portant le même `requestId`, `success`, et
-  /// si `success` est `false` un `message` expliquant l'échec — id déjà pris
-  /// (`POIAlreadyExistsError`), ancre introuvable, ou ancre sans label/marker
-  /// dont copier la position. Ces trois cas sont des états normaux de la
-  /// démo à afficher tels quels, pas des exceptions à laisser remonter.
+  /// si `success` est `false` un code `error` : `'alreadyExists'` (id déjà
+  /// pris, `POIAlreadyExistsError`, avec le `message` du SDK), `'notFound'`
+  /// (ancre introuvable), `'noPosition'` (ancre sans position) ou `'sdk'`
+  /// (`message` du SDK). Ce sont des états normaux de la démo, traduits côté
+  /// Dart, pas des exceptions à laisser remonter.
   Future<void> createDynamicPOI(
     String requestId, {
     required String newId,
@@ -459,7 +475,8 @@ class VisioOneController {
   /// POI (voir `docs/features/dynamic-poi-crud.md`).
   ///
   /// Requête/réponse par `requestId`, réponse en message
-  /// `dynamicPoiLabelUpdated` (même schéma que [createDynamicPOI]).
+  /// `dynamicPoiLabelUpdated` (même schéma que [createDynamicPOI], `error:
+  /// 'noPoi'` si aucun POI dynamique n'est suivi).
   Future<void> updateDynamicPoiLabelText(String requestId, String text) =>
       _call('updateDynamicPoiLabelText', [requestId, text]);
 
@@ -469,7 +486,7 @@ class VisioOneController {
   /// `docs/features/dynamic-poi-crud.md`).
   ///
   /// Requête/réponse par `requestId`, réponse en message `dynamicPoiRemoved`
-  /// (même schéma que [createDynamicPOI]).
+  /// (même schéma que [createDynamicPOI], `error: 'noPoi'`).
   Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [requestId]);
 
   /// Id du POI ancre sur lequel l'icône de la démo `3d-icon-marker` est
@@ -518,11 +535,6 @@ class VisioOneController {
   /// ci-dessous) plutôt que par l'overlay, pour survivre à la fermeture du
   /// bottom sheet — même raison que [iconMarkerAnchorId].
   final ValueNotifier<String?> textLabelAnchorId = ValueNotifier<String?>(null);
-
-  /// Dernier texte appliqué au label de `custom-text-label`, `null` tant
-  /// qu'aucun n'a été appliqué (l'overlay préremplit alors le texte par
-  /// défaut localisé `textLabelDefaultText`).
-  final ValueNotifier<String?> textLabelText = ValueNotifier<String?>(null);
 
   /// Couleur (hex `#RRGGBB`) choisie pour le label de `custom-text-label`.
   final ValueNotifier<String> textLabelColor = ValueNotifier<String>('#E53935');
@@ -576,11 +588,6 @@ class VisioOneController {
   /// ci-dessous) plutôt que par l'overlay, pour survivre à la fermeture du
   /// bottom sheet — même raison que [textLabelAnchorId].
   final ValueNotifier<String?> htmlBadgeAnchorId = ValueNotifier<String?>(null);
-
-  /// Dernier texte appliqué au badge de `html-overlay-marker`, `null` tant
-  /// qu'aucun n'a été appliqué (l'overlay préremplit alors le texte par
-  /// défaut localisé `htmlBadgeDefaultText`).
-  final ValueNotifier<String?> htmlBadgeText = ValueNotifier<String?>(null);
 
   /// Visibilité du badge placé (`venue.updateMarker(marker, { isVisible })`).
   final ValueNotifier<bool> htmlBadgeVisible = ValueNotifier<bool>(true);
@@ -772,6 +779,9 @@ class VisioOneController {
   }
 
   void _handleRawMessage(JavaScriptMessage message) {
+    // Un dernier message peut encore arriver de la WebView pendant la
+    // destruction de l'écran : les notifiers sont alors déjà libérés.
+    if (_disposed) return;
     final parsed = VisioOneMessage.tryParse(message.message);
     if (parsed == null) {
       debugPrint('VisioOneController: message JS illisible: ${message.message}');
@@ -800,20 +810,22 @@ class VisioOneController {
 
   /// Libère les ressources. À appeler depuis `dispose()` du widget hôte.
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     simulatedPosition.dispose();
     cameraCarousel.dispose();
+    occupancy.dispose();
+    panel.dispose();
     highlightedCategoryId.dispose();
     selectedNavigationTracePresetKey.dispose();
     dynamicPoi.dispose();
     iconMarkerAnchorId.dispose();
     iconMarkerOrientation.dispose();
     textLabelAnchorId.dispose();
-    textLabelText.dispose();
     textLabelColor.dispose();
     textLabelSize.dispose();
     textLabelRotation.dispose();
     htmlBadgeAnchorId.dispose();
-    htmlBadgeText.dispose();
     htmlBadgeVisible.dispose();
     htmlBadgeTapCount.dispose();
     currentLocale.dispose();
