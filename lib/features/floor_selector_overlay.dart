@@ -2,21 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
 /// Overlay de la feature `floor-selector` : liste de boutons de bâtiments
 /// (si la venue en compte plusieurs) puis d'étages du bâtiment sélectionné,
-/// affichée dans le bottom sheet ouvert par le FAB de [VisioOneMapShell].
+/// affichée dans le bottom sheet ouvert par le FAB de `VisioOneMapShell`.
 ///
-/// `goToFloor` existait déjà sur [VisioOneController] (statut 🟡 dans
-/// `VisioOneHub/CHECKLIST.md` : câblé jusqu'au pont JS, jamais relié à un
-/// bouton) — la pièce manquante n'était pas ce contrôleur mais une source de
-/// données : rien ne renvoyait la liste des bâtiments/étages de la venue
-/// côté Dart, donc pas de moyen de savoir *quels* boutons afficher sans
-/// coder en dur des identifiants propres à une carte de démo. Cette classe
-/// demande cette liste via [VisioOneController.getVenueLayout] (nouvelle
-/// commande, voir `assets/www/map.html`) et l'affiche dynamiquement. Voir
+/// La liste des bâtiments/étages n'est pas codée en dur : elle est demandée
+/// à la venue via [VisioOneController.getVenueLayout] (réponse
+/// `venueLayout`), puis chaque bouton appelle
+/// [VisioOneController.goToFloor]. L'étage sélectionné est relu du SDK à
+/// chaque ouverture et suivi via `floorChanged`. Voir
 /// `docs/features/floor-selector.md`.
 class FloorSelectorOverlay extends StatefulWidget {
   const FloorSelectorOverlay({super.key, required this.controller});
@@ -57,7 +55,7 @@ class _FloorSelectorOverlayState extends State<FloorSelectorOverlay> {
         // `docs/features/floor-selector.md`, "Points d'attention") ou un
         // `goToPOI` déclenché depuis un autre écran de feature.
         final data = message.data;
-        if (data is! Map) return;
+        if (data is! Map || !mounted) return;
         setState(() {
           _selectedBuildingId = data['buildingId'] as String? ?? _selectedBuildingId;
           _selectedFloorId = data['floorId'] as String?;
@@ -75,7 +73,7 @@ class _FloorSelectorOverlayState extends State<FloorSelectorOverlay> {
         .map(_Building.fromJson)
         .where((b) => b.floors.isNotEmpty)
         .toList();
-    if (buildings.isEmpty) return;
+    if (buildings.isEmpty || !mounted) return;
 
     final currentBuildingId = data['currentBuildingId'] as String?;
     final currentFloorId = data['currentFloorId'] as String?;
@@ -109,15 +107,16 @@ class _FloorSelectorOverlayState extends State<FloorSelectorOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final buildings = _buildings;
     if (buildings == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5)),
-            SizedBox(width: 12),
-            Text('Loading buildings and floors…'),
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5)),
+            const SizedBox(width: 12),
+            Flexible(child: Text(l10n.floorSelectorLoading)),
           ],
         ),
       );
@@ -157,11 +156,11 @@ class _FloorSelectorOverlayState extends State<FloorSelectorOverlay> {
                   ? FilledButton.icon(
                       onPressed: () => _selectFloor(selectedBuilding, floor),
                       icon: const Icon(Icons.check),
-                      label: Text('Floor ${floor.levelIndex}'),
+                      label: Text(l10n.floorSelectorFloorLabel(floor.levelIndex)),
                     )
                   : OutlinedButton(
                       onPressed: () => _selectFloor(selectedBuilding, floor),
-                      child: Text('Floor ${floor.levelIndex}'),
+                      child: Text(l10n.floorSelectorFloorLabel(floor.levelIndex)),
                     ),
             ),
           );

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta
@@ -26,11 +26,10 @@
   </style>
   <!--
     Bundle UMD (pas le build ESM `visioone.js`) : chargé comme script classique,
-    il fonctionne aussi bien servi en https:// (Android) qu'en file:// (iOS),
-    contrairement au build ESM dont les `import()` dynamiques échouent sous
-    file:// à cause des restrictions CORS de WebKit. C'est la même leçon que
-    VisioOneMeetIos (voir docs/INTEGRATION.md de ce dépôt) et le même problème
-    que VisioOneMeetRN a rencontré en chargeant l'ESM depuis un CDN.
+    il fonctionne aussi bien servi depuis l'origine interne d'Android que
+    depuis file:// (iOS), contrairement au build ESM dont les `import()`
+    dynamiques échouent sous file:// à cause des restrictions CORS de WebKit.
+    Voir docs/ARCHITECTURE.md.
   -->
   <script src="visioone.umd.cjs"></script>
 </head>
@@ -114,30 +113,80 @@
         'background:#0B6BCB;color:#FFFFFF;font:600 14px sans-serif;padding:6px 12px;' +
         'border-radius:14px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer';
 
+      function findPoi(poiId) {
+        return venue ? venue.pois.find(function (p) { return p.id === poiId; }) : undefined;
+      }
+
+      // Position WGS84 d'affichage d'un POI. Un POI (`POI` dans les typings
+      // du SDK) n'a pas de latitude/longitude propre : seuls ses éléments
+      // visuels en ont. Ordre de priorité, le même pour toutes les démos :
+      //   1. `poi.labels[0].position`
+      //   2. `poi.images[0].position`, sinon `poi.markers[0].position`
+      //   3. centre (moyenne des sommets) de `poi.surfaces[0].positions`
+      // Renvoie `{ latitude, longitude, altitude? }`, ou `null` si le POI n'a
+      // aucun de ces éléments. `ignored` (optionnel) : objets créés par les
+      // démos elles-mêmes (label, image, marker) encore attachés au POI, à ne
+      // jamais utiliser comme source.
+      function poiDisplayPosition(poi, ignored) {
+        var skip = ignored || [];
+        function first(list) {
+          return list.filter(function (item) { return skip.indexOf(item) === -1; })[0];
+        }
+        var source = first(poi.labels) || first(poi.images) || first(poi.markers);
+        if (source) {
+          var position = { latitude: source.position.latitude, longitude: source.position.longitude };
+          if (source.position.altitude !== undefined) position.altitude = source.position.altitude;
+          return position;
+        }
+        var surface = poi.surfaces[0];
+        if (!surface || !surface.positions.length) return null;
+        var latitude = 0;
+        var longitude = 0;
+        surface.positions.forEach(function (p) {
+          latitude += p.latitude;
+          longitude += p.longitude;
+        });
+        return { latitude: latitude / surface.positions.length, longitude: longitude / surface.positions.length };
+      }
+
+      // Objets créés sur la carte par les démos de cette page, à ne jamais
+      // prendre comme source de position d'un POI ancre.
+      function demoCreatedObjects() {
+        var objects = [dynamicPoiLabel, textLabel, htmlBadge];
+        Object.keys(iconImages).forEach(function (id) { objects.push(iconImages[id]); });
+        return objects.filter(function (o) { return !!o; });
+      }
+
+      // Résout un POI "ancre" existant par son id et la position à copier
+      // depuis lui (`poiDisplayPosition`). Partagé par `dynamic-poi-crud`,
+      // `3d-icon-marker`, `custom-text-label` et `html-overlay-marker`.
+      // Renvoie `{ poi, position }`, ou `{ error }` avec `error` =
+      // 'notFound' (aucun POI de cet id) ou 'noPosition' (POI sans élément
+      // visuel) — deux états normaux des démos, traduits côté natif.
+      function resolveAnchor(anchorId) {
+        var poi = findPoi(anchorId);
+        if (!poi) return { error: 'notFound' };
+        var position = poiDisplayPosition(poi, demoCreatedObjects());
+        if (!position) return { poi: poi, error: 'noPosition' };
+        return { poi: poi, position: position };
+      }
+
+      // Décale une position de ~4 m (+0.00004° en lat/lng) pour qu'un objet
+      // posé à côté d'un POI ne recouvre pas son propre label.
+      function offsetPosition(position) {
+        var shifted = { latitude: position.latitude + 0.00004, longitude: position.longitude + 0.00004 };
+        if (position.altitude !== undefined) shifted.altitude = position.altitude;
+        return shifted;
+      }
+
+      function errorMessage(error) {
+        return error && error.message ? error.message : String(error);
+      }
+
       // ---------------------------------------------------------------
       // JS -> Native : un seul canal, un contrat de messages {type, data}.
       // Voir docs/COMMUNICATION_GUIDE.md pour la liste des types de messages.
       // ---------------------------------------------------------------
-      // Résout un POI "ancre" existant par son id et la position WGS84 à
-      // copier depuis lui : son premier label, sinon son premier marker.
-      // Partagé par `dynamic-poi-crud` (createDynamicPOI) et `3d-icon-marker`
-      // (placeIconImage). Renvoie `{ poi, position }`, ou `{ error }` avec
-      // `error` = 'notFound' (aucun POI de cet id) ou 'noPosition' (POI sans
-      // label ni marker) — deux états normaux des démos, pas des crashs ;
-      // chaque appelant formule son propre message.
-      // `ignoredLabel` / `ignoredMarker` (optionnels) : un label / marker
-      // créé par la démo elle-même et encore attaché au POI, à ne jamais
-      // utiliser comme source de position (`custom-text-label` et
-      // `html-overlay-marker` résolvent l'ancre avant de retirer le leur).
-      function resolveAnchor(anchorId, ignoredLabel, ignoredMarker) {
-        var poi = venue.pois.find(function (p) { return p.id === anchorId; });
-        if (!poi) return { error: 'notFound' };
-        var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
-        var ownMarkers = poi.markers.filter(function (m) { return m !== ignoredMarker; });
-        var source = ownLabels[0] || ownMarkers[0];
-        if (!source) return { poi: poi, error: 'noPosition' };
-        return { poi: poi, position: source.position };
-      }
 
       // `UnauthorizedError` (jeton invalide, expiré ou absent) n'est pas
       // exporté par le bundle UMD (seuls `VisioOne`/`createVisioOne` le
@@ -261,7 +310,7 @@
           var count = carousel.stops.length;
           var index = carousel.nextIndex % count;
           var poiId = carousel.stops[index];
-          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          var poi = findPoi(poiId);
           carousel.currentIndex = index;
           carousel.nextIndex = (index + 1) % count;
           if (!poi) {
@@ -339,14 +388,13 @@
       // Native -> JS : window.MapBridge, une méthode par commande.
       //
       // Chaque appel est généré côté Dart via `jsonEncode(valeur)` interpolé
-      // dans le script (ex. `window.MapBridge.goToPOI("B1-UL00-01")`) : c'est
-      // du texte JSON, mais il est *évalué comme code JS* par le moteur qui
-      // exécute le script, pas relu comme texte par la fonction appelée.
+      // dans le script (ex. `window.MapBridge.goToPOI("B3-UL00-ID0076")`) :
+      // c'est du texte JSON, mais il est *évalué comme code JS* par le moteur
+      // qui exécute le script, pas relu comme texte par la fonction appelée.
       // Les paramètres ci-dessous reçoivent donc déjà de vraies valeurs JS
-      // (string, boolean, objet...), jamais du texte JSON à re-parser —
-      // ne PAS appeler `JSON.parse()` dessus (ce fut un bug réel de ce
-      // squelette : voir l'historique de `map.html`, ça produisait un
-      // `SyntaxError` silencieux qui bloquait `setup()` indéfiniment).
+      // (string, boolean, objet...), jamais du texte JSON à re-parser — ne
+      // PAS appeler `JSON.parse()` dessus (un hash de carte n'est pas du JSON
+      // valide : le `SyntaxError` bloquerait `setup()` sans message).
       // ---------------------------------------------------------------
       window.onerror = function (message, source, lineno, colno, error) {
         console.error('[MapBridge] erreur non interceptée:', message, 'at', lineno + ':' + colno);
@@ -437,7 +485,7 @@
                 console.error('[MapBridge] échec loadVenue/createView:', error);
                 visioOne.showError(error, container);
                 sendToNative('error', {
-                  message: error && error.message ? error.message : String(error),
+                  message: errorMessage(error),
                   // `true` => jeton invalide, expiré ou absent (démo `auth-token`).
                   unauthorized: isUnauthorizedError(error),
                 });
@@ -445,7 +493,7 @@
           } catch (error) {
             console.error('[MapBridge] erreur synchrone dans setup():', error);
             sendToNative('error', {
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
           }
         },
@@ -486,7 +534,7 @@
 
         goToPOI: function (poiId) {
           if (!venue || !view) return;
-          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          var poi = findPoi(poiId);
           if (!poi) return;
           view.goToFloor(poi.floor).then(function () {
             view.goToPOI(poi);
@@ -509,9 +557,8 @@
         // Building/Floor n'exposent ni nom ni libellé côté SDK (voir
         // Building.d.ts/Floor.d.ts du package @visioglobe/visioone — seulement
         // `id`, `floors`, `defaultFloorID` pour Building, `id`, `altitude`,
-        // `levelIndex` pour Floor), exactement comme le floor-selector natif du
-        // SDK lui-même, qui affiche `levelIndex.toString()` faute de mieux
-        // (vu dans visioone.umd.cjs). On renvoie donc `levelIndex`, à charge du
+        // `levelIndex` pour Floor), exactement comme le floor-selector intégré
+        // au SDK, qui affiche le `levelIndex`. On renvoie donc `levelIndex`, à charge du
         // natif de l'afficher (ex. "Floor 2", "Floor -1"), triés du plus haut
         // au plus bas comme un panneau d'ascenseur. `currentBuildingId`/
         // `currentFloorId` permettent de présélectionner le bon bouton dès
@@ -537,8 +584,8 @@
         },
 
         // Change le mode d'exploration courant du bâtiment — un parmi
-        // 'global' / 'building' / 'floor' (voir ExploreMode.ts du package
-        // @visioglobe/visioone pour la sémantique exacte de chacun, et
+        // 'global' / 'building' / 'floor' (voir le type `ExploreMode` des
+        // typings de @visioglobe/visioone pour la sémantique exacte de chacun, et
         // docs/features/explore-mode.md). Une simple affectation de
         // propriété, pas un appel de méthode : le SDK anime lui-même la
         // transition caméra/scène et déclenche `exploremodechanged` une fois
@@ -651,7 +698,7 @@
             // masquerait le vrai message ici.
             console.warn(
               '[MapBridge] updateNavigationTrace: le SDK a levé une exception (couleurs tout de même appliquées) : ' +
-                (error && error.message ? error.message : String(error)),
+                errorMessage(error),
             );
           }
         },
@@ -664,7 +711,7 @@
         updateOccupancy: function (occupancy) {
           if (!venue) return;
           occupancy.forEach(function (entry) {
-            var poi = venue.pois.find(function (p) { return p.id === entry.planId; });
+            var poi = findPoi(entry.planId);
             if (!poi) return;
             poi.surfaces.forEach(function (surface) {
               venue.updateSurface(surface, { color: entry.color });
@@ -680,8 +727,7 @@
         // voir docs/features/clickable-surface.md) en désactivant, pour ne
         // pas laisser la surface bloquée sur une couleur custom précédente.
         setSurfaceInteractive: function (placeId, interactive) {
-          if (!venue) return;
-          var poi = venue.pois.find(function (p) { return p.id === placeId; });
+          var poi = findPoi(placeId);
           if (!poi) return;
           poi.surfaces.forEach(function (surface) {
             venue.updateSurface(
@@ -694,22 +740,16 @@
         },
 
         // Requête/réponse (même schéma que getVenueLayout / venueLayout) :
-        // un POI n'a pas de lat/lng directement (voir POI.d.ts du package
-        // @visioglobe/visioone) — sa position WGS84 vient de son marker, ou à
-        // défaut de son label, ou à défaut de son image, toutes trois portant
-        // une `Position` (`{latitude, longitude, altitude?}`) au même format
-        // que celui attendu par `injectTrackedPosition`. `requestId` est
-        // renvoyé tel quel pour permettre plusieurs requêtes concurrentes
-        // (origine + destination) sans les confondre côté Dart.
+        // position WGS84 d'un POI selon `poiDisplayPosition` (label, puis
+        // image/marker, puis centre de la surface), au format `{latitude,
+        // longitude}` attendu par `injectTrackedPosition`, ou `null` si le POI
+        // est introuvable ou sans élément visuel. `requestId` est renvoyé tel
+        // quel pour permettre plusieurs requêtes concurrentes (origine +
+        // destination) sans les confondre côté Dart.
         resolvePoiPosition: function (requestId, poiId) {
-          if (!venue) return;
-          var poi = venue.pois.find(function (p) { return p.id === poiId; });
-          var source = poi
-            ? (poi.markers[0] || poi.labels[0] || poi.images[0])
-            : null;
-          var position = source
-            ? { latitude: source.position.latitude, longitude: source.position.longitude }
-            : null;
+          var poi = findPoi(poiId);
+          var found = poi ? poiDisplayPosition(poi) : null;
+          var position = found ? { latitude: found.latitude, longitude: found.longitude } : null;
           sendToNative('poiPositionResolved', { requestId: requestId, poiId: poiId, position: position });
         },
 
@@ -717,8 +757,7 @@
         // d'un POI ("zone" pour cette démo), à tester côté natif contre la
         // position trackée courante — le SDK n'expose aucune primitive de
         // geofencing/point-in-polygon, ce test est fait par l'app elle-même.
-        // Contrairement à resolvePoiPosition (position ponctuelle
-        // marker/label/image), on lit ici `surface.positions`
+        // Contrairement à resolvePoiPosition (position ponctuelle), on lit ici `surface.positions`
         // (`Position[]`, même forme `{latitude, longitude}` que celle
         // attendue par injectTrackedPosition, aucune conversion nécessaire).
         // `positions: null` si `poiId` ne correspond à aucun POI,
@@ -726,11 +765,7 @@
         // états distincts, laissés au natif d'afficher chacun son propre
         // message. Voir docs/features/geofencing.md.
         resolvePoiZone: function (requestId, poiId) {
-          if (!venue) {
-            sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
-            return;
-          }
-          var poi = venue.pois.find(function (p) { return p.id === poiId; });
+          var poi = findPoi(poiId);
           if (!poi) {
             sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
             return;
@@ -754,8 +789,7 @@
         // fait qu'appliquer son résultat visuellement. Voir
         // docs/features/geofencing.md.
         setZoneAlert: function (placeId, active) {
-          if (!venue) return;
-          var poi = venue.pois.find(function (p) { return p.id === placeId; });
+          var poi = findPoi(placeId);
           if (!poi) return;
           poi.surfaces.forEach(function (surface) {
             venue.updateSurface(surface, { color: active ? '#E74C3C' : 'initial' });
@@ -765,7 +799,7 @@
         // Injecte/actualise une position simulée trackée + son cercle de
         // précision (mètres). `view.allowTracking` doit être à `true` avant
         // le premier appel à `injectTrackedPosition`, sans quoi le SDK lève
-        // une exception (voir View.ts) : on l'active ici plutôt que
+        // une exception : on l'active ici plutôt que
         // d'exposer une commande séparée, ce booléen n'ayant pas d'autre
         // usage dans cette démo — mais UNIQUEMENT à la transition
         // false -> true : chaque `allowTracking = true` force aussi
@@ -790,8 +824,8 @@
         },
 
         // Verrouille/déverrouille le focus caméra sur la position trackée
-        // courante (`view.lockCameraPositionOnTracking`). D'après le
-        // commentaire de View.ts côté SDK, ce booléen "won't have any effect
+        // courante (`view.lockCameraPositionOnTracking`). D'après sa doc dans
+        // les typings du SDK, ce booléen "won't have any effect
         // if flag 'allowTracking' isn't set to true" : contrairement à
         // `injectTrackedPosition`, aucune exception n'est levée si on
         // l'active avant — pas besoin de garde ici. L'interrupteur natif ne
@@ -848,7 +882,7 @@
               );
             })
             .then(function () {
-              var poi = venue.pois.find(function (p) { return p.id === poiId; });
+              var poi = findPoi(poiId);
               if (!poi) {
                 sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
                 return;
@@ -932,63 +966,54 @@
         // Requête/réponse (même schéma que loadCustomData / customDataLoaded) :
         // crée un POI purement logique (`venue.createPOI({id: newId})`) — un
         // POI neuf n'a par lui-même aucune représentation visuelle
-        // (`images`/`labels`/`lines`/`surfaces`/`markers` tous vides, voir
-        // POI.ts du SDK) — puis lui attache immédiatement un Label
-        // (`venue.createLabel`) pour le rendre visible/démontrable, dont la
-        // position WGS84 est copiée depuis un POI "ancre" déjà existant
-        // ([anchorId], résolu comme dans goToPOI/loadCustomData) : son
-        // premier label, sinon son premier marker (pas de "tap sur la carte
-        // pour placer" dans cette démo). `success: false` avec un `message`
-        // explicite dans trois cas, tous des états normaux de la démo, pas
-        // des crashs : id [newId] déjà pris (`POIAlreadyExistsError`, voir
-        // Errors/POIAlreadyExistsError.ts), ancre introuvable, ou ancre sans
-        // label ni marker dont copier la position. Voir
-        // docs/features/dynamic-poi-crud.md.
+        // (`images`/`labels`/`lines`/`surfaces`/`markers` tous vides) — puis
+        // lui attache immédiatement un Label (`venue.createLabel`) pour le
+        // rendre visible, à la position d'un POI "ancre" déjà existant
+        // ([anchorId], via resolveAnchor). `success: false` avec un code
+        // `error` (traduit côté natif) dans ces cas, tous des états normaux
+        // de la démo, pas des crashs : 'notReady', 'notFound' (ancre
+        // introuvable), 'noPosition' (ancre sans élément visuel),
+        // 'alreadyExists' (id déjà pris : `POIAlreadyExistsError`, levée de
+        // façon synchrone par `createPOI`) ou 'sdk' (autre erreur, avec le
+        // `message` du SDK). Voir docs/features/dynamic-poi-crud.md.
         createDynamicPOI: function (requestId, newId, anchorId, labelText) {
           if (!venue) {
-            sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, message: 'Map not ready.' });
+            sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'notReady' });
             return;
           }
 
           var anchor = resolveAnchor(anchorId);
-          if (anchor.error === 'notFound') {
-            sendToNative('dynamicPoiCreated', {
-              requestId: requestId,
-              success: false,
-              message: 'Anchor POI "' + anchorId + '" not found.',
-            });
-            return;
-          }
-          if (anchor.error === 'noPosition') {
-            sendToNative('dynamicPoiCreated', {
-              requestId: requestId,
-              success: false,
-              message: 'Anchor POI "' + anchorId + '" has no label or marker to copy a position from.',
-            });
+          if (anchor.error) {
+            sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: anchor.error });
             return;
           }
 
           var poi;
+          var label;
           try {
             poi = venue.createPOI({ id: newId });
           } catch (error) {
-            // POIAlreadyExistsError (thrown synchronously by venue.createPOI
-            // when newId is already used in the venue) — a normal, demoable
-            // state for this feature, not a crash.
+            var alreadyExists = error && error.constructor && error.constructor.name === 'POIAlreadyExistsError';
             sendToNative('dynamicPoiCreated', {
               requestId: requestId,
               success: false,
-              message: error && error.message ? error.message : 'Could not create POI "' + newId + '".',
+              error: alreadyExists || findPoi(newId) ? 'alreadyExists' : 'sdk',
+              message: errorMessage(error),
             });
             return;
           }
-
-          var label = venue.createLabel({
-            poi: poi,
-            position: anchor.position,
-            width: 2,
-            text: labelText,
-          });
+          try {
+            label = venue.createLabel({
+              poi: poi,
+              position: anchor.position,
+              width: 2,
+              text: labelText,
+            });
+          } catch (error) {
+            venue.removePOI(poi);
+            sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'sdk', message: errorMessage(error) });
+            return;
+          }
 
           dynamicPoi = poi;
           dynamicPoiLabel = label;
@@ -997,21 +1022,22 @@
 
         // Seule "modification" possible du contenu visuel d'un POI dynamique
         // dans cette démo : `venue.updatePOI` ne peut toucher qu'aux
-        // catégories du POI (voir POIUpdateOptions.ts), jamais à sa
+        // catégories du POI (voir `POIUpdateOptions`), jamais à sa
         // représentation visuelle — c'est `venue.updateLabel` sur le Label
         // attaché à la création qui joue ce rôle ici. Requête/réponse (même
         // schéma que createDynamicPOI ci-dessus). Voir
         // docs/features/dynamic-poi-crud.md.
         updateDynamicPoiLabelText: function (requestId, text) {
           if (!dynamicPoiLabel) {
-            sendToNative('dynamicPoiLabelUpdated', {
-              requestId: requestId,
-              success: false,
-              message: 'No dynamic POI tracked.',
-            });
+            sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, error: 'noPoi' });
             return;
           }
-          venue.updateLabel(dynamicPoiLabel, { text: text });
+          try {
+            venue.updateLabel(dynamicPoiLabel, { text: text });
+          } catch (error) {
+            sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, error: 'sdk', message: errorMessage(error) });
+            return;
+          }
           sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: true, text: text });
         },
 
@@ -1021,30 +1047,31 @@
         // createDynamicPOI ci-dessus). Voir docs/features/dynamic-poi-crud.md.
         removeDynamicPOI: function (requestId) {
           if (!dynamicPoi) {
-            sendToNative('dynamicPoiRemoved', {
-              requestId: requestId,
-              success: false,
-              message: 'No dynamic POI tracked.',
-            });
+            sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, error: 'noPoi' });
             return;
           }
-          venue.removePOI(dynamicPoi);
+          var removed = dynamicPoi;
           dynamicPoi = null;
           dynamicPoiLabel = null;
+          try {
+            venue.removePOI(removed);
+          } catch (error) {
+            sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, error: 'sdk', message: errorMessage(error) });
+            return;
+          }
           sendToNative('dynamicPoiRemoved', { requestId: requestId, success: true });
         },
 
         // `3d-icon-marker` : place une image (icône) au-dessus d'un POI
         // existant (`venue.createImage`), dont il est à la fois le
-        // propriétaire (`poi`) et la source de position (via resolveAnchor,
-        // partagé avec createDynamicPOI). Une seule image par `imageId` :
+        // propriétaire (`poi`) et la source de position (via resolveAnchor). Une seule image par `imageId` :
         // si une image est déjà placée sous cet id, elle est d'abord retirée.
         // Requête/réponse (même schéma que createDynamicPOI) avec `error` =
         // 'notFound' / 'noPosition' / 'sdk' (message du SDK) en cas d'échec.
         // Voir docs/features/3d-icon-marker.md.
         placeIconImage: function (requestId, imageId, anchorId, url, orientationType) {
           if (!venue) {
-            sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: 'notReady' });
             return;
           }
           var anchor = resolveAnchor(anchorId);
@@ -1075,7 +1102,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
               previousRemoved: previousRemoved,
             });
             return;
@@ -1099,7 +1126,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1121,7 +1148,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1131,9 +1158,8 @@
 
         // `custom-text-label` : place un texte libre sur la carte
         // (`venue.createLabel`), possédé par un POI existant dont la position
-        // est copiée via resolveAnchor (partagé avec createDynamicPOI /
-        // placeIconImage), décalée de ~4 m (+0.00004° en lat/lng) pour ne pas
-        // recouvrir le label propre du POI. `height` est TOUJOURS passé
+        // est copiée via resolveAnchor, décalée de ~4 m (offsetPosition) pour
+        // ne pas recouvrir le label propre du POI. `height` est TOUJOURS passé
         // (sinon le SDK le cale sur `width` : boîte carrée, texte déformé).
         // Tout est validé AVANT de toucher au label existant (texte non vide,
         // POI ancre, position issue des données de la carte — jamais de notre
@@ -1146,23 +1172,19 @@
         // Voir docs/features/custom-text-label.md.
         placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
           if (!venue) {
-            sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'notReady' });
             return;
           }
           if (!text || !String(text).trim()) {
             sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
             return;
           }
-          var anchor = resolveAnchor(anchorId, textLabel);
+          var anchor = resolveAnchor(anchorId);
           if (anchor.error) {
             sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: anchor.error });
             return;
           }
-          var position = {
-            latitude: anchor.position.latitude + 0.00004,
-            longitude: anchor.position.longitude + 0.00004,
-          };
-          if (anchor.position.altitude !== undefined) position.altitude = anchor.position.altitude;
+          var position = offsetPosition(anchor.position);
           var options = {
             poi: anchor.poi,
             position: position,
@@ -1188,7 +1210,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
               previousRemoved: previousRemoved,
             });
             return;
@@ -1217,7 +1239,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1247,7 +1269,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
               previousRemoved: textLabel === null,
             });
             return;
@@ -1272,7 +1294,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1298,23 +1320,19 @@
         // plus `previousRemoved`. Voir docs/features/html-overlay-marker.md.
         placeHtmlBadge: function (requestId, anchorId, text) {
           if (!venue) {
-            sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: 'sdk', message: 'Map not ready.' });
+            sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: 'notReady' });
             return;
           }
           if (!text || !String(text).trim()) {
             sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: 'textRequired' });
             return;
           }
-          var anchor = resolveAnchor(anchorId, textLabel, htmlBadge);
+          var anchor = resolveAnchor(anchorId);
           if (anchor.error) {
             sendToNative('htmlBadgePlaced', { requestId: requestId, success: false, error: anchor.error });
             return;
           }
-          var position = {
-            latitude: anchor.position.latitude + 0.00004,
-            longitude: anchor.position.longitude + 0.00004,
-          };
-          if (anchor.position.altitude !== undefined) position.altitude = anchor.position.altitude;
+          var position = offsetPosition(anchor.position);
 
           var element = document.createElement('div');
           element.setAttribute('style', HTML_BADGE_STYLE);
@@ -1345,7 +1363,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
               previousRemoved: previousRemoved,
             });
             return;
@@ -1384,7 +1402,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1409,7 +1427,7 @@
               requestId: requestId,
               success: false,
               error: 'sdk',
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
             return;
           }
@@ -1437,7 +1455,7 @@
         },
 
         // Change la locale courante de la venue (`venue.setCurrentLocale`,
-        // `Promise<void>`). D'après sa TSDoc (Venue.ts) le SDK se charge
+        // `Promise<void>`). D'après sa TSDoc (typings du SDK), le SDK se charge
         // lui-même de re-rendre les labels de POI (via leur `POILocaleEntry`
         // pour cette locale) et toute UI courante (dont la Navigation en
         // cours) dans la nouvelle locale dès que la Promise se résout —
@@ -1454,9 +1472,9 @@
 
         // `custom-theme` : liste des thèmes de scène 3D enregistrés
         // (`view.themes`, lecture seule — `['day', 'night', 'goldenHour']`
-        // sur 1.0.9). Requête/réponse `themesLoaded` ({requestId, themes}) ;
+        // en 1.1.0). Requête/réponse `themesLoaded` ({requestId, themes}) ;
         // `themes` vide si la carte n'est pas prête. Il n'existe pas de
-        // getter du thème courant en 1.0.9 : c'est le natif qui le suit.
+        // getter du thème courant (1.1.0 inclus) : c'est le natif qui le suit.
         // Voir docs/features/custom-theme.md.
         getThemes: function (requestId) {
           sendToNative('themesLoaded', {
@@ -1481,7 +1499,7 @@
             sendToNative('themeApplied', {
               success: false,
               theme: name,
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
           }
         },
@@ -1501,7 +1519,7 @@
             console.error('[MapBridge] setAccentColors a échoué:', error);
             sendToNative('accentColorsApplied', {
               success: false,
-              message: error && error.message ? error.message : String(error),
+              message: errorMessage(error),
             });
           }
         },
@@ -1553,12 +1571,6 @@
           sendToNative('spanishLocaleAdded', { requestId: requestId, values: values });
         },
       };
-
-      // Permet de tester map.html directement dans un navigateur (npm run dev)
-      // sans passer par la WebView Flutter.
-      window.addEventListener('DOMContentLoaded', function () {
-        sendToNative('pageReady', null);
-      });
     })();
   </script>
 </body>

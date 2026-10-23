@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
-/// Les deux langues proposées par cette démo. La venue de démo partagée
+/// Les deux langues proposées par cette démo (libellés dans leur propre
+/// langue, volontairement non traduits). La venue de démo partagée
 /// (`kDefaultMapHash`) expose en réalité trois locales
 /// (`venue.translator.allLocales` = `['default', 'en', 'fr']`), mais
 /// `'default'` s'est avérée être un doublon octet pour octet de `'fr'`
@@ -22,7 +24,7 @@ const List<({String code, String label})> _kLocaleOptions = [
 /// Overlay de la feature `runtime-locale` : bascule la langue des
 /// POI/labels affichés sur la carte, à la volée, sans recharger ni
 /// republier la carte (`venue.setCurrentLocale`), affichée dans le bottom
-/// sheet ouvert par le FAB de [VisioOneMapShell]. Récupère la locale
+/// sheet ouvert par le FAB de `VisioOneMapShell`. Récupère la locale
 /// courante de la venue au montage ([VisioOneController.getLocales]) pour
 /// présélectionner la bonne puce, puis chaque tap appelle
 /// [VisioOneController.setCurrentLocale]. Voir
@@ -77,7 +79,7 @@ class _RuntimeLocaleOverlayState extends State<RuntimeLocaleOverlay> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Map language'),
+            Text(AppLocalizations.of(context)!.runtimeLocaleMapLanguageLabel),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
