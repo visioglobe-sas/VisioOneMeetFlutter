@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Overlay de la feature `accessible-mode` : mêmes champs Place ID
@@ -27,8 +28,8 @@ class AccessibleModeOverlay extends StatefulWidget {
 }
 
 class _AccessibleModeOverlayState extends State<AccessibleModeOverlay> {
-  final TextEditingController _originController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
+  final TextEditingController _originController = TextEditingController(text: DemoMap.accessibleFrom);
+  final TextEditingController _destinationController = TextEditingController(text: DemoMap.accessibleTo);
   bool _accessibleRoute = false;
 
   @override

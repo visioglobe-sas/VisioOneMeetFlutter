@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Overlay de la feature `clickable-surface` : un champ Place ID + deux
@@ -19,7 +20,7 @@ class ClickableSurfaceOverlay extends StatefulWidget {
 }
 
 class _ClickableSurfaceOverlayState extends State<ClickableSurfaceOverlay> {
-  final TextEditingController _placeIdController = TextEditingController();
+  final TextEditingController _placeIdController = TextEditingController(text: DemoMap.clickableSurfacePlaceId);
 
   @override
   void dispose() {

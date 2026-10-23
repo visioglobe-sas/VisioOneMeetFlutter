@@ -109,8 +109,8 @@ kbae8e6c066cca4b02c2afac2bc963a643d87437a
 
 ## Partie E — Configurer la carte à afficher
 
-1. Ouvrez `lib/main.dart`.
-2. Repérez cette ligne, tout en haut du fichier :
+1. Ouvrez `lib/demo_map.dart`.
+2. Repérez cette ligne :
 
    ```dart
    const String kDefaultMapHash = 'kbae8e6c066cca4b02c2afac2bc963a643d87437a';

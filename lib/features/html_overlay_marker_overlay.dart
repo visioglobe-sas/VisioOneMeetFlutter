@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
 /// POI de la carte de démo partagée qui a une position utilisable (un
 /// label) — "Restaurant", rez-de-chaussée du bâtiment B4.
-const String _kDefaultAnchorId = 'B4-UL00-ID0009';
+const String _kDefaultAnchorId = DemoMap.anchorPoiId;
 
 /// Overlay de la feature `html-overlay-marker` : champs "Anchor POI ID" et
 /// "Badge text", et actions Place badge / Update text / Hide-Show badge /
@@ -51,8 +53,21 @@ class _HtmlOverlayMarkerOverlayState extends State<HtmlOverlayMarkerOverlay> {
   void initState() {
     super.initState();
     _anchorIdController = TextEditingController(text: _c.htmlBadgeAnchorId.value ?? _kDefaultAnchorId);
-    _textController = TextEditingController(text: _c.htmlBadgeText.value);
+    _textController = TextEditingController(text: _c.htmlBadgeText.value ?? '');
     _subscription = _c.messages.listen(_onMessage);
+  }
+
+  // Texte par défaut localisé (l10n indisponible dans initState).
+  bool _defaultTextApplied = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultTextApplied) return;
+    _defaultTextApplied = true;
+    if (_c.htmlBadgeText.value == null) {
+      _textController.text = AppLocalizations.of(context)!.htmlBadgeDefaultText;
+    }
   }
 
   @override

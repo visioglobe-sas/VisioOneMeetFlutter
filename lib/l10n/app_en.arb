@@ -92,5 +92,17 @@
   "authTokenDescription": "Code sample: load a map protected by an authorization token",
   "authTokenScreenText": "This feature is a code sample only: this demo has no protected map to load. See lib/features/auth_token_sample.dart (placeholders and sample widget), lib/visio_one/visio_one_controller.dart and assets/www/map.html (bridge side), and docs/features/auth-token.md, then replace the placeholder map hash and token with your own values.",
   "authTokenUnauthorizedError": "Authorization token invalid, expired or missing (UnauthorizedError).",
-  "authTokenRefreshButton": "Refresh token"
+  "authTokenRefreshButton": "Refresh token",
+  "dynamicPoiDefaultLabelText": "Demo POI",
+  "@dynamicPoiDefaultLabelText": {
+    "description": "Default text prefilled in the dynamic-poi-crud \"Label text\" field."
+  },
+  "textLabelDefaultText": "Lunch 12:00–14:00",
+  "@textLabelDefaultText": {
+    "description": "Default text prefilled in the custom-text-label \"Text\" field."
+  },
+  "htmlBadgeDefaultText": "Open now · 12:00–14:00",
+  "@htmlBadgeDefaultText": {
+    "description": "Default text prefilled in the html-overlay-marker \"Badge text\" field."
+  }
 }

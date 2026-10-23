@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 import 'compute_navigation_overlay.dart';
@@ -115,7 +116,11 @@ class _CustomNavigationTraceOverlayState extends State<CustomNavigationTraceOver
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ComputeNavigationOverlay(controller: widget.controller),
+        ComputeNavigationOverlay(
+          controller: widget.controller,
+          initialOriginId: DemoMap.itineraryFrom,
+          initialDestinationId: DemoMap.itineraryTo,
+        ),
         const SizedBox(height: 16),
         const Text('Trace color'),
         const SizedBox(height: 8),

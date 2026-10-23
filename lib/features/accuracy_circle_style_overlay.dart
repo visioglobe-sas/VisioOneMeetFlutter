@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../l10n/app_localizations.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
@@ -87,8 +88,8 @@ class _AccuracyCircleStyleOverlayState extends State<AccuracyCircleStyleOverlay>
       children: [
         SimulatedPositionOverlay(
           controller: widget.controller,
-          initialOriginId: 'B4-UL00-ID0009',
-          initialDestinationId: 'B4-UL00-ID0010',
+          initialOriginId: DemoMap.trackingFrom,
+          initialDestinationId: DemoMap.trackingTo,
           initialRadiusMeters: 6,
         ),
         const Divider(height: 24),

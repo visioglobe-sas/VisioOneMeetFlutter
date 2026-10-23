@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/visio_one_controller.dart';
 
 /// Valeur de segment `excludedAttributes` correspondant à un ascenseur sur ce
@@ -36,8 +37,8 @@ class NavigationExcludeModalitiesOverlay extends StatefulWidget {
 }
 
 class _NavigationExcludeModalitiesOverlayState extends State<NavigationExcludeModalitiesOverlay> {
-  final TextEditingController _originController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
+  final TextEditingController _originController = TextEditingController(text: DemoMap.excludeModalitiesFrom);
+  final TextEditingController _destinationController = TextEditingController(text: DemoMap.excludeModalitiesTo);
   bool _avoidElevator = false;
 
   @override

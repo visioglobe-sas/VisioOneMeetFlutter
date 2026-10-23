@@ -61,9 +61,9 @@ interface CustomData {
 
 ## Demo map
 
-This feature demo loads a dedicated map hash (`kd9426d8cb3f1c532f22b5bcbd325c280bd351feb`, `kCustomDataMapHash` in `lib/visio_one/visio_one_map_shell.dart`), distinct from the rest of the app's shared demo map (`kDefaultMapHash`) — see the conditional in `lib/features/feature_screen.dart`. The shared demo map has no `CustomData` published yet, so it would only ever demonstrate the empty-state described above; every other feature screen keeps using `kDefaultMapHash` unchanged.
+This feature demo loads a dedicated map hash (`kd9426d8cb3f1c532f22b5bcbd325c280bd351feb`, `kCustomDataMapHash` in `lib/demo_map.dart`), distinct from the rest of the app's shared demo map (`kDefaultMapHash`) — see the conditional in `lib/features/feature_screen.dart`. The shared demo map has no `CustomData` published yet, so it would only ever demonstrate the empty-state described above; every other feature screen keeps using `kDefaultMapHash` unchanged.
 
-Three Place IDs are confirmed to carry real `CustomData` on that dedicated map (surfaced as quick-select chips in `CustomDataOverlay`, `lib/features/custom_data_overlay.dart`):
+Three Place IDs are confirmed to carry real `CustomData` on that dedicated map (`DemoMap.customDataQuickIds` in `lib/demo_map.dart`, surfaced as quick-select chips in `CustomDataOverlay`; the Place ID field opens prefilled with `B3-UL00-ID0065`):
 
 - `B1` → `{"CSM ID":"BLBLA"}`
 - `B3-UL00-ID0065` → `{"Sensor X":"17718393"}`

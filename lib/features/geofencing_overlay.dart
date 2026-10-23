@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
@@ -31,7 +32,7 @@ class GeofencingOverlay extends StatefulWidget {
 }
 
 class _GeofencingOverlayState extends State<GeofencingOverlay> {
-  final TextEditingController _zoneIdController = TextEditingController();
+  final TextEditingController _zoneIdController = TextEditingController(text: DemoMap.geofenceZoneId);
 
   // Requête/réponse par `requestId` sur `controller.messages` — même idiome
   // que `SimulatedPositionOverlay._pendingRequests`.
@@ -137,7 +138,11 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SimulatedPositionOverlay(controller: widget.controller),
+        SimulatedPositionOverlay(
+          controller: widget.controller,
+          initialOriginId: DemoMap.trackingFrom,
+          initialDestinationId: DemoMap.trackingTo,
+        ),
         const Divider(height: 24),
         TextField(
           controller: _zoneIdController,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo_map.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import 'simulated_position_overlay.dart';
@@ -35,7 +36,11 @@ class CameraLockOnPositionOverlay extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SimulatedPositionOverlay(controller: controller),
+        SimulatedPositionOverlay(
+          controller: controller,
+          initialOriginId: DemoMap.trackingFrom,
+          initialDestinationId: DemoMap.trackingTo,
+        ),
         const Divider(height: 24),
         ValueListenableBuilder<bool>(
           valueListenable: _session.isRunning,

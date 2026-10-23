@@ -22,11 +22,13 @@ flutter pub get
 The app ships pointed at a demo map. To point it at your own map:
 
 1. Get your map's hash (a 41-character identifier) from [my.visioglobe.com](https://my.visioglobe.com) (see `docs/INTEGRATION_GUIDE.md`, part D, for the detailed steps).
-2. Replace the value of `kDefaultMapHash` in `lib/visio_one/visio_one_map_shell.dart`:
+2. Replace the value of `kDefaultMapHash` in `lib/demo_map.dart`:
 
    ```dart
    const String kDefaultMapHash = 'YOUR_HASH_HERE';
    ```
+
+3. Every feature screen opens with its fields prefilled with POI ids of the demo map. Replace the ids in the `DemoMap` class of the same `lib/demo_map.dart` file with ids of your own map (default label/badge texts are localized in `lib/l10n/app_*.arb`).
 
 ### Run
 
@@ -107,13 +109,14 @@ See [`docs/COMMUNICATION_GUIDE.md`](docs/COMMUNICATION_GUIDE.md) for the full br
 ```
 lib/
   main.dart                          entry point, MaterialApp
+  demo_map.dart                      demo map hash + POI ids used as field defaults (replace with your own)
   features/
     feature.dart                     catalogue of demonstrated features (slug, title, overlay)
     feature_menu_screen.dart         home screen listing all features
     feature_screen.dart              full-screen host for one feature's map + overlay
     <feature>_overlay.dart           per-feature UI control shown in the bottom sheet
   visio_one/
-    visio_one_map_shell.dart         shared map screen: loads the SDK, kDefaultMapHash, loading/ready/error states
+    visio_one_map_shell.dart         shared map screen: loads the SDK, loading/ready/error states
     visio_one_controller.dart        typed Native <-> WebView/SDK bridge
     visio_one_message.dart           JSON envelope for the JS -> Native channel
     simulated_position_session.dart  state for the simulated tracked-position demo
