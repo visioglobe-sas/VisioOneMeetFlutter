@@ -34,7 +34,7 @@ class _NativeUiReplacementMapPanelState extends State<NativeUiReplacementMapPane
   @override
   void initState() {
     super.initState();
-    widget.controller.setUIPartVisible('floorSelector', false);
+    widget.controller.setUIPartVisible('floorSelector', showSdkFloorSelector(widget.controller).value);
   }
 
   @override
@@ -75,6 +75,12 @@ class _NativeUiReplacementMapPanelState extends State<NativeUiReplacementMapPane
   }
 }
 
+/// Valeur de l'interrupteur "afficher le sélecteur d'étage du SDK", gardée
+/// dans `controller.panel` (éteint par défaut) pour que le panneau rouvert
+/// reflète la carte.
+ValueNotifier<bool> showSdkFloorSelector(VisioOneController controller) =>
+    controller.panel.value<bool>('native-ui-replacement.showSdkFloorSelector', false);
+
 /// Overlay de la feature `native-ui-replacement` ouvert par le FAB : un seul
 /// interrupteur pour révéler le composant d'UI par défaut du SDK
 /// (`floorSelector`) à côté du panneau natif de [NativeUiReplacementMapPanel]
@@ -82,36 +88,26 @@ class _NativeUiReplacementMapPanelState extends State<NativeUiReplacementMapPane
 /// direct. Éteint par défaut (état déjà mis en place par
 /// [NativeUiReplacementMapPanel] dès que la carte est prête, avant même la
 /// première ouverture de ce panneau).
-class NativeUiReplacementOverlay extends StatefulWidget {
+class NativeUiReplacementOverlay extends StatelessWidget {
   const NativeUiReplacementOverlay({super.key, required this.controller});
 
   final VisioOneController controller;
 
   @override
-  State<NativeUiReplacementOverlay> createState() => _NativeUiReplacementOverlayState();
-}
-
-class _NativeUiReplacementOverlayState extends State<NativeUiReplacementOverlay> {
-  bool _showSdkFloorSelector = false;
-
-  void _toggle(bool value) {
-    setState(() => _showSdkFloorSelector = value);
-    widget.controller.setUIPartVisible('floorSelector', value);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(l10n.nativeUiReplacementToggleLabel),
-          value: _showSdkFloorSelector,
-          onChanged: _toggle,
-        ),
-      ],
+    final show = showSdkFloorSelector(controller);
+    return ValueListenableBuilder<bool>(
+      valueListenable: show,
+      builder: (context, value, _) => SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(l10n.nativeUiReplacementToggleLabel),
+        value: value,
+        onChanged: (v) {
+          show.value = v;
+          controller.setUIPartVisible('floorSelector', v);
+        },
+      ),
     );
   }
 }

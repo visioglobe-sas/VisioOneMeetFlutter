@@ -39,5 +39,5 @@ controller.messages.listen((message) {
 
 ## Learn more
 
-- See `docs/COMMUNICATION_GUIDE.md` in this repo (sections 3 and 7) for the full bridge message contract and the procedure for adding a new JS -> Native event.
+- See `docs/COMMUNICATION_GUIDE.md` in this repo (sections 3 and 6) for the full bridge message contract and the procedure for adding a new JS -> Native event.
 - Related: `goto-poi` does the reverse — centering the camera on a chosen POI from native code, rather than reacting to a tap coming from the map.

@@ -35,15 +35,28 @@ The SDK's `Label` object can't cross the bridge, so the JS side keeps it (and th
 var textLabel = null;
 var textLabelOptions = null;
 
-// Shared with dynamic-poi-crud and 3d-icon-marker: resolve an existing POI and the position to copy from it.
-// `ignoredLabel`: a label we created ourselves, still attached to the POI — never use it as the position source.
-function resolveAnchor(anchorId, ignoredLabel) {
+// Display position of a POI, same priority everywhere in this repo: first label,
+// else first image or marker, else the centre of its first surface.
+// `ignored`: objects created by the demos themselves, never used as a source.
+function poiDisplayPosition(poi, ignored) {
+  var skip = ignored || [];
+  function first(list) { return list.filter(function (o) { return skip.indexOf(o) === -1; })[0]; }
+  var source = first(poi.labels) || first(poi.images) || first(poi.markers);
+  if (source) return source.position;
+  var surface = poi.surfaces[0];
+  if (!surface || !surface.positions.length) return null;
+  var lat = 0, lng = 0;
+  surface.positions.forEach(function (p) { lat += p.latitude; lng += p.longitude; });
+  return { latitude: lat / surface.positions.length, longitude: lng / surface.positions.length };
+}
+
+// Resolve an existing anchor POI and the position to copy from it.
+function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var ownLabels = poi.labels.filter(function (l) { return l !== ignoredLabel; });
-  var source = ownLabels[0] || poi.markers[0];
-  if (!source) return { poi: poi, error: 'noPosition' };
-  return { poi: poi, position: source.position };
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  if (!position) return { poi: poi, error: 'noPosition' };
+  return { poi: poi, position: position };
 }
 
 placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
@@ -52,7 +65,7 @@ placeTextLabel: function (requestId, anchorId, text, color, width, height, rotat
     sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
     return;
   }
-  var anchor = resolveAnchor(anchorId, textLabel);  // error: 'notFound' | 'noPosition'
+  var anchor = resolveAnchor(anchorId);  // error: 'notFound' | 'noPosition'
   // ... report anchor.error the same way
   var position = {
     latitude: anchor.position.latitude + 0.00004,   // ~4 m offset, so the text doesn't
@@ -107,7 +120,7 @@ After a successful placement, the demo calls the existing `goToPOI(anchorId)` br
 
 Each action is a `requestId`-correlated request/response round trip (same pattern as `dynamic-poi-crud` and `3d-icon-marker`): `textLabelPlaced` / `textLabelUpdated` / `textLabelRemoved`, each with `success` and, on failure, an `error` code (`textRequired`, `notFound`, `noPosition`, `noLabel`, or `sdk` with the SDK's own `message`).
 
-The real SDK surface, on `Venue` (`Venue.ts`), `LabelCreateOptions` and `LabelUpdateOptions`:
+The real SDK surface, from the SDK's typings (`Venue.d.ts`, `LabelCreateOptions`, `LabelUpdateOptions`):
 
 ```ts
 createLabel(options: LabelCreateOptions): Label;
@@ -147,7 +160,7 @@ interface LabelUpdateOptions {
 - **Text is fitted inside `width × height`** (meters, so the on-screen size follows the camera zoom); a long text wraps to two lines.
 - **Offset the position** if you anchor on a POI that already has a label: copying its position as-is draws your text right on top of it. A small lat/lng offset (here +0.00004°, ≈ 4 m) keeps both readable.
 - **Validate before replacing.** Check the text and resolve the anchor before `removeLabel()`-ing the label you already placed, so that a rejected placement (blank text, unknown POI, no position) leaves the current label on the map. While resolving, your own label is still in `poi.labels`: skip it, or a POI with no label of its own would get its position from your label instead of from the map's data.
-- A POI with neither `labels[0]` nor `markers[0]` has no position to copy — report it as an explicit "no position" state rather than passing `undefined` to `createLabel`.
+- A POI has no latitude/longitude of its own; take one from its label, image, marker or surface (see `poiDisplayPosition` above), skipping the label you created yourself. A POI with none of them has no position to copy — report it as an explicit "no position" state rather than passing `undefined` to `createLabel`.
 
 ## Learn more
 

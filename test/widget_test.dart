@@ -1,12 +1,16 @@
-// Teste le contrat du pont JS -> Native ([VisioOneMessage]) et le test de
-// containment de `geofencing` ([isPointInPolygon]) : la logique pure (sans
+// Teste le contrat du pont JS -> Native ([VisioOneMessage]), le test de
+// containment de `geofencing` ([isPointInPolygon]), le parseur de couleurs
+// et le magasin d'état des panneaux ([PanelState]) : la logique pure (sans
 // WebView / platform channels) de ce projet.
 //
 // Un test de widget complet nécessiterait de mocker le platform channel de
 // webview_flutter (WebViewController, JavaScriptChannel...) : hors périmètre
 // de ce squelette d'intégration.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:visio_one_meet_flutter/features/shared/color_chip.dart';
+import 'package:visio_one_meet_flutter/visio_one/panel_state.dart';
 import 'package:visio_one_meet_flutter/visio_one/geofence_utils.dart';
 import 'package:visio_one_meet_flutter/visio_one/simulated_position_session.dart';
 import 'package:visio_one_meet_flutter/visio_one/visio_one_message.dart';
@@ -65,6 +69,33 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  group('parseHexColor', () {
+    test('parses #RRGGBB as an opaque color', () {
+      expect(parseHexColor('#0094F0'), const Color(0xFF0094F0));
+    });
+
+    test('accepts lowercase digits and a missing #', () {
+      expect(parseHexColor('e53935'), const Color(0xFFE53935));
+    });
+  });
+
+  group('PanelState', () {
+    test('returns the same text controller, keeping its value', () {
+      final state = PanelState();
+      state.text('goto-poi.placeId', 'A').text = 'B';
+      expect(state.text('goto-poi.placeId', 'A').text, 'B');
+      state.dispose();
+    });
+
+    test('creates a value with its initial value once', () {
+      final state = PanelState();
+      expect(state.value<bool>('x.flag', true).value, isTrue);
+      state.value<bool>('x.flag', true).value = false;
+      expect(state.value<bool>('x.flag', true).value, isFalse);
+      state.dispose();
     });
   });
 }

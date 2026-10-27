@@ -3,19 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
-import 'compute_navigation_overlay.dart';
+import 'shared/color_chip.dart';
+import 'shared/navigation_form.dart';
 
 /// Catalogue de presets de couleurs pour `custom-navigation-trace`, chacun un
 /// `NavigationTraceUpdateOptions` complet passé tel quel à
 /// [VisioOneController.updateNavigationTrace]. `visioglobeBlue` ré-énonce
 /// explicitement les couleurs par défaut du SDK (`Line.color` = `#0094F0`,
-/// segment inactif/preview = `#C5C5C5`, voir `Venue/Line.d.ts`) comme un
-/// preset comme un autre, plutôt qu'un faux no-op — le SDK n'offre aucun
-/// appel "reset to default" (voir `docs/features/custom-navigation-trace.md`).
-/// Mêmes valeurs que le catalogue Vue, pour rester cohérent d'une plateforme
-/// à l'autre.
+/// segment inactif/preview = `#C5C5C5`, voir `Venue/Line.d.ts` dans les
+/// typings du SDK) comme un preset comme un autre, plutôt qu'un faux no-op —
+/// le SDK n'offre aucun appel "reset to default" (voir
+/// `docs/features/custom-navigation-trace.md`).
 const Map<String, Map<String, String>> kNavigationTracePresets = {
   'visioglobeBlue': {
     'progressColor': '#0094F0',
@@ -47,17 +48,17 @@ const Map<String, Map<String, String>> kNavigationTracePresets = {
   },
 };
 
-Color _swatchColor(String presetKey) {
-  final hex = kNavigationTracePresets[presetKey]!['progressColor']!;
-  return Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
-}
+String _presetName(AppLocalizations l10n, String presetKey) => switch (presetKey) {
+  'visioglobeBlue' => l10n.colorVisioglobeBlue,
+  'brandRed' => l10n.colorRed,
+  'brandGreen' => l10n.colorGreen,
+  _ => l10n.colorPurple,
+};
 
-/// Overlay de la feature `custom-navigation-trace` : réutilise verbatim les
-/// champs Place ID "From"/"To" et le bouton "Itinerary" de
-/// [ComputeNavigationOverlay] (même logique de calcul d'itinéraire, pas
-/// dupliquée — même idiome que [CameraLockOnPositionOverlay] réutilisant
-/// [SimulatedPositionOverlay]) plutôt qu'une nouvelle paire de champs, et y
-/// ajoute une rangée de pastilles de couleur en dessous.
+/// Overlay de la feature `custom-navigation-trace` : le formulaire
+/// origine/destination partagé ([NavigationForm], même calcul d'itinéraire
+/// que `compute-navigation`), suivi en dessous d'une rangée de puces de
+/// couleur.
 ///
 /// Taper une pastille applique immédiatement le preset correspondant à la
 /// trace actuellement affichée ([VisioOneController.updateNavigationTrace])
@@ -112,64 +113,41 @@ class _CustomNavigationTraceOverlayState extends State<CustomNavigationTraceOver
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ComputeNavigationOverlay(
+        NavigationForm(
           controller: widget.controller,
+          stateKey: 'custom-navigation-trace',
           initialOriginId: DemoMap.itineraryFrom,
           initialDestinationId: DemoMap.itineraryTo,
+          onSubmit: (origin, destination) =>
+              widget.controller.startItinerary(origin: origin, destination: destination),
         ),
         const SizedBox(height: 16),
-        const Text('Trace color'),
+        Text(l10n.customNavigationTraceColorLabel),
         const SizedBox(height: 8),
         ValueListenableBuilder<String>(
           valueListenable: widget.controller.selectedNavigationTracePresetKey,
           builder: (context, selected, _) {
-            return Row(
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                for (final presetKey in kNavigationTracePresets.keys) ...[
-                  _ColorSwatch(
-                    color: _swatchColor(presetKey),
+                for (final presetKey in kNavigationTracePresets.keys)
+                  ColorChoiceChip(
+                    hex: kNavigationTracePresets[presetKey]!['progressColor']!,
+                    label: _presetName(l10n, presetKey),
                     selected: presetKey == selected,
-                    onTap: () => _selectPreset(presetKey),
+                    onSelected: () => _selectPreset(presetKey),
                   ),
-                  const SizedBox(width: 12),
-                ],
               ],
             );
           },
         ),
       ],
-    );
-  }
-}
-
-class _ColorSwatch extends StatelessWidget {
-  const _ColorSwatch({required this.color, required this.selected, required this.onTap});
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      customBorder: const CircleBorder(),
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
-            width: 2,
-          ),
-        ),
-      ),
     );
   }
 }

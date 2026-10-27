@@ -61,4 +61,4 @@ Future<void> getVenueLayout() => _run('window.MapBridge.getVenueLayout()');
 
 ## Learn more
 
-See `docs/COMMUNICATION_GUIDE.md` in this repo (section 3, and sections 6/7 for the procedure this feature follows: adding a command **and** a response event).
+See `docs/COMMUNICATION_GUIDE.md` in this repo (section 3, and sections 5/6 for the procedure this feature follows: adding a command **and** a response event).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import 'simulated_position_overlay.dart';
@@ -8,7 +9,7 @@ import 'simulated_position_overlay.dart';
 /// Overlay de la feature `camera-lock-on-position` : la même UI que
 /// `simulated-position` (champs Place ID Origin/Destination, slider de
 /// rayon, bouton Start/Stop — réutilisée telle quelle via
-/// [SimulatedPositionOverlay], pas dupliquée) surmontée d'un interrupteur
+/// [SimulatedPositionOverlay], pas dupliquée), suivie en dessous d'un interrupteur
 /// "Camera lock" qui bascule `view.lockCameraPositionOnTracking` via
 /// [VisioOneController.setCameraLockOnPosition]. Voir
 /// `docs/features/camera-lock-on-position.md`.
@@ -32,6 +33,7 @@ class CameraLockOnPositionOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,16 +55,16 @@ class CameraLockOnPositionOverlay extends StatelessWidget {
                   // Désactivé tant qu'aucune position n'est trackée :
                   // verrouiller la caméra sur rien n'a pas de sens, et le
                   // SDK lui-même n'a aucun effet visible tant que
-                  // `view.allowTracking` est à `false` (voir
-                  // `view.lockCameraPositionOnTracking`, commentaire de
-                  // View.ts). La valeur affichée est un miroir de l'état
+                  // `view.allowTracking` est à `false` (voir la doc de
+                  // `lockCameraPositionOnTracking` dans les typings du
+                  // SDK). La valeur affichée est un miroir de l'état
                   // SDK (events `trackingon`/`trackingoff`/`trackingchanged`,
                   // voir `SimulatedPositionSession.isCameraLocked`) : ON dès
                   // Start (le SDK verrouille de lui-même), OFF après un pan
                   // de la carte ou un Stop. `onChanged` ne fait qu'envoyer
                   // la nouvelle valeur au SDK, l'interrupteur suit l'event.
-                  title: const Text('Camera lock'),
-                  subtitle: const Text('Recenter camera on tracked position'),
+                  title: Text(l10n.cameraLockSwitchLabel),
+                  subtitle: Text(l10n.cameraLockSwitchSubtitle),
                   value: isLocked,
                   onChanged: isRunning ? _session.setCameraLocked : null,
                 );

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
@@ -21,7 +22,7 @@ const Map<String, String> kSpanishResources = {
 /// Overlay de la feature `add-locale` : ajoute une locale `'es'` (espagnol)
 /// jamais authorée dans VisioMapEditor pour cette carte, à l'exécution
 /// (`venue.translator.addLocale`), affichée dans le bottom sheet ouvert par
-/// le FAB de [VisioOneMapShell]. Chaque clé de [kSpanishResources] est
+/// le FAB de `VisioOneMapShell`. Chaque clé de [kSpanishResources] est
 /// affichée avec sa traduction espagnole une fois ajoutée — relue via
 /// `venue.translator.translate(key, 'es')` dans le même aller-retour de pont
 /// ([VisioOneController.addSpanishLocale]) — la preuve, toujours visible
@@ -66,7 +67,7 @@ class _AddLocaleOverlayState extends State<AddLocaleOverlay> {
         (key, value) => MapEntry(key as String, value as String),
       );
     }
-    setState(() => _adding = false);
+    if (mounted) setState(() => _adding = false);
   }
 
   void _addSpanishLocale() {
@@ -79,12 +80,13 @@ class _AddLocaleOverlayState extends State<AddLocaleOverlay> {
     return ValueListenableBuilder<Map<String, String>?>(
       valueListenable: widget.controller.spanishLocaleTranslations,
       builder: (context, translations, _) {
+        final l10n = AppLocalizations.of(context)!;
         final added = translations != null;
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Add a new locale at runtime (\'es\')'),
+            Text(l10n.addLocaleIntro),
             const SizedBox(height: 8),
             for (final key in kSpanishResources.keys)
               Padding(
@@ -100,7 +102,7 @@ class _AddLocaleOverlayState extends State<AddLocaleOverlay> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        translations?[key] ?? '(not added yet)',
+                        translations?[key] ?? l10n.addLocaleNotAdded,
                         textAlign: TextAlign.end,
                         style: TextStyle(
                           fontStyle: added ? FontStyle.normal : FontStyle.italic,
@@ -114,12 +116,12 @@ class _AddLocaleOverlayState extends State<AddLocaleOverlay> {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _adding || added ? null : _addSpanishLocale,
-              child: Text(added ? 'Spanish locale added' : 'Add Spanish locale'),
+              child: Text(added ? l10n.addLocaleAddedButton : l10n.addLocaleAddButton),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: added ? () => widget.controller.setCurrentLocale('es') : null,
-              child: const Text('Switch to Spanish'),
+              child: Text(l10n.addLocaleSwitchButton),
             ),
           ],
         );

@@ -3,20 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
 /// Résultat d'un chargement de CustomData — voir `_CustomDataOverlayState._load`.
 class _CustomDataResult {
-  const _CustomDataResult({required this.found, required this.customData});
+  const _CustomDataResult({required this.poiId, required this.found, required this.customData});
 
+  final String poiId;
   final bool found;
   final Map<String, String> customData;
 }
 
 /// Overlay de la feature `custom-data` : un champ Place ID + un bouton
 /// "Load", affiché dans le bottom sheet ouvert par le FAB de
-/// [VisioOneMapShell]. "Load" enchaîne les deux appels SDK exigés par cette
+/// `VisioOneMapShell`. "Load" enchaîne les deux appels SDK exigés par cette
 /// démo en une seule commande de pont — `venue.refreshCustomData()` puis
 /// `venue.getPOICustomData(poi)` côté JS (voir `assets/www/map.html`,
 /// `window.MapBridge.loadCustomData`) — plutôt que deux boutons séparés,
@@ -41,7 +43,13 @@ class CustomDataOverlay extends StatefulWidget {
 const List<String> _kKnownPoiIdsWithCustomData = DemoMap.customDataQuickIds;
 
 class _CustomDataOverlayState extends State<CustomDataOverlay> {
-  final TextEditingController _placeIdController = TextEditingController(text: DemoMap.customDataPlaceId);
+  late final TextEditingController _placeIdController =
+      widget.controller.panel.text('custom-data.placeId', DemoMap.customDataPlaceId);
+
+  // Dernier résultat affiché, gardé dans `controller.panel` pour le
+  // retrouver à la réouverture du panneau.
+  late final ValueNotifier<_CustomDataResult?> _result =
+      widget.controller.panel.value<_CustomDataResult?>('custom-data.result', null);
 
   // Requête/réponse par `requestId` sur `controller.messages` (même idiom
   // que `poiPositionResolved` pour `simulated-position`).
@@ -50,12 +58,6 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
   int _requestCounter = 0;
 
   bool _loading = false;
-  // null = rien chargé encore ; sinon dernier résultat affiché, avec le
-  // Place ID qui l'a produit (peut différer du contenu courant du champ
-  // texte si l'utilisateur l'a modifié depuis le dernier "Load").
-  bool? _found;
-  Map<String, String>? _customData;
-  String? _lastPoiId;
 
   @override
   void initState() {
@@ -66,7 +68,6 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
   @override
   void dispose() {
     _subscription?.cancel();
-    _placeIdController.dispose();
     super.dispose();
   }
 
@@ -86,7 +87,7 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
         customData[entry.key.toString()] = entry.value.toString();
       }
     }
-    completer.complete(_CustomDataResult(found: found, customData: customData));
+    completer.complete(_CustomDataResult(poiId: data['poiId']?.toString() ?? '', found: found, customData: customData));
   }
 
   /// Remplit le champ Place ID avec un des [_kKnownPoiIdsWithCustomData] et
@@ -106,11 +107,8 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
     final completer = Completer<_CustomDataResult>();
     _pendingRequests[requestId] = completer;
 
-    setState(() {
-      _loading = true;
-      _found = null;
-      _customData = null;
-    });
+    setState(() => _loading = true);
+    _result.value = null;
 
     widget.controller.loadCustomData(requestId, poiId);
     // Un poiId introuvable répond quand même (found: false, voir map.html)
@@ -119,25 +117,21 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
       const Duration(seconds: 5),
       onTimeout: () {
         _pendingRequests.remove(requestId);
-        return const _CustomDataResult(found: false, customData: <String, String>{});
+        return _CustomDataResult(poiId: poiId, found: false, customData: const <String, String>{});
       },
     );
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _found = result.found;
-      _customData = result.customData;
-      _lastPoiId = poiId;
-    });
+    _result.value = result;
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Known POIs with real custom data:', style: TextStyle(fontSize: 12)),
+        Text(l10n.customDataKnownPoisLabel, style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 4),
         Wrap(
           spacing: 8,
@@ -156,36 +150,38 @@ class _CustomDataOverlayState extends State<CustomDataOverlay> {
             Expanded(
               child: TextField(
                 controller: _placeIdController,
-                decoration: const InputDecoration(hintText: 'Place ID', isDense: true),
+                decoration: InputDecoration(labelText: l10n.placeIdLabel, isDense: true),
               ),
             ),
             const SizedBox(width: 8),
             FilledButton(
               onPressed: _loading ? null : _load,
-              child: Text(_loading ? 'Loading…' : 'Load'),
+              child: Text(_loading ? l10n.loadingLabel : l10n.customDataLoadButton),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _buildResult(context),
+        ValueListenableBuilder<_CustomDataResult?>(
+          valueListenable: _result,
+          builder: (context, result, _) => _buildResult(context, l10n, result),
+        ),
       ],
     );
   }
 
-  Widget _buildResult(BuildContext context) {
-    final found = _found;
-    if (found == null) return const SizedBox.shrink();
+  Widget _buildResult(BuildContext context, AppLocalizations l10n, _CustomDataResult? result) {
+    if (result == null) return const SizedBox.shrink();
 
-    if (!found) {
+    if (!result.found) {
       return Text(
-        'POI not found: $_lastPoiId',
+        l10n.poiNotFound(result.poiId),
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       );
     }
 
-    final customData = _customData ?? const <String, String>{};
+    final customData = result.customData;
     if (customData.isEmpty) {
-      return const Text('No custom data for this POI.');
+      return Text(l10n.customDataEmpty);
     }
 
     return Column(

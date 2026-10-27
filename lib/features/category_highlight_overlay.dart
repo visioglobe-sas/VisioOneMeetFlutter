@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
@@ -9,7 +10,7 @@ import '../visio_one/visio_one_message.dart';
 /// venue (`venue.categories`, récupérées via un aller-retour de pont —
 /// [VisioOneController.getCategories] / message `categoriesLoaded`, même
 /// idiom `requestId` que `custom-data`) sous forme de chips sélectionnables,
-/// affichée dans le bottom sheet ouvert par le FAB de [VisioOneMapShell].
+/// affichée dans le bottom sheet ouvert par le FAB de `VisioOneMapShell`.
 /// Taper une catégorie met en avant tous ses POI
 /// ([VisioOneController.highlightCategory]) ; la retaper, ou "Clear", les
 /// réinitialise ([VisioOneController.clearCategoryHighlight]). Une seule
@@ -51,7 +52,7 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
     final data = message.data;
     if (data is! Map || data['requestId'] != _requestId) return;
     final rawCategories = data['categories'];
-    if (rawCategories is! List) return;
+    if (rawCategories is! List || !mounted) return;
     setState(() {
       _categories = rawCategories.map((c) {
         final map = c as Map;
@@ -78,7 +79,7 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
       );
     }
     if (categories.isEmpty) {
-      return const Text('This venue has no categories.');
+      return Text(AppLocalizations.of(context)!.categoryHighlightEmpty);
     }
 
     return ValueListenableBuilder<String?>(
@@ -103,7 +104,7 @@ class _CategoryHighlightOverlayState extends State<CategoryHighlightOverlay> {
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: selected == null ? null : widget.controller.clearCategoryHighlight,
-              child: const Text('Clear'),
+              child: Text(AppLocalizations.of(context)!.clearButton),
             ),
           ],
         );

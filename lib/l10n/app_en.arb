@@ -84,7 +84,19 @@
   "cameraShowcaseCarouselStart": "Start",
   "cameraShowcaseCarouselStop": "Stop",
   "cameraShowcaseCarouselStatusRunning": "Running — stop {index}/{total}: {poiId}",
-  "@cameraShowcaseCarouselStatusRunning": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}, "poiId": {"type": "String"}}},
+  "@cameraShowcaseCarouselStatusRunning": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
   "cameraShowcaseCarouselStatusPaused": "Paused — resumes after 10 s without touch",
   "cameraShowcaseCarouselStatusStopped": "Stopped",
   "cameraShowcaseCarouselHint": "Touching the map pauses the tour; it resumes on its own after 10 s.",
@@ -104,5 +116,212 @@
   "htmlBadgeDefaultText": "Open now · 12:00–14:00",
   "@htmlBadgeDefaultText": {
     "description": "Default text prefilled in the html-overlay-marker \"Badge text\" field."
-  }
+  },
+  "appTitle": "VisioOne Meet",
+  "menuHeader": "{appName} by VisioGlobe",
+  "@menuHeader": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "mapLoadErrorTitle": "Could not load the VisioOne map",
+  "mapLoadErrorUnknown": "Unknown VisioOne SDK error",
+  "mapLoadErrorRetry": "Retry",
+  "placeIdLabel": "Place ID",
+  "anchorPoiIdLabel": "Anchor POI ID",
+  "clearButton": "Clear",
+  "resetButton": "Reset",
+  "createButton": "Create",
+  "removeButton": "Remove",
+  "updateTextButton": "Update text",
+  "loadingLabel": "Loading…",
+  "resolvingLabel": "Resolving…",
+  "poiNotFound": "POI not found: {poiId}",
+  "@poiNotFound": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "resetViewButton": "Reset view",
+  "occupancyStartButton": "Simulate occupancy",
+  "occupancyStopButton": "Stop occupancy simulation",
+  "poiClickHint": "Tap any POI on the map: its details will pop up in a panel automatically.",
+  "poiClickIdLine": "ID: {poiId}",
+  "@poiClickIdLine": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "gotoPoiGoButton": "Go",
+  "floorSelectorLoading": "Loading buildings and floors…",
+  "floorSelectorFloorLabel": "Floor {level}",
+  "@floorSelectorFloorLabel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "navigationFromLabel": "From (place ID)",
+  "navigationToLabel": "To (place ID)",
+  "navigationItineraryButton": "Itinerary",
+  "trackingOriginLabel": "Origin POI ID",
+  "trackingDestinationLabel": "Destination POI ID",
+  "trackingRadiusLabel": "Accuracy radius",
+  "trackingStartButton": "Simulate position",
+  "trackingStopButton": "Stop simulated position",
+  "cameraLockSwitchLabel": "Camera lock",
+  "cameraLockSwitchSubtitle": "Recenter camera on tracked position",
+  "clickableSurfaceEnableButton": "Enable",
+  "clickableSurfaceDisableButton": "Disable",
+  "customDataKnownPoisLabel": "Known POIs with real custom data:",
+  "customDataLoadButton": "Load",
+  "customDataEmpty": "No custom data for this POI.",
+  "categoryHighlightEmpty": "This venue has no categories.",
+  "dynamicPoiStatusCreated": "Created: {poiId} — \"{text}\"",
+  "@dynamicPoiStatusCreated": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "dynamicPoiStatusNone": "No dynamic POI created yet.",
+  "dynamicPoiNewIdLabel": "New POI ID",
+  "dynamicPoiAnchorHelper": "Existing POI to copy the position from",
+  "dynamicPoiLabelTextLabel": "Label text",
+  "runtimeLocaleMapLanguageLabel": "Map language",
+  "addLocaleIntro": "Add a new locale at runtime ('es')",
+  "addLocaleNotAdded": "(not added yet)",
+  "addLocaleAddButton": "Add Spanish locale",
+  "addLocaleAddedButton": "Spanish locale added",
+  "addLocaleSwitchButton": "Switch to Spanish",
+  "geofencingZoneLabel": "Zone POI ID",
+  "geofencingWatchButton": "Watch zone",
+  "geofencingNoZone": "No zone watched",
+  "geofencingWatching": "Watching zone {poiId}",
+  "@geofencingWatching": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "geofencingZoneNoSurface": "This POI has no surface to use as a zone: {poiId}",
+  "@geofencingZoneNoSurface": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "geofencingInside": "Inside zone",
+  "geofencingOutside": "Outside zone",
+  "customNavigationTraceColorLabel": "Trace color",
+  "excludeModalitiesAvoidElevatorLabel": "Avoid elevator",
+  "accessibleModeSwitchLabel": "Accessible route",
+  "iconMarkerAnchorHelper": "Existing POI that owns the icon and gives its position",
+  "iconMarkerOrientationLabel": "Orientation",
+  "iconMarkerOrientationFixed": "Fixed",
+  "iconMarkerOrientationFlat": "Flat",
+  "iconMarkerOrientationFacing": "Facing camera",
+  "iconMarkerPlaceButton": "Place icon",
+  "iconMarkerRemoveButton": "Remove icon",
+  "iconMarkerStatusPlaced": "Icon placed on {poiId}",
+  "@iconMarkerStatusPlaced": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "iconMarkerStatusNone": "No icon placed",
+  "textLabelAnchorHelper": "Existing POI that owns the label and gives its position",
+  "textLabelTextLabel": "Text",
+  "colorLabel": "Color",
+  "textLabelSizeLabel": "Size",
+  "textLabelSizeSmall": "Small",
+  "textLabelSizeMedium": "Medium",
+  "textLabelSizeLarge": "Large",
+  "textLabelRotationLabel": "Rotation",
+  "textLabelPlaceButton": "Place label",
+  "textLabelRemoveButton": "Remove label",
+  "textLabelStatusPlaced": "Label placed on {poiId}",
+  "@textLabelStatusPlaced": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "textLabelStatusNone": "No label placed",
+  "htmlBadgeAnchorHelper": "Existing POI that owns the badge and gives its position",
+  "htmlBadgeTextLabel": "Badge text",
+  "htmlBadgePlaceButton": "Place badge",
+  "htmlBadgeHideButton": "Hide badge",
+  "htmlBadgeShowButton": "Show badge",
+  "htmlBadgeRemoveButton": "Remove badge",
+  "htmlBadgeStatusNone": "No badge placed",
+  "htmlBadgeStatusPlaced": "Badge placed on {poiId}",
+  "@htmlBadgeStatusPlaced": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "htmlBadgeStatusTapped": "Badge tapped ({count})",
+  "@htmlBadgeStatusTapped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "customThemeThemeLabel": "Theme",
+  "customThemeAccentLabel": "Accent color",
+  "customThemeTextAccentLabel": "Accent text color",
+  "colorVisioglobeBlue": "Visioglobe blue",
+  "colorRed": "Red",
+  "colorGreen": "Green",
+  "colorBlue": "Blue",
+  "colorPurple": "Purple",
+  "colorDark": "Dark",
+  "colorWhite": "White",
+  "colorYellow": "Yellow",
+  "colorBlack": "Black",
+  "errorTextRequired": "Text is required",
+  "errorNoPosition": "This POI has no position: {poiId}",
+  "@errorNoPosition": {
+    "placeholders": {
+      "poiId": {
+        "type": "String"
+      }
+    }
+  },
+  "errorNoLabel": "No label placed",
+  "errorNoBadge": "No badge placed",
+  "errorNoImage": "No icon placed",
+  "errorNoDynamicPoi": "No dynamic POI tracked",
+  "errorPoiAlreadyExists": "A POI with this ID already exists",
+  "errorMapNotReady": "The map is not ready",
+  "errorTimeout": "Timed out waiting for the map",
+  "errorSdk": "The SDK rejected the action: {message}",
+  "@errorSdk": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "errorGeneric": "Could not complete the action"
 }

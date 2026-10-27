@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
@@ -12,20 +13,20 @@ const double _maxRadiusMeters = 20;
 /// Overlay de la feature `simulated-position` : deux champs Place ID
 /// ("Origin"/"Destination"), un slider de rayon de précision (mètres) et un
 /// bouton toggle Start/Stop, affiché dans le bottom sheet ouvert par le FAB
-/// de [VisioOneMapShell]. Anime une position trackée simulée en va-et-vient
+/// de `VisioOneMapShell`. Anime une position trackée simulée en va-et-vient
 /// entre les deux POI via `view.injectTrackedPosition`, en lieu et place
 /// d'un vrai flux de positionnement indoor. Voir
 /// `docs/features/simulated-position.md`.
 ///
 /// Le va-et-vient lui-même (`Timer.periodic`) est porté par
 /// [VisioOneController.simulatedPosition], pas par le `State` de ce widget :
-/// contrairement à `OccupancySimulationOverlay` (dont le timer s'arrête dès
-/// que le bottom sheet est fermé, ce `State` étant alors détruit), cette
-/// simulation doit continuer tant que l'utilisateur n'a pas appuyé sur Stop,
-/// même panneau fermé — voir le commentaire de tête de
-/// `SimulatedPositionSession`. Ce `State` ne fait que démarrer/arrêter la
-/// session et refléter son état courant (`ValueListenableBuilder` sur
-/// `session.isRunning`).
+/// la simulation doit continuer tant que l'utilisateur n'a pas appuyé sur
+/// Stop, même panneau fermé — voir le commentaire de tête de
+/// `SimulatedPositionSession`. Les ids saisis vivent dans
+/// `controller.panel` (clés `tracking.origin` / `tracking.destination`) : le
+/// panneau rouvert affiche les POI entre lesquels la position se déplace.
+/// Ce `State` ne fait que démarrer/arrêter la session et refléter son état
+/// courant (`ValueListenableBuilder` sur `session.isRunning`).
 class SimulatedPositionOverlay extends StatefulWidget {
   const SimulatedPositionOverlay({
     super.key,
@@ -37,8 +38,7 @@ class SimulatedPositionOverlay extends StatefulWidget {
 
   final VisioOneController controller;
 
-  /// Préremplissage optionnel des champs Origin/Destination (ex. deux POI
-  /// connus pour bien démarrer sur la carte de démo partagée).
+  /// Valeurs par défaut des champs Origin/Destination (première ouverture).
   final String? initialOriginId;
   final String? initialDestinationId;
 
@@ -52,8 +52,8 @@ class SimulatedPositionOverlay extends StatefulWidget {
 }
 
 class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
-  final TextEditingController _originController = TextEditingController();
-  final TextEditingController _destinationController = TextEditingController();
+  late final TextEditingController _originController;
+  late final TextEditingController _destinationController;
 
   // Requête/réponse par `requestId` sur `controller.messages` (même idiom que
   // `venueLayout` pour `floor-selector`, adapté ici à deux requêtes
@@ -64,7 +64,8 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
 
   late double _radiusMeters;
   bool _resolving = false;
-  String? _error;
+  // Id du POI introuvable lors du dernier Start, affiché traduit.
+  String? _notFoundId;
 
   SimulatedPositionSession get _session => widget.controller.simulatedPosition;
 
@@ -79,17 +80,15 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
       _session.radiusMeters = initialRadius;
     }
     _radiusMeters = _session.radiusMeters;
-    _originController.text = widget.initialOriginId ?? '';
-    _destinationController.text = widget.initialDestinationId ?? '';
+    _originController = widget.controller.panel.text('tracking.origin', widget.initialOriginId ?? '');
+    _destinationController = widget.controller.panel.text('tracking.destination', widget.initialDestinationId ?? '');
     _subscription = widget.controller.messages.listen(_onMessage);
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
-    _originController.dispose();
-    _destinationController.dispose();
-    // La session (Timer, allowTracking) n'est volontairement PAS arrêtée
+    // Les champs appartiennent à `controller.panel`, pas à ce `State`. La session (Timer, allowTracking) n'est volontairement PAS arrêtée
     // ici : elle doit survivre à la fermeture de ce panneau, voir le
     // commentaire de tête de cette classe.
     super.dispose();
@@ -143,29 +142,23 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
 
     setState(() {
       _resolving = true;
-      _error = null;
+      _notFoundId = null;
     });
 
     final origin = await _resolvePosition(originId);
-    if (!mounted) return;
-    if (origin == null) {
-      setState(() {
-        _resolving = false;
-        _error = 'POI not found: $originId';
-      });
+    final destination = origin == null ? null : await _resolvePosition(destinationId);
+    if (origin == null || destination == null) {
+      if (mounted) {
+        setState(() {
+          _resolving = false;
+          _notFoundId = origin == null ? originId : destinationId;
+        });
+      }
       return;
     }
 
-    final destination = await _resolvePosition(destinationId);
-    if (!mounted) return;
-    if (destination == null) {
-      setState(() {
-        _resolving = false;
-        _error = 'POI not found: $destinationId';
-      });
-      return;
-    }
-
+    // Démarre même si le panneau a été fermé entre-temps : la session vit
+    // sur le contrôleur, le panneau rouvert affichera "Stop".
     _session.radiusMeters = _radiusMeters;
     _session.start(
       origin: SimulatedPosition(latitude: origin['latitude']!, longitude: origin['longitude']!),
@@ -174,7 +167,7 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
         longitude: destination['longitude']!,
       ),
     );
-    setState(() => _resolving = false);
+    if (mounted) setState(() => _resolving = false);
   }
 
   void _onRadiusChanged(double value) {
@@ -186,6 +179,7 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ValueListenableBuilder<bool>(
       valueListenable: _session.isRunning,
       builder: (context, isRunning, _) {
@@ -196,18 +190,18 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
             TextField(
               controller: _originController,
               enabled: !isRunning,
-              decoration: const InputDecoration(hintText: 'Origin POI ID', isDense: true),
+              decoration: InputDecoration(labelText: l10n.trackingOriginLabel, isDense: true),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _destinationController,
               enabled: !isRunning,
-              decoration: const InputDecoration(hintText: 'Destination POI ID', isDense: true),
+              decoration: InputDecoration(labelText: l10n.trackingDestinationLabel, isDense: true),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Text('Accuracy radius'),
+                Text(l10n.trackingRadiusLabel),
                 Expanded(
                   child: Slider(
                     value: _radiusMeters,
@@ -221,19 +215,19 @@ class _SimulatedPositionOverlayState extends State<SimulatedPositionOverlay> {
                 SizedBox(width: 36, child: Text('${_radiusMeters.round()} m')),
               ],
             ),
-            if (_error != null) ...[
+            if (_notFoundId != null) ...[
               const SizedBox(height: 4),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(l10n.poiNotFound(_notFoundId!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _resolving ? null : _toggleSimulation,
               child: Text(
                 _resolving
-                    ? 'Resolving…'
+                    ? l10n.resolvingLabel
                     : isRunning
-                    ? 'Stop simulated position'
-                    : 'Simulate position',
+                    ? l10n.trackingStopButton
+                    : l10n.trackingStartButton,
               ),
             ),
           ],

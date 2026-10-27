@@ -95,7 +95,7 @@ setAccentColors: function (accentColor, textAccentColor) {
 },
 ```
 
-The real SDK surface, on `View` (`View.ts`) and `ViewCreateOptions`:
+The real SDK surface, from the SDK's typings (`View.d.ts`, `ViewCreateOptions`):
 
 ```ts
 interface View {

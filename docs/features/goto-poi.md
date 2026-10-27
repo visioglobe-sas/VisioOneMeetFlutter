@@ -44,4 +44,4 @@ clearSelection: function () {
 
 ## Learn more
 
-See `docs/COMMUNICATION_GUIDE.md` in this repo (section 5), which uses `goToPOI` as the reference example for JSON-encoding Dart -> JS arguments and the `JSON.parse()` warning.
+See `docs/COMMUNICATION_GUIDE.md` in this repo (section 4), which uses `goToPOI` as the reference example for JSON-encoding Dart -> JS arguments and the `JSON.parse()` warning.

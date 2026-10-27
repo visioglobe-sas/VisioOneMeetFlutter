@@ -8,7 +8,7 @@ import '../visio_one/visio_one_map_shell.dart';
 /// Reload. Contrairement aux autres features, il ne parle pas directement
 /// au [VisioOneController] : `baseURL` est une option de `loadVenue`, pas
 /// une propriété mutable sur une venue déjà chargée, donc la seule façon de
-/// la changer est de reconstruire tout le [VisioOneMapShell] avec une
+/// la changer est de reconstruire tout le `VisioOneMapShell` avec une
 /// nouvelle valeur — [onReload] remonte la valeur tapée à [FeatureScreen],
 /// qui possède cet état et déclenche le remount (voir
 /// `docs/features/custom-base-url.md`).

@@ -6,9 +6,9 @@ import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
 
-/// Les 3 valeurs acceptées par `view.currentExploreMode` (voir
-/// `visioone/src/VisioOne/View/ExploreMode.ts`) — exactement ces 3 chaînes,
-/// sensibles à la casse, aucune autre n'existe.
+/// Les 3 valeurs acceptées par `view.currentExploreMode` (type
+/// `ExploreMode` des typings du SDK) — exactement ces 3 chaînes, sensibles
+/// à la casse.
 enum _ExploreMode {
   global('global'),
   building('building'),
@@ -41,7 +41,7 @@ enum _ExploreMode {
 
 /// Overlay de la feature `explore-mode` : un contrôle segmenté à 3 options
 /// (Global / Building / Floor) pilotant `view.currentExploreMode`, affiché
-/// dans le bottom sheet ouvert par le FAB de [VisioOneMapShell]. `'building'`
+/// dans le bottom sheet ouvert par le FAB de `VisioOneMapShell`. `'building'`
 /// est le mode à fort effet visuel de cette démo (vue éclatée façon
 /// carrousel des étages des bâtiments ouverts) — un seul tap suffit à le
 /// déclencher.
@@ -89,7 +89,7 @@ class _ExploreModeOverlayState extends State<ExploreModeOverlay> {
         final data = message.data;
         if (data is! Map) return;
         final mode = _ExploreMode.fromValue(data['currentExploreMode'] as String?);
-        if (mode == null) return;
+        if (mode == null || !mounted) return;
         setState(() => _current = mode);
     }
   }

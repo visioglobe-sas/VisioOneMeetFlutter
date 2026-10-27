@@ -1,114 +1,166 @@
-# Pont de communication Dart ↔ SDK VisioOne
+# Dart ↔ VisioOne SDK bridge
 
-Ce document se concentre sur **le pont de communication** entre le code Dart et le SDK JavaScript VisioOne exécuté dans la `WebView`. Il complète [`ARCHITECTURE.md`](ARCHITECTURE.md) (vue d'ensemble) et [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md) (installer et configurer l'app). Il applique les mêmes principes que les guides de communication équivalents sur les implémentations natives Android et iOS du SDK, adaptés ici à `webview_flutter`.
+This guide covers the **communication bridge** between the Dart code and the VisioOne JavaScript SDK running inside the `WebView`. It complements [`ARCHITECTURE.md`](ARCHITECTURE.md) (overall picture) and the [README](../README.md) (setup).
 
-**Public visé :** développeur Flutter qui doit ajouter, modifier ou déboguer une communication entre l'UI Dart et le SDK VisioOne.
-
----
-
-## Sommaire
-
-- [1. Deux runtimes qui ne partagent rien](#1-deux-runtimes-qui-ne-partagent-rien)
-- [2. Les deux canaux](#2-les-deux-canaux)
-- [3. Contrat de messages](#3-contrat-de-messages)
-- [4. Cycle de vie complet d'un message](#4-cycle-de-vie-complet-dun-message)
-- [5. Lecture du code existant](#5-lecture-du-code-existant)
-- [6. Ajouter une nouvelle commande Native → JS](#6-ajouter-une-nouvelle-commande-native--js)
-- [7. Ajouter un nouvel événement JS → Native](#7-ajouter-un-nouvel-événement-js--native)
-- [8. Le threading](#8-le-threading)
-- [9. Sécurité du `JavaScriptChannel`](#9-sécurité-du-javascriptchannel)
-- [10. Déboguer le pont](#10-déboguer-le-pont)
-- [11. Bonnes pratiques](#11-bonnes-pratiques)
+**Audience:** a Flutter developer who needs to add, change or debug a call between the Dart UI and the VisioOne SDK.
 
 ---
 
-## 1. Deux runtimes qui ne partagent rien
+## Contents
 
-Comme sur Android et iOS, l'app fait cohabiter deux environnements d'exécution étanches : la VM Dart (qui exécute `main.dart`, `visio_one_controller.dart`...) et le moteur JavaScript de la `WebView` (qui exécute `map.html` et le SDK). Aucune mémoire partagée : toute communication passe par l'API de `webview_flutter`.
+- [1. Two runtimes that share nothing](#1-two-runtimes-that-share-nothing)
+- [2. The two channels](#2-the-two-channels)
+- [3. Message contract](#3-message-contract)
+- [4. Reading the existing code](#4-reading-the-existing-code)
+- [5. Adding a Native → JS command](#5-adding-a-native--js-command)
+- [6. Adding a JS → Native event](#6-adding-a-js--native-event)
+- [7. Threading](#7-threading)
+- [8. Security](#8-security)
+- [9. Debugging the bridge](#9-debugging-the-bridge)
+
+---
+
+## 1. Two runtimes that share nothing
+
+The app runs two isolated environments side by side: the Dart VM (`lib/`) and the WebView's JavaScript engine (`assets/www/map.html` + the SDK). They share no memory: every exchange goes through the `webview_flutter` API.
 
 ```mermaid
 graph LR
-  subgraph Dart["Monde Dart (VM Dart)"]
+  subgraph Dart["Dart VM"]
     C["VisioOneController"]
   end
-  subgraph Pont["Pont webview_flutter"]
-    P1["runJavaScript()<br/>(Dart -> JS, à tout moment)"]
-    P2["JavaScriptChannel<br/>(JS -> Dart, à tout moment)"]
+  subgraph Bridge["webview_flutter"]
+    P1["runJavaScript()<br/>(Dart -> JS, any time)"]
+    P2["JavaScriptChannel<br/>(JS -> Dart, any time)"]
   end
-  subgraph Web["Monde web (moteur JS de la WebView)"]
-    J["map.html + SDK VisioOne"]
+  subgraph Web["WebView JS engine"]
+    J["map.html + VisioOne SDK"]
   end
 
-  C -->|1| P1 --> J
-  J -->|2| P2 --> C
+  C --> P1 --> J
+  J --> P2 --> C
 ```
 
-Contrairement au canal ① (query param à l'URL) utilisé par l'implémentation Android native, `runJavaScript()` peut être appelé **à tout moment**, pas seulement au chargement : c'est pour cela que `VisioOneController.setup(hash)` est un appel JS explicite après `onPageFinished`, plutôt qu'un paramètre encodé dans l'URL de `loadFlutterAsset`. Cela permet aussi de rappeler `setup()` avec un nouveau hash sans recharger toute la page (voir `map.html`, `window.MapBridge.setup`, qui détruit proprement l'ancienne vue/venue avant d'en recréer une).
+`runJavaScript()` can be called at any time, not only at load: that is why `VisioOneController.setup(hash)` is an explicit JS call made after `onPageFinished`, rather than a parameter encoded in the page URL. It also lets the page call `setup()` again (to reload the map) without reloading the page itself.
 
-## 2. Les deux canaux
+## 2. The two channels
 
-| # | Direction | Mécanisme Flutter | Quand | Utilisé pour |
-|---|---|---|---|---|
-| ① | Dart → JS | `WebViewController.runJavaScript(script)` | À tout moment | Appeler `window.MapBridge.<methode>(...)` |
-| ② | JS → Dart | `WebViewController.addJavaScriptChannel('VisioOneBridge', onMessageReceived: ...)` | À tout moment, déclenché par le JS | Recevoir les événements du SDK (`ready`, `error`, `poiSelected`, ...) |
-
-Les deux canaux sont bidirectionnels et réutilisables (contrairement au query param d'URL, à usage unique) : c'est une différence volontaire avec l'implémentation Android native, rendue possible par le fait que `webview_flutter` expose `evaluateJavascript`-like (`runJavaScript`) comme mécanisme *principal*, alors que `WebView.addJavascriptInterface` seul (utilisé nativement sur Android) ne permet pas nativement l'inverse sans `evaluateJavascript` en plus.
-
-## 3. Contrat de messages
-
-### Native → JS (`window.MapBridge`, dans `assets/www/map.html`)
-
-| Méthode | Arguments (JSON-encodés) | Rôle |
+| Direction | Flutter mechanism | Used for |
 |---|---|---|
-| `setup(hash, baseURL, viewOptions, authorizationToken)` | `String`, `String?`, `Map?`, `String?` | (Ré)initialise `venue`/`view` pour ce hash ; `viewOptions` est passé tel quel à `createView` (seul `custom-theme` le renseigne : `{enableShadows: true}`). `authorizationToken` = `LoadOptions.authorizationToken` d'une carte protégée (seul l'exemple `auth-token` le renseigne, voir `docs/features/auth-token.md`). |
-| `setAuthorizationToken(freshToken)` | `String` | `venue.setAuthorizationToken(freshToken)` sur la venue chargée (exemple `auth-token`) : jeton utilisé pour les requêtes suivantes, sans rechargement. |
-| `goToGlobal()` | — | Recentre sur la vue globale du site. |
-| `goToPOI(poiId)` | `String` | Centre la caméra sur un POI et le sélectionne. |
-| `goToFloor(buildingId, floorId)` | `String`, `String?` | Change de bâtiment/étage. |
-| `clearSelection()` | — | Efface la sélection visuelle courante. |
-| `startItinerary(args)` | `{origin, destination, isAccessible}` | Calcule et affiche un itinéraire. |
-| `setUIPartVisible(part, visible)` | `String`, `bool` | Affiche/masque un élément de l'UI overlay du SDK. |
-| `updateOccupancy(occupancy)` | `[{planId, color}]` | Met à jour la couleur d'occupation d'un ou plusieurs POI. |
-| `getVenueLayout()` | — | Demande la liste bâtiments/étages ; répond en asynchrone via `venueLayout` (voir ci-dessous). |
-| `resolvePoiPosition(requestId, poiId)` | `String`, `String` | Demande la position WGS84 d'un POI ; répond en asynchrone via `poiPositionResolved` (voir ci-dessous). |
-| `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Injecte/actualise une position simulée trackée + son cercle de précision (mètres). |
-| `stopTrackedPosition()` | — | Arrête le suivi de position simulée (`allowTracking = false`). |
-| `setCameraLockOnPosition(locked)` | `bool` | Verrouille/déverrouille le focus caméra sur la position trackée (`view.lockCameraPositionOnTracking`) ; la nouvelle valeur revient via `cameraLockChanged`. |
-| `updatePositionTrackerGraphicOptions(color, opacity)` | `String`, `double` | Couleur/opacité du cercle de précision de la position trackée (pas de la flèche centrale) (`view.updatePositionTrackerGraphicOptions`), appliquées au prochain `injectTrackedPosition`. |
-| `getThemes(requestId)` | `String` | Demande `view.themes` ; répond via `themesLoaded` (`{requestId, themes}`). |
-| `setTheme(name)` | `String` | `view.setTheme(name)` ; répond via `themeApplied` (`{success, theme, message?}`). |
-| `setAccentColors(accentColor, textAccentColor)` | `String`, `String` | `view.accentColor` / `view.textAccentColor` ; répond via `accentColorsApplied` (`{success, message?}`). |
-| `startCarousel(poiIds)` | `List<String>` | Démarre la visite caméra en boucle (`goToFloor` puis `goToPOI` par arrêt, pause sur toucher, reprise après 10 s) ; l'état revient via `carouselState`. |
-| `stopCarousel()` | — | Arrête la visite (l'animation en cours va à son terme) ; répond via `carouselState` (`stopped`). |
+| Dart → JS | `WebViewController.runJavaScript(script)` | calling `window.MapBridge.<method>(...)` |
+| JS → Dart | `WebViewController.addJavaScriptChannel('VisioOneBridge', onMessageReceived: ...)` | receiving SDK events and command results as `{type, data}` messages |
 
-### JS → Native (`VisioOneBridge.postMessage`, enveloppe `{type, data}`)
+Commands are fire-and-forget. When a command has a result, it comes back as a JS → Dart message; when several requests of the same kind can be in flight, the command takes a `requestId` that the response echoes back.
 
-| `type` | `data` | Émis quand |
+## 3. Message contract
+
+### Native → JS (`window.MapBridge`, in `assets/www/map.html`)
+
+Arguments are JSON-encoded on the Dart side (see [section 4](#4-reading-the-existing-code)).
+
+| Method | Arguments | What it does (SDK call) | Response |
+|---|---|---|---|
+| `setup(hash, baseURL, viewOptions, authorizationToken)` | `String`, `String?`, `Map?`, `String?` | (Re)loads the map: `loadVenue({vg_maphash, baseURL?, authorizationToken?})` then `createView(container, venue, viewOptions?)`. A reload destroys the previous view and venue first. | `loading`, then `ready` or `error` |
+| `setCameraProjection(projection)` | `'perspective'` \| `'orthographic'` | Replays `setup` with `cameraProjection` added to the view options (the projection can only be set at view creation). | `loading`, then `ready` or `error` |
+| `setAuthorizationToken(freshToken)` | `String` | `venue.setAuthorizationToken(freshToken)` for the following requests, without reloading. | — |
+| `goToGlobal()` | — | `view.goToGlobal()` | — |
+| `goToPOI(poiId)` | `String` | `view.goToFloor(poi.floor)` then `view.goToPOI(poi)` | — |
+| `goToFloor(buildingId, floorId)` | `String`, `String?` | `view.goToFloor(floor)`, or `view.goToBuilding(building)` without `floorId` | — |
+| `getVenueLayout()` | — | Reads `venue.venueLayout.buildings` and the current building/floor. | `venueLayout` |
+| `setExploreMode(mode)` | `'global'` \| `'building'` \| `'floor'` | `view.currentExploreMode = mode` | `exploreModeChanged` (SDK event) |
+| `getExploreMode()` | — | Reads `view.currentExploreMode`. | `exploreMode` |
+| `clearSelection()` | — | Resets `selectionColor` on every surface (`venue.updateSurface`). | — |
+| `startItinerary(args)` | `{origin, destination, isAccessible}` | `venue.computeNavigation(...)`, `venue.createNavigationTrace(...)`, `view.setCurrentNavigationTrace(trace)` (which replaces any previous trace on its own: no separate removal). | `itineraryComputed` |
+| `startItineraryExcludingModalities(args)` | `{origin, destination, isAccessible, excludedAttributes}` | Same as `startItinerary`, with `excludedAttributes`. | `itineraryComputed` |
+| `updateNavigationTrace(options)` | `{progressColor, progressOutlineColor, progressFutureColor, previewColor, previewOutlineColor}` | `venue.updateNavigationTrace(currentTrace, options)` | — |
+| `setUIPartVisible(part, visible)` | `String`, `bool` | `view.setUIPartVisible(part, visible)` | — |
+| `updateOccupancy(occupancy)` | `[{planId, color}]` | `venue.updateSurface(surface, {color})` on each surface of each POI; `color: null` restores the default. | — |
+| `setSurfaceInteractive(placeId, interactive)` | `String`, `bool` | `venue.updateSurface(surface, {isInteractive, color, hoverColor, selectionColor})` | — |
+| `resolvePoiPosition(requestId, poiId)` | `String`, `String` | Display position of a POI (see "POI display position" below). | `poiPositionResolved` |
+| `resolvePoiZone(requestId, poiId)` | `String`, `String` | Reads `poi.surfaces[0].positions`. | `poiZoneResolved` |
+| `setZoneAlert(placeId, active)` | `String`, `bool` | Colors the zone surfaces (`venue.updateSurface`), or restores them with `'initial'`. | — |
+| `injectTrackedPosition(latitude, longitude, precisionCircleRadius)` | `double`, `double`, `double` | Sets `view.allowTracking = true` once, then `view.injectTrackedPosition({position, precisionCircleRadius})`. | — |
+| `stopTrackedPosition()` | — | `view.allowTracking = false` (removes the marker and circle). | `cameraLockChanged` |
+| `setCameraLockOnPosition(locked)` | `bool` | `view.lockCameraPositionOnTracking = locked` | `cameraLockChanged` |
+| `updatePositionTrackerGraphicOptions(color, opacity)` | `String`, `double` | `view.updatePositionTrackerGraphicOptions({color, opacity})` | — |
+| `loadCustomData(requestId, poiId)` | `String`, `String` | `venue.refreshCustomData()` then `venue.getPOICustomData(poi)` | `customDataLoaded` |
+| `getCategories(requestId)` | `String` | Reads `venue.categories`, labels via `venue.translator.translateCategory`. | `categoriesLoaded` |
+| `highlightCategory(categoryId)` | `String` | Colors the surfaces of every POI of the category. | — |
+| `clearCategoryHighlight(categoryId)` | `String` | Restores those surfaces (`'initial'`). | — |
+| `createDynamicPOI(requestId, newId, anchorId, labelText)` | `String` ×4 | `venue.createPOI({id})` then `venue.createLabel({poi, position, text})` at the anchor POI's position. | `dynamicPoiCreated` |
+| `updateDynamicPoiLabelText(requestId, text)` | `String`, `String` | `venue.updateLabel(label, {text})` | `dynamicPoiLabelUpdated` |
+| `removeDynamicPOI(requestId)` | `String` | `venue.removePOI(poi)` (also removes its label). | `dynamicPoiRemoved` |
+| `placeIconImage(requestId, imageId, anchorId, url, orientationType)` | `String` ×5 | `venue.createImage({poi, position, width, height, url, orientationType})`, replacing the image already placed under `imageId`. | `iconImagePlaced` |
+| `updateIconImageOrientation(requestId, imageId, orientationType)` | `String` ×3 | `venue.updateImage(image, {orientationType})` | `iconImageUpdated` |
+| `removeIconImage(requestId, imageId)` | `String`, `String` | `venue.removeImage(image)` | `iconImageRemoved` |
+| `placeTextLabel(requestId, anchorId, text, color, width, height, rotation)` | `String` ×4, `double`, `double`, `int` | `venue.createLabel({...})` next to the anchor POI, replacing the label already placed. | `textLabelPlaced` |
+| `updateTextLabel(requestId, changes)` | `String`, `{text}` \| `{color}` \| `{width, height}` | `venue.updateLabel(label, changes)` | `textLabelUpdated` |
+| `rotateTextLabel(requestId, rotation)` | `String`, `int` | `venue.removeLabel` + `venue.createLabel` with the new `rotation` (not in `LabelUpdateOptions`). | `textLabelUpdated` |
+| `removeTextLabel(requestId)` | `String` | `venue.removeLabel(label)` | `textLabelRemoved` |
+| `placeHtmlBadge(requestId, anchorId, text)` | `String` ×3 | `venue.createMarker({poi, position, element})` with a DOM element built in the page. | `htmlBadgePlaced`, then `htmlBadgeTapped` on each tap |
+| `updateHtmlBadgeText(requestId, text)` | `String`, `String` | Edits `marker.element` (no SDK call). | `htmlBadgeUpdated` |
+| `setHtmlBadgeVisible(requestId, visible)` | `String`, `bool` | `venue.updateMarker(marker, {isVisible})` | `htmlBadgeUpdated` |
+| `removeHtmlBadge(requestId)` | `String` | `venue.removeMarker(marker)` | `htmlBadgeRemoved` |
+| `getLocales(requestId)` | `String` | Reads `venue.currentLocale` and `venue.translator.allLocales`. | `localesLoaded` |
+| `setCurrentLocale(locale)` | `String` | `venue.setCurrentLocale(locale)` | — |
+| `addSpanishLocale(requestId, resources)` | `String`, `Map<String, String>` | `venue.translator.addLocale('es', resources)` then `venue.translator.translate(key, 'es')` for each key. | `spanishLocaleAdded` |
+| `getThemes(requestId)` | `String` | Reads `view.themes`. | `themesLoaded` |
+| `setTheme(name)` | `String` | `view.setTheme(name)` | `themeApplied` |
+| `setAccentColors(accentColor, textAccentColor)` | `String`, `String` | `view.accentColor = ...; view.textAccentColor = ...` | `accentColorsApplied` |
+| `startCarousel(poiIds)` | `List<String>` | Camera tour: `view.goToFloor` then `view.goToPOI` for each stop, in a loop; pauses on touch, resumes after 10 s. | `carouselState` |
+| `stopCarousel()` | — | Stops the tour (the current animation finishes). | `carouselState` |
+
+**POI display position.** A `POI` has no latitude/longitude of its own. Every command that needs a point for a POI (`resolvePoiPosition`, and the anchor of `createDynamicPOI`, `placeIconImage`, `placeTextLabel`, `placeHtmlBadge`) uses one helper, `poiDisplayPosition`, with this priority:
+
+1. `poi.labels[0].position`
+2. `poi.images[0].position`, else `poi.markers[0].position`
+3. the centre (average of the vertices) of `poi.surfaces[0].positions`
+
+Objects created by the demos themselves are never used as a source.
+
+### JS → Native (`VisioOneBridge.postMessage`, envelope `{type, data}`)
+
+| `type` | `data` | Sent when |
 |---|---|---|
-| `pageReady` | — | `map.html` a fini de charger (avant même `setup`) — utile en debug hors WebView. |
-| `loading` | `{hash}` | `setup()` vient de démarrer `loadVenue()`. |
-| `ready` | `{ cameraProjection }` | `createView()` a réussi : la carte est affichée. `cameraProjection` = `view.cameraProjection` (`"perspective"` / `"orthographic"`, voir `docs/features/camera-projection-toggle.md`). |
-| `error` | `{message, unauthorized}` | `loadVenue()`/`createView()` a échoué. `unauthorized: true` si le SDK a rejeté avec `UnauthorizedError` (jeton invalide, expiré ou absent, voir `docs/features/auth-token.md`). |
-| `poiSelected` | `{id, name}` | L'utilisateur a tapé un POI dans la carte (`view` event `poiclick`). |
-| `floorChanged` | `{buildingId, floorId}` | Changement d'étage courant (`view` event `currentfloorchanged`). |
-| `itineraryComputed` | `{instructions}` | `startItinerary()` a terminé son calcul. |
-| `venueLayout` | `{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}` | Réponse à `getVenueLayout()`. |
-| `poiPositionResolved` | `{requestId, poiId, position: {latitude, longitude}\|null}` | Réponse à `resolvePoiPosition()` ; `position: null` si `poiId` est introuvable ou sans marker/label/image. |
-| `themesLoaded` | `{requestId, themes}` | Réponse à `getThemes()` (`view.themes`, vide si la carte n'est pas prête). |
-| `themeApplied` | `{success, theme, message?}` | Réponse à `setTheme()` ; `success: false` + message du SDK pour un id non enregistré. |
-| `accentColorsApplied` | `{success, message?}` | Réponse à `setAccentColors()` ; `success: false` + message du SDK pour une couleur invalide. |
-| `cameraLockChanged` | `{locked}` | Valeur courante de `view.lockCameraPositionOnTracking`, relue à chaque event `view` `trackingon`/`trackingoff`/`trackingchanged` (Start, Stop, interrupteur, pan de la carte). |
-| `carouselState` | `{state, index, total, poiId}` | Changement d'état de la visite `camera-showcase-carousel` (`running` à chaque arrêt, `paused` sur toucher de la carte, `running` à la reprise après 10 s, `stopped`) — y compris quand il ne vient pas du natif. |
+| `loading` | `{hash}` | `setup()` starts loading the map. |
+| `ready` | `{cameraProjection}` | `createView()` resolved: the map is shown. `cameraProjection` is `view.cameraProjection`. |
+| `error` | `{message, unauthorized}` | Loading failed, or an uncaught JS error. `unauthorized: true` when the SDK rejected with `UnauthorizedError` (invalid, expired or missing token). |
+| `poiSelected` | `{id, name}` | The user tapped a POI (`view` event `poiclick`). |
+| `floorChanged` | `{buildingId, floorId}` | The current floor changed (`view` event `currentfloorchanged`). |
+| `exploreModeChanged` | `{currentExploreMode}` | The explore mode changed, whatever the cause (`view` event `exploremodechanged`). |
+| `cameraLockChanged` | `{locked}` | `view.lockCameraPositionOnTracking`, read again on each `trackingon` / `trackingoff` / `trackingchanged` event. |
+| `venueLayout` | `{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}` | Response to `getVenueLayout()` (floors sorted highest first). |
+| `exploreMode` | `{currentExploreMode}` | Response to `getExploreMode()`. |
+| `itineraryComputed` | `{instructions}` | `startItinerary*()` displayed a route. |
+| `poiPositionResolved` | `{requestId, poiId, position: {latitude, longitude} \| null}` | Response to `resolvePoiPosition()`; `null` if the POI does not exist or has nothing to take a position from. |
+| `poiZoneResolved` | `{requestId, poiId, positions: [...] \| null}` | Response to `resolvePoiZone()`; `null` if the POI does not exist, `[]` if it has no surface. |
+| `customDataLoaded` | `{requestId, poiId, found, customData}` | Response to `loadCustomData()`; `customData` is `{}` when the POI has none. |
+| `categoriesLoaded` | `{requestId, categories: [{id, label}]}` | Response to `getCategories()`. |
+| `dynamicPoiCreated` | `{requestId, success, poiId?, text?, error?, message?}` | Response to `createDynamicPOI()`. `error`: `'notReady'`, `'notFound'`, `'noPosition'`, `'alreadyExists'` or `'sdk'`. |
+| `dynamicPoiLabelUpdated` | `{requestId, success, text?, error?, message?}` | Response to `updateDynamicPoiLabelText()`. `error`: `'noPoi'` or `'sdk'`. |
+| `dynamicPoiRemoved` | `{requestId, success, error?, message?}` | Response to `removeDynamicPOI()`. `error`: `'noPoi'` or `'sdk'`. |
+| `iconImagePlaced` | `{requestId, success, imageId?, poiId?, error?, message?, previousRemoved?}` | Response to `placeIconImage()`. `error`: `'notReady'`, `'notFound'`, `'noPosition'` or `'sdk'`. |
+| `iconImageUpdated` | `{requestId, success, orientationType?, error?, message?}` | Response to `updateIconImageOrientation()`. `error`: `'noImage'` or `'sdk'`. |
+| `iconImageRemoved` | `{requestId, success, error?, message?}` | Response to `removeIconImage()`. |
+| `textLabelPlaced` | `{requestId, success, poiId?, error?, message?, previousRemoved?}` | Response to `placeTextLabel()`. `error`: `'notReady'`, `'textRequired'`, `'notFound'`, `'noPosition'` or `'sdk'`. |
+| `textLabelUpdated` | `{requestId, success, error?, message?, previousRemoved?}` | Response to `updateTextLabel()` / `rotateTextLabel()`. `error`: `'noLabel'`, `'textRequired'` or `'sdk'`. |
+| `textLabelRemoved` | `{requestId, success, error?, message?}` | Response to `removeTextLabel()`. |
+| `htmlBadgePlaced` | `{requestId, success, poiId?, error?, message?, previousRemoved?}` | Response to `placeHtmlBadge()`. Same `error` codes as `textLabelPlaced`. |
+| `htmlBadgeUpdated` | `{requestId, success, visible?, error?, message?}` | Response to `updateHtmlBadgeText()` / `setHtmlBadgeVisible()`. `error`: `'noBadge'`, `'textRequired'` or `'sdk'`. |
+| `htmlBadgeRemoved` | `{requestId, success, error?, message?}` | Response to `removeHtmlBadge()`. |
+| `htmlBadgeTapped` | `{count}` | The placed badge was tapped. |
+| `localesLoaded` | `{requestId, currentLocale, allLocales}` | Response to `getLocales()`. |
+| `spanishLocaleAdded` | `{requestId, values}` | Response to `addSpanishLocale()`: each key translated in `'es'`. |
+| `themesLoaded` | `{requestId, themes}` | Response to `getThemes()`. |
+| `themeApplied` | `{success, theme, message?}` | Response to `setTheme()`. |
+| `accentColorsApplied` | `{success, message?}` | Response to `setAccentColors()`. |
+| `carouselState` | `{state, index, total, poiId}` | The camera tour state changed (`running`, `paused`, `stopped`), including on a touch or the resume timer. |
 
-Toute évolution de la communication doit commencer par **ajouter une ligne à l'un de ces deux tableaux** avant d'écrire du code — c'est la spécification du pont, à garder synchronisée avec `map.html` et `visio_one_controller.dart`.
+Error codes are translated into the user's language on the Dart side; `message` carries the SDK's own (English) message when there is one.
 
-## 4. Cycle de vie complet d'un message
+## 4. Reading the existing code
 
-Voir le diagramme de séquence dans [`ARCHITECTURE.md`, section 5](ARCHITECTURE.md#5-cycle-de-vie-dun-affichage-de-carte).
-
-## 5. Lecture du code existant
-
-### Dart → JS, avec encodage JSON défensif
+### Dart → JS, with JSON encoding
 
 ```dart
 // lib/visio_one/visio_one_controller.dart
@@ -121,11 +173,11 @@ Future<void> _call(String method, List<Object?> args) {
 }
 ```
 
-`jsonEncode('B1-UL00-01')` produit le **texte** `"B1-UL00-01"` (avec guillemets et échappement corrects), interpolé dans le script généré : `window.MapBridge.goToPOI("B1-UL00-01")`. Un `poiId` contenant un guillemet ou une séquence `");alert(1);(` ne casse donc jamais le script généré — voir [section 9](#9-sécurité-du-javascriptchannel).
+`jsonEncode('B3-UL00-ID0076')` produces the text `"B3-UL00-ID0076"` (quotes and escaping included), so the generated script is `window.MapBridge.goToPOI("B3-UL00-ID0076")`. A value containing a quote or `");alert(1);(` can never break out of the script.
 
-> ⚠️ **Point important, source d'un bug réel rencontré pendant le développement de ce projet** : ce texte JSON est ensuite **évalué comme du code JS** par le moteur qui exécute le script (`runJavaScript`), pas relu comme une chaîne par la fonction JS appelée. Le paramètre `poiId` reçu par `window.MapBridge.goToPOI` est donc déjà la vraie valeur JS (`"B1-UL00-01"` sans les guillemets — une string JS normale), **pas** du texte JSON à repasser dans `JSON.parse()`. Le premier jet de ce projet appelait par erreur `JSON.parse(poiId)` côté JS (et pareil pour tous les autres paramètres) : pour un simple hash de carte comme `k5f59b86...`, ce n'est pas du JSON valide, donc `JSON.parse` levait un `SyntaxError` — attrapé nulle part, ce qui laissait l'app bloquée indéfiniment sur l'écran de chargement, sans jamais émettre `ready` ni `error`. Toujours utiliser directement le paramètre reçu côté JS, jamais `JSON.parse` sur un argument de `window.MapBridge.*`.
+> **Do not `JSON.parse` on the JS side.** The JSON text is *evaluated as JavaScript code* by `runJavaScript`: the JS function receives a real string, boolean or object, not JSON text. Calling `JSON.parse(hash)` on a map hash throws a `SyntaxError` and `setup()` never answers.
 
-### JS → Dart, réception typée
+### JS → Dart, typed reception
 
 ```dart
 // lib/visio_one/visio_one_controller.dart
@@ -134,16 +186,9 @@ await _webViewController.addJavaScriptChannel(
   kVisioOneBridgeChannel, // 'VisioOneBridge'
   onMessageReceived: _handleRawMessage,
 );
-
-void _handleRawMessage(JavaScriptMessage message) {
-  final parsed = VisioOneMessage.tryParse(message.message);
-  if (parsed == null) {
-    debugPrint('VisioOneController: message JS illisible: ${message.message}');
-    return;
-  }
-  _messages.add(parsed);
-}
 ```
+
+`_handleRawMessage` parses the envelope with `VisioOneMessage.tryParse` and publishes it on `controller.messages` (a broadcast stream). Feature panels listen to that stream; state that must survive the panel being closed is updated by the controller itself.
 
 ```javascript
 // assets/www/map.html
@@ -155,85 +200,60 @@ function sendToNative(type, data) {
 }
 ```
 
-Le garde `if (!bridge)` n'est pas cosmétique : si `map.html` est ouvert dans un navigateur classique (`npm run dev`/`live-server` pour itérer sur le HTML sans relancer l'app Flutter), `window.VisioOneBridge` n'existe pas — sans ce garde, `sendToNative` planterait hors de l'app.
+The `if (!bridge)` guard lets you open `map.html` in a desktop browser while iterating on it.
 
-## 6. Ajouter une nouvelle commande Native → JS
+## 5. Adding a Native → JS command
 
-**Étape 1 — Ajouter une ligne au tableau Native → JS** (section 3) : nom de la méthode, arguments, rôle.
+1. Add a row to the Native → JS table above.
+2. Add the method to `window.MapBridge` in `assets/www/map.html`:
 
-**Étape 2 — Implémenter la méthode dans `window.MapBridge`** (`assets/www/map.html`) :
+   ```javascript
+   myCommand: function (arg) {
+     // `arg` is already a real JS value: no JSON.parse here.
+     if (!view) return;
+     // ... use venue / view ...
+   },
+   ```
 
-```javascript
-window.MapBridge.maFonction = function (arg) {
-  // `arg` est déjà la vraie valeur JS (string/bool/objet) — ne pas JSON.parse()
-  // ici, voir l'avertissement de la section 5.
-  // ... logique utilisant venue / view ...
-};
-```
+3. Add a typed Dart method to `VisioOneController`:
 
-**Étape 3 — Exposer un appel Dart typé** (`visio_one_controller.dart`) :
+   ```dart
+   Future<void> myCommand(String arg) => _call('myCommand', [arg]);
+   ```
 
-```dart
-Future<void> maFonction(String arg) => _call('maFonction', [arg]);
-```
+4. Test it in the real WebView ([section 9](#9-debugging-the-bridge)): a wrong method or argument name fails silently (`_run` logs and carries on rather than crashing the app).
 
-**Étape 4 — Tester** en conditions réelles dans la WebView (voir [section 10](#10-déboguer-le-pont)), pas seulement en relisant le code : une erreur de nom de méthode ou d'argument JS échoue silencieusement (voir [section 8](#8-le-threading) sur la gestion d'erreur de `_run`).
+## 6. Adding a JS → Native event
 
-## 7. Ajouter un nouvel événement JS → Native
+1. Add a row to the JS → Native table above.
+2. Emit it from `map.html`, usually from a `view.addEventListener(...)` in `forwardViewEvents` (the SDK's event list is in its typings, `EventType.d.ts`):
 
-**Étape 1 — Ajouter une ligne au tableau JS → Native** (section 3) : `type`, forme de `data`, événement SDK déclencheur.
+   ```javascript
+   v.addEventListener('selectedpoischange', function (event) {
+     sendToNative('selectionChanged', { count: event.pois.length });
+   });
+   ```
 
-**Étape 2 — Émettre l'événement depuis `map.html`**, généralement via `view.addEventListener(...)` (voir la liste complète des événements dans `EventType.d.ts`, livré avec le package npm) :
+3. Listen to it on the Dart side, from the feature's panel (`controller.messages.listen(...)`) or, if the value must outlive the panel, in `VisioOneController._handleRawMessage`.
 
-```javascript
-view.addEventListener('selectedpoischange', function (event) {
-  sendToNative('selectionChanged', { count: event.pois.length });
-});
-```
+## 7. Threading
 
-**Étape 3 — Ajouter un `case` dans le consommateur Dart** (`lib/visio_one/visio_one_map_shell.dart`, méthode `_onMessage`), ou dans tout autre widget qui écoute `controller.messages` :
+`onMessageReceived` is delivered on the root Dart isolate, like any other asynchronous event: calling `setState()` from a listener is safe without reposting to a UI thread, on Android and iOS alike. Check `mounted` first: a message can arrive after the panel or screen was closed.
 
-```dart
-case 'selectionChanged':
-  final count = (message.data as Map)['count'] as int;
-  // ...
-```
+`runJavaScript()` is asynchronous: never assume the script ran before its `Future` completed.
 
-## 8. Le threading
+## 8. Security
 
-Contrairement à l'implémentation Android **native** (Kotlin, `@JavascriptInterface`), où les callbacks JS → natif arrivent sur un thread d'arrière-plan et nécessitent un repost explicite (`Handler(Looper.getMainLooper()).post { ... }` — même leçon documentée sur le guide de communication équivalent côté Android natif), le callback `onMessageReceived` d'un `JavaScriptChannel` Flutter est délivré **sur l'isolate Dart racine**, au même titre que n'importe quel autre événement asynchrone (`Future`, `Stream`). Appeler `setState()` directement dans `_handleRawMessage`/`_onMessage` est donc sûr, **sans** repost manuel — `webview_flutter` absorbe ce détail de plateforme pour vous, sur Android comme sur iOS.
+- The `JavaScriptChannel` is only registered on the WebView that loads `assets/www/map.html`. Do not reuse that `WebViewController` to show untrusted content.
+- Always JSON-encode Dart → JS arguments; never go back to raw string interpolation such as `'window.MapBridge.goToPOI(\'$poiId\')'`.
+- Keep the bridge minimal: any script running in that WebView can call every `window.MapBridge` method.
 
-Le seul threading à garder en tête concerne `runJavaScript()` : c'est un appel asynchrone (`Future<void>`/`Future<Object?>`) qui traverse un platform channel — ne jamais supposer que le script s'est exécuté avant d'avoir `await` le futur (ou, pour les cas où le résultat n'est pas nécessaire, avant le prochain tick).
+## 9. Debugging the bridge
 
-## 9. Sécurité du `JavaScriptChannel`
+**JS console in the Dart logs.** In debug builds, `VisioOneController` forwards every `console.log/warn/error` of the page (including the SDK's) to `debugPrint`, so it shows up in `flutter run` output as `VisioOne[console.error]: ...`. Check it first.
 
-- **Le `JavaScriptChannel` n'est enregistré que sur la `WebView` qui charge `assets/www/map.html`**, jamais sur une `WebView` affichant une URL arbitraire. Ne réutilisez pas la même instance de `WebViewController`/`VisioOneController` pour afficher du contenu non maîtrisé (ex. un lien externe cliqué par l'utilisateur) sans reconsidérer ce que ce contenu peut appeler.
-- **Toujours encoder en JSON les arguments Dart → JS** (voir [section 5](#5-lecture-du-code-existant)) : même si `poiId` semble provenir d'une source interne fiable aujourd'hui, rien ne garantit qu'il continuera à l'être (ex. si le jour où un `poiId` provient d'une saisie utilisateur ou d'une réponse serveur). Ne jamais revenir à `'window.MapBridge.goToPOI(\'$poiId\')'` en interpolation brute.
-- **Limiter le pont au strict nécessaire** : chaque méthode `window.MapBridge.*` est une méthode que *tout* JavaScript exécuté dans cette WebView peut appeler (le SDK VisioOne lui-même, mais aussi un `<script>` externe si `map.html` venait à charger du contenu tiers) — n'exposez que ce dont l'app hôte a réellement besoin.
+**Android.** WebView debugging is enabled automatically in debug builds. Open `chrome://inspect#devices` in Chrome on your computer.
 
-## 10. Déboguer le pont
+**iOS.** The WebView is made inspectable in debug builds. Open Safari → **Develop** → your simulator or device → `map.html` (iOS 16.4+).
 
-### Console JS directement dans les logs Dart
-
-En mode debug, `VisioOneController._initialize` appelle `WebViewController.setOnConsoleMessage(...)`, qui relaie tout `console.log`/`console.warn`/`console.error` exécuté dans `map.html` (y compris par le SDK lui-même) vers `debugPrint`, donc directement dans la sortie de `flutter run` (`flutter: VisioOne[console.error]: ...`). C'est le premier réflexe à avoir avant de sortir Chrome DevTools ou Safari : dans la plupart des cas (dont le bug `JSON.parse` documenté en section 5), le message d'erreur JS suffit à comprendre le problème sans quitter le terminal.
-
-### Android
-
-```bash
-# Rien à activer côté Dart : AndroidWebViewController.enableDebugging(true)
-# est déjà appelé automatiquement en mode debug, voir VisioOneController.create().
-```
-Puis, sur l'ordinateur : Chrome → `chrome://inspect#devices` → la WebView de l'app apparaît dans la liste (le détail est identique côté Flutter).
-
-### iOS
-
-`WebKitWebViewController.setInspectable(true)` est de même appelé automatiquement en debug (voir `VisioOneController._initialize`). Sur iOS 16.4+ : Safari → **Développement** → *nom du simulateur/appareil* → `map.html` — DevTools complètes (console, DOM, réseau).
-
-Dans les deux cas, vous pouvez appeler manuellement `window.VisioOneBridge.postMessage('{"type":"ready"}')` depuis la console pour vérifier que le pont réagit côté Dart, ou poser un `console.log` dans `map.html` pour tracer l'exécution du SDK.
-
-## 11. Bonnes pratiques
-
-- **Le contrat de messages (section 3) est la source de vérité** — tenez-le à jour à chaque ajout/retrait, avant même d'écrire le code.
-- **Toujours un accès défensif côté JS** (`window.VisioOneBridge?.postMessage` / `if (!bridge)`) pour ne pas dépendre de l'environnement d'exécution (WebView Flutter vs navigateur de dev).
-- **Toujours encoder les arguments Dart → JS en JSON**, jamais de concaténation de texte brut.
-- **Ne jamais bloquer sur `runJavaScript()`** dans un chemin critique de l'UI sans `await` ni gestion d'erreur (voir `VisioOneController._run`, qui logue et continue plutôt que de faire planter l'app sur une commande JS ratée).
+From either console you can call `window.VisioOneBridge.postMessage('{"type":"ready"}')` to check that the Dart side reacts.

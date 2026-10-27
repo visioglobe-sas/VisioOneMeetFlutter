@@ -36,8 +36,8 @@ import 'ui_part_visibility_overlay.dart';
 /// Catalogue des features démontrées par l'app — source unique de vérité
 /// pour la liste du menu et la résolution de l'overlay associé.
 ///
-/// `slug` correspond au nom de branche/doc partagé entre le hub
-/// (`VisioOneHub/CHECKLIST.md`) et les 5 dépôts plateforme, ex. `reset-view`.
+/// `slug` est l'identifiant kebab-case de la feature, identique au nom de sa
+/// doc (`docs/features/<slug>.md`), ex. `reset-view`.
 enum Feature {
   resetView('reset-view'),
   occupancySimulated('occupancy-simulated'),
@@ -146,11 +146,7 @@ enum Feature {
     Feature.poiClick => const PoiClickOverlay(),
     Feature.gotoPoi => GotoPoiOverlay(controller: controller),
     Feature.floorSelector => FloorSelectorOverlay(controller: controller),
-    Feature.computeNavigation => ComputeNavigationOverlay(
-        controller: controller,
-        initialOriginId: DemoMap.itineraryFrom,
-        initialDestinationId: DemoMap.itineraryTo,
-      ),
+    Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
     Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
     Feature.simulatedPosition => SimulatedPositionOverlay(
         controller: controller,
@@ -204,85 +200,12 @@ enum Feature {
     _ => null,
   };
 
-  /// Réagit à un message JS -> Native que [VisioOneMapShell] ne gère pas
-  /// lui-même (voir son `onMessage`). Seule `poi-click` s'en sert pour
-  /// l'instant (`poiSelected` -> panneau d'info du POI tapé) ; les autres
-  /// features n'ont rien à faire ici, tant que `map.html` ne diffuse ces
-  /// événements que sur `view` (donc identiquement sur tous les écrans).
-  ///
-  /// `floor-selector` n'en a pas besoin non plus : son overlay écoute
-  /// directement `controller.messages` (`venueLayout`, `floorChanged`) tant
-  /// qu'il est monté dans le bottom sheet, plutôt que de passer par ce
-  /// routage — voir [FloorSelectorOverlay]. `simulated-position` fait de même
-  /// pour `poiPositionResolved`, voir [SimulatedPositionOverlay].
-  /// `camera-lock-on-position` réutilise directement [SimulatedPositionOverlay]
-  /// pour cette même résolution (voir [CameraLockOnPositionOverlay]) et n'a
-  /// donc rien de plus à faire ici. `custom-data` fait de même pour
-  /// `customDataLoaded`, voir [CustomDataOverlay]. `category-highlight` fait
-  /// de même pour `categoriesLoaded`, voir [CategoryHighlightOverlay].
-  /// `dynamic-poi-crud` fait de même pour `dynamicPoiCreated`/
-  /// `dynamicPoiLabelUpdated`/`dynamicPoiRemoved`, voir [DynamicPoiCrudOverlay].
-  /// `runtime-locale` fait de même pour `localesLoaded`, voir
-  /// [RuntimeLocaleOverlay]. `native-ui-replacement` n'en a pas besoin non
-  /// plus : son panneau ([NativeUiReplacementMapPanel]) embarque directement
-  /// [FloorSelectorOverlay], qui gère déjà `venueLayout`/`floorChanged` lui-même.
-  /// `explore-mode` fait de même pour `exploreMode`/`exploreModeChanged`,
-  /// voir [ExploreModeOverlay]. `add-locale` fait de même pour
-  /// `spanishLocaleAdded`, voir [AddLocaleOverlay]. `geofencing` fait de
-  /// même pour `poiZoneResolved`, voir [GeofencingOverlay] — le test
-  /// dedans/dehors lui-même n'a besoin d'aucun message, il tourne sur la
-  /// boucle de tick déjà existante de [SimulatedPositionSession].
-  /// `custom-navigation-trace` fait de même pour `itineraryComputed` (déjà
-  /// émis par `startItinerary`, réutilisé pour réappliquer automatiquement
-  /// le preset de couleur sélectionné à chaque nouvel itinéraire), voir
-  /// [CustomNavigationTraceOverlay]. `3d-icon-marker` fait de même pour
-  /// `iconImagePlaced`/`iconImageUpdated`/`iconImageRemoved`, voir
-  /// [IconMarkerOverlay]. `custom-text-label` fait de même pour
-  /// `textLabelPlaced`/`textLabelUpdated`/`textLabelRemoved`, voir
-  /// [CustomTextLabelOverlay]. `html-overlay-marker` n'en a pas besoin non
-  /// plus : le compteur de taps (`htmlBadgeTapped`) est tenu par
-  /// `VisioOneController.htmlBadgeTapCount`. `custom-theme` non plus :
-  /// `themesLoaded` est reflété dans `VisioOneController.themes`.
-  /// `accuracy-circle-style` non plus : il réutilise [SimulatedPositionOverlay]
-  /// (résolution `poiPositionResolved`) et n'émet que des commandes.
-  /// `camera-projection-toggle` non plus : `view.cameraProjection` (message
-  /// `ready`) est reflété dans `VisioOneController.cameraProjection`.
-  /// `camera-showcase-carousel` non plus : `carouselState` est reflété dans
-  /// `VisioOneController.cameraCarousel`.
+  /// Réagit à un message JS -> Native que `VisioOneMapShell` ne gère pas
+  /// lui-même (voir son `onMessage`). Seule `poi-click` s'en sert
+  /// (`poiSelected` -> panneau d'info du POI tapé) ; les autres features
+  /// écoutent `controller.messages` directement depuis leur overlay, ou via
+  /// l'état porté par `VisioOneController`.
   void onMapMessage(BuildContext context, VisioOneMessage message) {
-    switch (this) {
-      case Feature.poiClick:
-        handlePoiSelectedMessage(context, message);
-      case Feature.resetView:
-      case Feature.occupancySimulated:
-      case Feature.gotoPoi:
-      case Feature.floorSelector:
-      case Feature.computeNavigation:
-      case Feature.uiPartVisibility:
-      case Feature.simulatedPosition:
-      case Feature.cameraLockOnPosition:
-      case Feature.clickableSurface:
-      case Feature.customData:
-      case Feature.categoryHighlight:
-      case Feature.dynamicPoiCrud:
-      case Feature.runtimeLocale:
-      case Feature.nativeUiReplacement:
-      case Feature.exploreMode:
-      case Feature.addLocale:
-      case Feature.geofencing:
-      case Feature.customBaseUrl:
-      case Feature.customNavigationTrace:
-      case Feature.navigationExcludeModalities:
-      case Feature.accessibleMode:
-      case Feature.iconMarker:
-      case Feature.customTextLabel:
-      case Feature.htmlOverlayMarker:
-      case Feature.customTheme:
-      case Feature.accuracyCircleStyle:
-      case Feature.cameraProjectionToggle:
-      case Feature.cameraShowcaseCarousel:
-      case Feature.authToken:
-        break;
-    }
+    if (this == Feature.poiClick) handlePoiSelectedMessage(context, message);
   }
 }

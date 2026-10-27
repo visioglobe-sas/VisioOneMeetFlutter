@@ -20,7 +20,7 @@ Future<void> setUIPartVisible(String part, bool visible) =>
     _call('setUIPartVisible', [part, visible]);
 ```
 
-There are exactly 5 valid `uiPart` values, case-sensitive (see the SDK's `View.ts`, type `UIPart`): `floorSelector`, `navigation`, `poiDetails`, `search`, `userTracking`.
+There are exactly 5 valid `uiPart` values, case-sensitive (type `UIPart` in the SDK's typings): `floorSelector`, `navigation`, `poiDetails`, `search`, `userTracking`.
 
 ## Things to know
 

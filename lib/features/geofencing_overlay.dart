@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../demo_map.dart';
+import '../l10n/app_localizations.dart';
 import '../visio_one/simulated_position_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
@@ -10,7 +11,8 @@ import 'simulated_position_overlay.dart';
 
 /// Overlay de la feature `geofencing` : la même UI de tracking que
 /// `simulated-position` ([SimulatedPositionOverlay], réutilisée telle quelle,
-/// pas dupliquée) surmontée d'un champ "Zone POI ID" + bouton "Watch zone".
+/// pas dupliquée), suivie en dessous d'un champ "Zone POI ID" et des boutons
+/// "Watch zone" / "Clear".
 /// La zone est la première surface du POI résolu, testée à chaque tick de
 /// [SimulatedPositionSession] contre la position simulée courante
 /// (point-in-polygon, voir `lib/visio_one/geofence_utils.dart` — le SDK
@@ -18,10 +20,11 @@ import 'simulated_position_overlay.dart';
 /// alerte visuelle (`venue.updateSurface`) sur la surface de la zone. Voir
 /// `docs/features/geofencing.md`.
 ///
-/// Comme [CameraLockOnPositionOverlay], cet overlay ne porte lui-même que
-/// l'état de résolution du champ "Zone POI ID" (`_resolving`/`_error`) : la
-/// zone configurée et l'état dedans/dehors ([SimulatedPositionSession.isInsideZone])
-/// vivent sur la session, pour survivre à la fermeture du bottom sheet.
+/// Cet overlay ne porte lui-même que l'état de la requête en cours
+/// (`_resolving`/`_error`) : la zone surveillée
+/// ([SimulatedPositionSession.zonePlaceId]), l'état dedans/dehors
+/// ([SimulatedPositionSession.isInsideZone]) et le champ saisi
+/// (`controller.panel`) survivent à la fermeture du bottom sheet.
 class GeofencingOverlay extends StatefulWidget {
   const GeofencingOverlay({super.key, required this.controller});
 
@@ -32,7 +35,8 @@ class GeofencingOverlay extends StatefulWidget {
 }
 
 class _GeofencingOverlayState extends State<GeofencingOverlay> {
-  final TextEditingController _zoneIdController = TextEditingController(text: DemoMap.geofenceZoneId);
+  late final TextEditingController _zoneIdController =
+      widget.controller.panel.text('geofencing.zoneId', DemoMap.geofenceZoneId);
 
   // Requête/réponse par `requestId` sur `controller.messages` — même idiome
   // que `SimulatedPositionOverlay._pendingRequests`.
@@ -41,7 +45,8 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
   int _requestCounter = 0;
 
   bool _resolving = false;
-  String? _error;
+  // Erreur de la dernière requête : POI introuvable, ou POI sans surface.
+  ({String placeId, bool noSurface})? _error;
 
   SimulatedPositionSession get _session => widget.controller.simulatedPosition;
 
@@ -54,7 +59,6 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
   @override
   void dispose() {
     _subscription?.cancel();
-    _zoneIdController.dispose();
     super.dispose();
   }
 
@@ -107,24 +111,20 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
     });
 
     final positions = await _resolveZone(placeId);
-    if (!mounted) return;
-    if (positions == null) {
-      setState(() {
-        _resolving = false;
-        _error = 'Zone POI not found: $placeId';
-      });
-      return;
-    }
-    if (positions.isEmpty) {
-      setState(() {
-        _resolving = false;
-        _error = 'Zone POI has no surface geometry: $placeId';
-      });
+    if (positions == null || positions.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _resolving = false;
+          _error = (placeId: placeId, noSurface: positions != null);
+        });
+      }
       return;
     }
 
+    // Appliqué même si le panneau a été fermé entre-temps (la zone vit sur
+    // la session).
     _session.setZone(placeId: placeId, positions: positions);
-    setState(() => _resolving = false);
+    if (mounted) setState(() => _resolving = false);
   }
 
   void _clearZone() {
@@ -134,6 +134,8 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final error = _error;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -146,31 +148,48 @@ class _GeofencingOverlayState extends State<GeofencingOverlay> {
         const Divider(height: 24),
         TextField(
           controller: _zoneIdController,
-          decoration: const InputDecoration(hintText: 'Zone POI ID', isDense: true),
+          decoration: InputDecoration(labelText: l10n.geofencingZoneLabel, isDense: true),
         ),
-        if (_error != null) ...[
+        if (error != null) ...[
           const SizedBox(height: 4),
-          Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          Text(
+            error.noSurface ? l10n.geofencingZoneNoSurface(error.placeId) : l10n.poiNotFound(error.placeId),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton(
-                onPressed: _resolving ? null : _watchZone,
-                child: Text(_resolving ? 'Resolving…' : 'Watch zone'),
+        ValueListenableBuilder<String?>(
+          valueListenable: _session.zonePlaceId,
+          builder: (context, watched, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _resolving ? null : _watchZone,
+                      child: Text(_resolving ? l10n.resolvingLabel : l10n.geofencingWatchButton),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _resolving || watched == null ? null : _clearZone,
+                    child: Text(l10n.clearButton),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton(onPressed: _resolving ? null : _clearZone, child: const Text('Clear')),
-          ],
+              const SizedBox(height: 12),
+              Text(watched == null ? l10n.geofencingNoZone : l10n.geofencingWatching(watched)),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         ValueListenableBuilder<bool>(
           valueListenable: _session.isInsideZone,
           builder: (context, isInside, _) {
             return Text(
-              isInside ? 'Inside zone' : 'Outside zone',
+              isInside ? l10n.geofencingInside : l10n.geofencingOutside,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: isInside ? Theme.of(context).colorScheme.error : null,
                 fontWeight: FontWeight.bold,

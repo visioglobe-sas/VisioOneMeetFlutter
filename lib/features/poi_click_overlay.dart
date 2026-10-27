@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../visio_one/visio_one_message.dart';
 
 /// Overlay de la feature `poi-click`, affichée dans le bottom sheet ouvert
-/// par le FAB de [VisioOneMapShell] : contrairement aux autres features, il
+/// par le FAB de `VisioOneMapShell` : contrairement aux autres features, il
 /// n'y a rien à piloter ici (pas de champ, pas de bouton) — le seul rappel
 /// utile est que la réaction se produit ailleurs, déclenchée par un tap sur
 /// la carte plutôt que par ce panneau. Voir [handlePoiSelectedMessage] pour
@@ -19,7 +20,7 @@ class PoiClickOverlay extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Tap any POI on the map: its details will pop up in a panel automatically.',
+            AppLocalizations.of(context)!.poiClickHint,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
@@ -34,12 +35,10 @@ class PoiClickOverlay extends StatelessWidget {
 /// en affichant les infos du POI tapé dans un bottom sheet modal.
 ///
 /// Même style que le sheet de contrôle ouvert par le FAB de
-/// [VisioOneMapShell] (fond opaque = `colorScheme.surface`, poignée de
+/// `VisioOneMapShell` (fond opaque = `colorScheme.surface`, poignée de
 /// glissement, dismissable par swipe vers le bas ou tap sur le scrim) —
 /// seule différence : c'est l'événement carte qui déclenche l'ouverture ici,
-/// pas un tap sur le FAB (voir `docs/features/poi-click.md`, "Points
-/// d'attention", pour pourquoi ce panneau ne réutilise pas directement
-/// `_showFeatureControls`).
+/// pas un tap sur le FAB.
 void handlePoiSelectedMessage(BuildContext context, VisioOneMessage message) {
   if (message.type != 'poiSelected') return;
 
@@ -65,7 +64,7 @@ void handlePoiSelectedMessage(BuildContext context, VisioOneMessage message) {
           if (id != null) ...[
             const SizedBox(height: 4),
             Text(
-              'ID: $id',
+              AppLocalizations.of(sheetContext)!.poiClickIdLine(id),
               style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
               ),

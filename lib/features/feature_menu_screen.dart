@@ -17,7 +17,7 @@ class FeatureMenuScreen extends StatelessWidget {
           children: [
             Image.asset('assets/icon/app_icon.png', width: 32, height: 32),
             const SizedBox(width: 12),
-            const Text('VisioOne Meet by VisioGlobe'),
+            Flexible(child: Text(l10n.menuHeader(l10n.appTitle))),
           ],
         ),
       ),
