@@ -7,13 +7,15 @@ Reacts to the user tapping a POI on the map, surfacing its name and ID, via the 
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html), registered once the view is ready
-view.addEventListener('poiclick', function (event) {
-  var poi = event.pois && event.pois[0];
-  if (!poi) return;
-  sendToNative('poiSelected', {
-    id: poi.id,
-    name: poi.labels && poi.labels[0] ? poi.labels[0].text : null,
+// assets/www/features/poi-click.js (`core` = window.MapCore), registered on every new view
+core.onViewCreated(function (view) {
+  view.addEventListener('poiclick', function (event) {
+    var poi = event.pois && event.pois[0];
+    if (!poi) return;
+    core.sendToNative('poiSelected', {
+      id: poi.id,
+      name: poi.labels && poi.labels[0] ? poi.labels[0].text : null,
+    });
   });
 });
 ```
@@ -21,7 +23,8 @@ view.addEventListener('poiclick', function (event) {
 The event is forwarded to native code as a `poiSelected` message (`{id, name}`) over the JS -> Native bridge channel:
 
 ```dart
-// lib/visio_one/visio_one_controller.dart — listening for it
+// listening for it on VisioOneController.messages (this demo: handlePoiSelectedMessage in
+// lib/features/poi-click/poi_click_overlay.dart, wired as FeatureSpec.onMapMessage)
 controller.messages.listen((message) {
   if (message.type != 'poiSelected') return;
   final data = message.data;

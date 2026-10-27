@@ -7,28 +7,30 @@ Places a custom image (here a 96×96 PNG icon passed as a data URL) at a precise
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> placeIconImage(
-  String requestId, {
-  required String imageId,
-  required String anchorId,
-  required String url,
-  required String orientationType,
-}) => _call('placeIconImage', [requestId, imageId, anchorId, url, orientationType]);
+// lib/features/3d-icon-marker/icon_marker_bridge.dart
+extension IconMarkerBridge on VisioOneController {
+  Future<Map<String, Object?>?> placeIconImage({
+    required String imageId,
+    required String anchorId,
+    required String url,
+    required String orientationType,
+  }) => request('placeIconImage', [imageId, anchorId, url, orientationType]);
 
-Future<void> updateIconImageOrientation(String requestId, String imageId, String orientationType) =>
-    _call('updateIconImageOrientation', [requestId, imageId, orientationType]);
+  Future<Map<String, Object?>?> updateIconImageOrientation(String imageId, String orientationType) =>
+      request('updateIconImageOrientation', [imageId, orientationType]);
 
-Future<void> removeIconImage(String requestId, String imageId) =>
-    _call('removeIconImage', [requestId, imageId]);
+  Future<Map<String, Object?>?> removeIconImage(String imageId) => request('removeIconImage', [imageId]);
+}
 ```
 
 The SDK's `Image` object can't cross the bridge, so the JS side keeps it in a map keyed by an id chosen on the Dart side:
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/3d-icon-marker.js — the feature's own state, cleared in core.onReset(...)
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 var iconImages = {};
 
+// Shared helpers, in assets/www/bridge/core.js (core.poiDisplayPosition / core.resolveAnchor).
 // Display position of a POI, same priority everywhere in this repo: first label,
 // else first image or marker, else the centre of its first surface.
 // `ignored`: objects created by the demos themselves, never used as a source.
@@ -48,15 +50,17 @@ function poiDisplayPosition(poi, ignored) {
 function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // objects declared with core.registerCreatedObjects
   if (!position) return { poi: poi, error: 'noPosition' };
   return { poi: poi, position: position };
 }
 
+// The feature's commands, in assets/www/features/3d-icon-marker.js, inside core.register({ ... }):
+
 placeIconImage: function (requestId, imageId, anchorId, url, orientationType) {
-  var anchor = resolveAnchor(anchorId);
+  var anchor = core.resolveAnchor(anchorId);
   if (anchor.error) {
-    sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: anchor.error });
+    core.sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: anchor.error });
     return;
   }
   var previousRemoved = false;
@@ -75,10 +79,10 @@ placeIconImage: function (requestId, imageId, anchorId, url, orientationType) {
       orientationType: orientationType,  // 'fixed' | 'flat' | 'facing'
     });
   } catch (error) {
-    sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: 'sdk', message: error.message, previousRemoved: previousRemoved });
+    core.sendToNative('iconImagePlaced', { requestId: requestId, success: false, error: 'sdk', message: error.message, previousRemoved: previousRemoved });
     return;
   }
-  sendToNative('iconImagePlaced', { requestId: requestId, success: true, imageId: imageId, poiId: anchorId });
+  core.sendToNative('iconImagePlaced', { requestId: requestId, success: true, imageId: imageId, poiId: anchorId });
 },
 
 updateIconImageOrientation: function (requestId, imageId, orientationType) {

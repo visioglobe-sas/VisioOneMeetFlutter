@@ -7,7 +7,8 @@ Shows or hides individual parts of the built-in overlay UI that the VisioOne SDK
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/ui-part-visibility.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 setUIPartVisible: function (part, visible) {
   if (!view) return;
   view.setUIPartVisible(part, visible);
@@ -15,9 +16,10 @@ setUIPartVisible: function (part, visible) {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setUIPartVisible(String part, bool visible) =>
-    _call('setUIPartVisible', [part, visible]);
+// lib/features/ui-part-visibility/ui_part_visibility_bridge.dart
+extension UiPartVisibilityBridge on VisioOneController {
+  Future<void> setUIPartVisible(String part, bool visible) => send('setUIPartVisible', [part, visible]);
+}
 ```
 
 There are exactly 5 valid `uiPart` values, case-sensitive (type `UIPart` in the SDK's typings): `floorSelector`, `navigation`, `poiDetails`, `search`, `userTracking`.

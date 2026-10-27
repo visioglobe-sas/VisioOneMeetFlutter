@@ -17,11 +17,15 @@ For each stop, the tour does:
 Native side — two bridge calls, and one message that reports the tour's state back (on every stop, pause, resume and stop, including when the change came from a touch on the map or from the idle timer, not from the native side):
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> startCarousel(List<String> poiIds) => _call('startCarousel', [poiIds]);
-Future<void> stopCarousel() => _run('window.MapBridge.stopCarousel()');
+// lib/features/camera-showcase-carousel/camera_showcase_carousel_bridge.dart
+extension CameraShowcaseCarouselBridge on VisioOneController {
+  Future<void> startCarousel(List<String> poiIds) => send('startCarousel', [poiIds]);
 
-// 'carouselState' message data:
+  Future<void> stopCarousel() => send('stopCarousel');
+}
+
+// 'carouselState' message data, mirrored by CameraCarouselSession.status
+// (camera_carousel_session.dart), even while the panel is closed:
 // { state: 'running' | 'paused' | 'stopped', index: 1-based stop number or null, total, poiId }
 ```
 
@@ -29,7 +33,7 @@ Future<void> stopCarousel() => _run('window.MapBridge.stopCarousel()');
 controller.startCarousel(['B4-UL00-ID0009', 'B1-LL01-ID0152', 'B3-UL00-ID0064', 'B4-UL03-ID0015']);
 ```
 
-JS side (`assets/www/map.html`) — the loop. Each start/pause/stop increments a run id, so there is only ever one live loop: an older loop notices on its next `await` and exits.
+JS side (`assets/www/features/camera-showcase-carousel.js`; `view` / `venue` below are `core.view` / `core.venue`) — the loop. Each start/pause/stop increments a run id, so there is only ever one live loop: an older loop notices on its next `await` and exits.
 
 ```js
 async function carouselLoop(runId) {
@@ -60,7 +64,7 @@ async function carouselLoop(runId) {
 }
 ```
 
-Pausing on touch — the SDK gives no "camera moved by the user" event, so the page listens to pointer events on the map container itself, in the capture phase (before the SDK sees them):
+Pausing on touch — the SDK gives no "camera moved by the user" event, so the page listens to pointer events on the map container itself (`core.container`, registered once when the script loads), in the capture phase (before the SDK sees them):
 
 ```js
 ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel'].forEach(function (type) {
@@ -94,7 +98,7 @@ Stopping — `stopCarousel` only stops scheduling (run id incremented, timers cl
 - **A zero-length `goToViewpoint` is not a clean "stop here".** `view.goToViewpoint({ positions: [view.camera.target], targetAltitude: view.camera.target.altitude }, { duration: 0, orientation: { heading: view.camera.heading, pitch: view.camera.pitch } })` does interrupt the running animation (it resolves with `isCanceled === true`), but the resulting view is shifted: about 20 m sideways and 2° of heading at ~160 m camera altitude, about 45 m at ~525 m — proportional to the camera distance, so visible on screen. It is also applied asynchronously (`view.camera` still reports the old values right after the call), so it cannot be corrected in the same tick. That is why this demo pauses with `cancel()`.
 - **Known SDK issue (1.1.0): the camera can break after a drag on an underground floor.** Observed during testing: after `goToPOI` with `orientation: { heading: 90 or 180, pitch: 45 }` on the underground POI `B1-LL01-ID0152` (floor `B1-LL1`, camera at its 10 m minimum altitude), one or two user drags turned `view.camera.heading` into `NaN` and `pitch` into `0`, and the map rendered black until the view was reloaded. It is not systematically reproducible; pitch 30 did not trigger it in the attempts made, so the demo uses `pitch: 30`.
 - **`view.camera.heading`/`pitch` setters don't interrupt an animation.** Assigning the current value back (`view.camera.heading = view.camera.heading`) has no effect on a running `goToPOI`: it continues to its destination.
-- **A view reload kills the tour.** Everything is tied to the current `view`: if the view is destroyed and recreated (e.g. to change projection), stop the loop first and start it again on the new view.
+- **A view reload kills the tour.** Everything is tied to the current `view`: if the view is destroyed and recreated (e.g. to change projection), stop the loop first and start it again on the new view. This demo stops it in a `core.onReset` hook, run at the start of every reload. Note that the stop lets an in-flight camera animation finish: in SDK 1.1.0, calling `destroyView` while a `goToFloor`/`goToPOI` animation is still running left the reload hanging (no `loadVenue`, no `ready`) in our tests, so wait for the animation (or `cancel()` it) before destroying the view.
 - **Synthetic pointer events in tests.** Dispatching a synthetic `PointerEvent('pointerdown')` directly on the SDK's `<canvas>` (as an automated test might) makes the SDK throw an uncaught error (reported as `Script error.` from the SDK bundle), presumably because the pointer id is not a real active pointer. Real touches don't. Dispatch test events on the container instead.
 
 ## Learn more

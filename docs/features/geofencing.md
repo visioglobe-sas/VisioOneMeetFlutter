@@ -9,21 +9,33 @@ Triggers a visual alert when a simulated tracked position enters a zone defined 
 Resolving the zone's polygon (WGS84 vertices of the zone POI's first surface):
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> resolvePoiZone(String requestId, String poiId) =>
-    _call('resolvePoiZone', [requestId, poiId]);
+// lib/features/geofencing/geofencing_bridge.dart
+extension GeofencingBridge on VisioOneController {
+  Future<List<SimulatedPosition>?> resolvePoiZone(String poiId) async {
+    final raw = (await request('resolvePoiZone', [poiId]))?['positions'];
+    if (raw is! List) return null;
+    final positions = <SimulatedPosition>[];
+    for (final entry in raw) {
+      final position = SimulatedPosition.fromJson(entry);
+      if (position == null) return null;
+      positions.add(position);
+    }
+    return positions;
+  }
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/geofencing.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 resolvePoiZone: function (requestId, poiId) {
   if (!venue) {
-    sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
+    core.sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
     return;
   }
   var poi = venue.pois.find(function (p) { return p.id === poiId; });
   if (!poi) {
-    sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
+    core.sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: null });
     return;
   }
   var surface = poi.surfaces[0];
@@ -32,20 +44,22 @@ resolvePoiZone: function (requestId, poiId) {
         return { latitude: pos.latitude, longitude: pos.longitude };
       })
     : [];
-  sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: positions });
+  core.sendToNative('poiZoneResolved', { requestId: requestId, poiId: poiId, positions: positions });
 },
 ```
 
 Applying the visual alert on entry/exit, once the containment check has run natively:
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setZoneAlert(String placeId, bool active) =>
-    _call('setZoneAlert', [placeId, active]);
+// lib/features/geofencing/geofencing_bridge.dart
+extension GeofencingBridge on VisioOneController {
+  Future<void> setZoneAlert(String placeId, bool active) => send('setZoneAlert', [placeId, active]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/geofencing.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 setZoneAlert: function (placeId, active) {
   if (!venue) return;
   var poi = venue.pois.find(function (p) { return p.id === placeId; });

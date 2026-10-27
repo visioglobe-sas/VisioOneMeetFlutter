@@ -16,18 +16,18 @@ The SDK public API (as of 1.1.0) has no font option.
 Themes only change the scene lights, and lights are only rendered when the view is created with `enableShadows: true` (`ViewCreateOptions`). The option is passed as the third argument of `createView`:
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-// viewOptions is forwarded as-is to createView; null = SDK defaults.
-Future<void> setup(String hash, {String? baseURL, Map<String, Object>? viewOptions}) =>
-    _call('setup', [hash, baseURL, viewOptions]);
-
-// The custom-theme screen:
-controller.setup(hash, viewOptions: {'enableShadows': true});
+// lib/features/feature.dart: the custom-theme entry of the feature table.
+// viewOptions is forwarded as-is to createView (VisioOneController.setup); null = SDK defaults.
+FeatureSpec(
+  slug: 'custom-theme',
+  // ...
+  viewOptions: const {'enableShadows': true},
+),
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
-setup: function (hash, baseURL, viewOptions) {
+// assets/www/bridge/core.js
+setup: function (hash, baseURL, viewOptions, authorizationToken) {
   // ...
   visioOne.loadVenue({ vg_maphash: hash }, container)
     .then(function (v) {
@@ -43,27 +43,31 @@ setup: function (hash, baseURL, viewOptions) {
 ### Theme
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-// Response: message `themesLoaded` {requestId, themes: ['day', 'night', 'goldenHour']}
-Future<void> getThemes(String requestId) => _call('getThemes', [requestId]);
+// lib/features/custom-theme/custom_theme_bridge.dart
+extension CustomThemeBridge on VisioOneController {
+  Future<List<String>?> getThemes() async {
+    final themes = (await request('getThemes'))?['themes'];
+    return themes is List ? themes.whereType<String>().toList() : null;
+  }
 
-// Response: message `themeApplied` {success, theme, message?}
-Future<void> setTheme(String name) => _call('setTheme', [name]);
+  Future<void> setTheme(String name) => send('setTheme', [name]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/custom-theme.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 getThemes: function (requestId) {
-  sendToNative('themesLoaded', { requestId: requestId, themes: view ? view.themes.slice() : [] });
+  core.sendToNative('themesLoaded', { requestId: requestId, themes: view ? view.themes.slice() : [] });
 },
 
 setTheme: function (name) {
   try {
     view.setTheme(name);
-    sendToNative('themeApplied', { success: true, theme: name });
+    core.sendToNative('themeApplied', { success: true, theme: name });
   } catch (error) {
     // "Cannot apply given theme <name> as it isn't registered."
-    sendToNative('themeApplied', { success: false, theme: name, message: error.message });
+    core.sendToNative('themeApplied', { success: false, theme: name, message: error.message });
   }
 },
 ```
@@ -73,24 +77,24 @@ The demo builds its theme choices from `view.themes` at runtime and shows the ra
 ### Accent colors
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-// Response: message `accentColorsApplied` {success, message?}
-Future<void> setAccentColors({required String accent, required String textAccent}) =>
-    _call('setAccentColors', [accent, textAccent]);
-
-controller.setAccentColors(accent: '#E53935', textAccent: '#FFEB3B');
+// lib/features/custom-theme/custom_theme_bridge.dart
+extension CustomThemeBridge on VisioOneController {
+  Future<void> setAccentColors({required String accent, required String textAccent}) =>
+      send('setAccentColors', [accent, textAccent]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/custom-theme.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 setAccentColors: function (accentColor, textAccentColor) {
   try {
     view.accentColor = accentColor;          // background of accent buttons
     view.textAccentColor = textAccentColor;  // text/icon color on them
-    sendToNative('accentColorsApplied', { success: true });
+    core.sendToNative('accentColorsApplied', { success: true });
   } catch (error) {
     // "Invalid color format provided, it should be hex color, rgba color or hsl color."
-    sendToNative('accentColorsApplied', { success: false, message: error.message });
+    core.sendToNative('accentColorsApplied', { success: false, message: error.message });
   }
 },
 ```

@@ -7,19 +7,22 @@ Adds a brand-new locale, `'es'` (Spanish), to the SDK at runtime — one that wa
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-final ValueNotifier<Map<String, String>?> spanishLocaleTranslations =
-    ValueNotifier<Map<String, String>?>(null);
-
-Future<void> addSpanishLocale(String requestId, Map<String, String> resources) =>
-    _call('addSpanishLocale', [requestId, resources]);
+// lib/features/add-locale/add_locale_bridge.dart
+extension AddLocaleBridge on VisioOneController {
+  Future<Map<String, String>?> addSpanishLocale(Map<String, String> resources) async {
+    final values = (await request('addSpanishLocale', [resources]))?['values'];
+    if (values is! Map) return null;
+    return values.map((key, value) => MapEntry(key.toString(), value.toString()));
+  }
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/add-locale.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 addSpanishLocale: function (requestId, resources) {
   if (!venue) {
-    sendToNative('spanishLocaleAdded', { requestId: requestId, values: {} });
+    core.sendToNative('spanishLocaleAdded', { requestId: requestId, values: {} });
     return;
   }
   venue.translator.addLocale('es', resources);
@@ -27,7 +30,7 @@ addSpanishLocale: function (requestId, resources) {
   Object.keys(resources).forEach(function (key) {
     values[key] = venue.translator.translate(key, 'es');
   });
-  sendToNative('spanishLocaleAdded', { requestId: requestId, values: values });
+  core.sendToNative('spanishLocaleAdded', { requestId: requestId, values: values });
 },
 ```
 

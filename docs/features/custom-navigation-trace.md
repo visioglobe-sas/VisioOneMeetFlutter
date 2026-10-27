@@ -21,17 +21,20 @@ venue.updateNavigationTrace(trace, {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> updateNavigationTrace(Map<String, String> options) =>
-    _call('updateNavigationTrace', [options]);
+// lib/features/custom-navigation-trace/custom_navigation_trace_bridge.dart
+extension CustomNavigationTraceBridge on VisioOneController {
+  Future<void> updateNavigationTrace(Map<String, String> options) => send('updateNavigationTrace', [options]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/custom-navigation-trace.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 updateNavigationTrace: function (options) {
-  if (!venue || !currentNavigationTrace) return;
+  var trace = core.currentNavigationTrace; // set by startItinerary (compute-navigation.js)
+  if (!venue || !trace) return;
   try {
-    venue.updateNavigationTrace(currentNavigationTrace, options);
+    venue.updateNavigationTrace(trace, options);
   } catch (error) {
     // Colors are already applied by this point — see "Things to know" below.
     console.warn('updateNavigationTrace: SDK threw (colors still applied): ' + (error && error.message ? error.message : String(error)));
@@ -39,7 +42,7 @@ updateNavigationTrace: function (options) {
 },
 ```
 
-`currentNavigationTrace` is the `NavigationTrace` object stashed by `startItinerary` (the `compute-navigation` bridge method) right after `venue.createNavigationTrace()` — `updateNavigationTrace` needs that object itself, not an ID, and there is no SDK getter to fetch "the currently displayed trace" back. `NavigationTraceUpdateOptions` (`Navigation/NavigationTraceUpdateOptions.d.ts` in the SDK's typings) only exposes colors (plus `textureRepeat`/`animationSpeed`, relevant only to the `'textured'` `displayMode`) — there is no way to change `displayMode` or thickness after creation, and `createNavigationTrace()` itself takes no options, so a trace always starts out in the SDK's own default look.
+`core.currentNavigationTrace` (in `assets/www/bridge/core.js`, cleared on every map reload) is the `NavigationTrace` object stashed by `startItinerary` (the `compute-navigation` bridge method) right after `venue.createNavigationTrace()` — `updateNavigationTrace` needs that object itself, not an ID, and there is no SDK getter to fetch "the currently displayed trace" back. `NavigationTraceUpdateOptions` (`Navigation/NavigationTraceUpdateOptions.d.ts` in the SDK's typings) only exposes colors (plus `textureRepeat`/`animationSpeed`, relevant only to the `'textured'` `displayMode`) — there is no way to change `displayMode` or thickness after creation, and `createNavigationTrace()` itself takes no options, so a trace always starts out in the SDK's own default look.
 
 ## Things to know
 

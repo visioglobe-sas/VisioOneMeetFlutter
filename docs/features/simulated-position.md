@@ -9,14 +9,15 @@ Since a POI doesn't expose latitude/longitude directly, a `resolvePoiPosition` r
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
-// poiDisplayPosition(poi): first label's position, else first image's or marker's,
+// assets/www/features/simulated-position.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
+// core.poiDisplayPosition(poi): first label's position, else first image's or marker's,
 // else the centre of the first surface (see docs/COMMUNICATION_GUIDE.md).
 resolvePoiPosition: function (requestId, poiId) {
-  var poi = findPoi(poiId);
-  var found = poi ? poiDisplayPosition(poi) : null;
+  var poi = core.findPoi(poiId);
+  var found = poi ? core.poiDisplayPosition(poi) : null;
   var position = found ? { latitude: found.latitude, longitude: found.longitude } : null;
-  sendToNative('poiPositionResolved', { requestId: requestId, poiId: poiId, position: position });
+  core.sendToNative('poiPositionResolved', { requestId: requestId, poiId: poiId, position: position });
 },
 
 injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
@@ -35,20 +36,24 @@ stopTrackedPosition: function () {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> resolvePoiPosition(String requestId, String poiId) =>
-    _call('resolvePoiPosition', [requestId, poiId]);
+// lib/features/simulated-position/simulated_position_bridge.dart
+extension SimulatedPositionBridge on VisioOneController {
+  Future<SimulatedPosition?> resolvePoiPosition(String poiId) async {
+    final result = await request('resolvePoiPosition', [poiId]);
+    return SimulatedPosition.fromJson(result?['position']);
+  }
 
-Future<void> injectTrackedPosition({
-  required double latitude,
-  required double longitude,
-  required double precisionCircleRadius,
-}) => _call('injectTrackedPosition', [latitude, longitude, precisionCircleRadius]);
+  Future<void> injectTrackedPosition({
+    required double latitude,
+    required double longitude,
+    required double precisionCircleRadius,
+  }) => send('injectTrackedPosition', [latitude, longitude, precisionCircleRadius]);
 
-Future<void> stopTrackedPosition() => _run('window.MapBridge.stopTrackedPosition()');
+  Future<void> stopTrackedPosition() => send('stopTrackedPosition');
+}
 ```
 
-`resolvePoiPosition` is fire-and-forget on the Dart side; its result arrives asynchronously as a `poiPositionResolved` message (`{requestId, poiId, position: {latitude, longitude} | null}`) on `VisioOneController.messages`. `requestId` is echoed back as-is so a caller can match multiple concurrent requests (e.g. resolving an origin and a destination at once) to their responses.
+`resolvePoiPosition` is a request/response round trip: `VisioOneController.request()` adds a fresh `requestId` as first JS argument and completes with the data of the response carrying it (or `null` after 5 s). The JS side answers with a `poiPositionResolved` message (`{requestId, poiId, position: {latitude, longitude} | null}`); `requestId` is echoed back as-is so several concurrent requests (e.g. resolving an origin and a destination at once) are matched to their own responses.
 
 ## Things to know
 

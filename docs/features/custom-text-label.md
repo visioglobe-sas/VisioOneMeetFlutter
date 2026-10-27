@@ -7,34 +7,34 @@ Places your own free text on the map (opening hours, a price, a zone name…) ne
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> placeTextLabel(
-  String requestId, {
-  required String anchorId,
-  required String text,
-  required String color,   // '#E53935'
-  required double width,   // meters
-  required double height,  // meters, always sent
-  required int rotation,   // degrees
-}) => _call('placeTextLabel', [requestId, anchorId, text, color, width, height, rotation]);
+// lib/features/custom-text-label/custom_text_label_bridge.dart
+extension CustomTextLabelBridge on VisioOneController {
+  Future<Map<String, Object?>?> placeTextLabel({
+    required String anchorId,
+    required String text,
+    required String color,
+    required double width,
+    required double height,
+    required int rotation,
+  }) => request('placeTextLabel', [anchorId, text, color, width, height, rotation]);
 
-// changes = {'text': ...} | {'color': ...} | {'width': ..., 'height': ...}
-Future<void> updateTextLabel(String requestId, Map<String, Object> changes) =>
-    _call('updateTextLabel', [requestId, changes]);
+  Future<Map<String, Object?>?> updateTextLabel(Map<String, Object> changes) => request('updateTextLabel', [changes]);
 
-Future<void> rotateTextLabel(String requestId, int rotation) =>
-    _call('rotateTextLabel', [requestId, rotation]);
+  Future<Map<String, Object?>?> rotateTextLabel(int rotation) => request('rotateTextLabel', [rotation]);
 
-Future<void> removeTextLabel(String requestId) => _call('removeTextLabel', [requestId]);
+  Future<Map<String, Object?>?> removeTextLabel() => request('removeTextLabel');
+}
 ```
 
 The SDK's `Label` object can't cross the bridge, so the JS side keeps it (and the options it was created with) in a variable:
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/custom-text-label.js — the feature's own state, cleared in core.onReset(...)
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 var textLabel = null;
 var textLabelOptions = null;
 
+// Shared helpers, in assets/www/bridge/core.js (core.poiDisplayPosition / core.resolveAnchor).
 // Display position of a POI, same priority everywhere in this repo: first label,
 // else first image or marker, else the centre of its first surface.
 // `ignored`: objects created by the demos themselves, never used as a source.
@@ -54,18 +54,20 @@ function poiDisplayPosition(poi, ignored) {
 function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // objects declared with core.registerCreatedObjects
   if (!position) return { poi: poi, error: 'noPosition' };
   return { poi: poi, position: position };
 }
 
+// The feature's commands, in assets/www/features/custom-text-label.js, inside core.register({ ... }):
+
 placeTextLabel: function (requestId, anchorId, text, color, width, height, rotation) {
   // 1. Validate everything first: a failed placement leaves the current label untouched.
   if (!text || !String(text).trim()) {   // the SDK would throw "Cannot create Label, text is required"
-    sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
+    core.sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'textRequired' });
     return;
   }
-  var anchor = resolveAnchor(anchorId);  // error: 'notFound' | 'noPosition'
+  var anchor = core.resolveAnchor(anchorId);  // error: 'notFound' | 'noPosition'
   // ... report anchor.error the same way
   var position = {
     latitude: anchor.position.latitude + 0.00004,   // ~4 m offset, so the text doesn't
@@ -90,10 +92,10 @@ placeTextLabel: function (requestId, anchorId, text, color, width, height, rotat
     textLabel = venue.createLabel(options);
     textLabelOptions = options;
   } catch (error) {
-    sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'sdk', message: error.message });
+    core.sendToNative('textLabelPlaced', { requestId: requestId, success: false, error: 'sdk', message: error.message });
     return;
   }
-  sendToNative('textLabelPlaced', { requestId: requestId, success: true, poiId: anchorId });
+  core.sendToNative('textLabelPlaced', { requestId: requestId, success: true, poiId: anchorId });
 },
 
 updateTextLabel: function (requestId, changes) {

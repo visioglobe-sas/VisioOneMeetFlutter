@@ -9,7 +9,8 @@ Like `camera-lock-on-position` and `geofencing`, this feature builds on `simulat
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/accuracy-circle-style.js, simulated-position.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 updatePositionTrackerGraphicOptions: function (color, opacity) {
   if (!view) return;
   try {
@@ -31,17 +32,17 @@ injectTrackedPosition: function (latitude, longitude, precisionCircleRadius) {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> updatePositionTrackerGraphicOptions({
-  required String color,
-  required double opacity,
-}) => _call('updatePositionTrackerGraphicOptions', [color, opacity]);
+// lib/features/accuracy-circle-style/accuracy_circle_style_bridge.dart
+extension AccuracyCircleStyleBridge on VisioOneController {
+  Future<void> updatePositionTrackerGraphicOptions({required String color, required double opacity}) =>
+      send('updatePositionTrackerGraphicOptions', [color, opacity]);
+}
 ```
 
 The Dart side calls it whenever the user picks a color or moves the opacity slider, and once more at every start of the simulation, right before the first `injectTrackedPosition` (see "Things to know"):
 
 ```dart
-// lib/visio_one/simulated_position_session.dart, in start()
+// lib/features/simulated-position/simulated_position_session.dart, in start()
 if (color != null && opacity != null) {
   _controller.updatePositionTrackerGraphicOptions(color: color, opacity: opacity);
 }

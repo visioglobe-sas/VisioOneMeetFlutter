@@ -7,7 +7,8 @@ Drives the SDK's 3 building-exploration modes via `view.currentExploreMode` — 
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/explore-mode.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 setExploreMode: function (mode) {
   if (!view) return;
   view.currentExploreMode = mode;
@@ -17,7 +18,7 @@ setExploreMode: function (mode) {
 // mode to answer for) — same pattern as getVenueLayout / venueLayout.
 getExploreMode: function () {
   if (!view) return;
-  sendToNative('exploreMode', { currentExploreMode: view.currentExploreMode });
+  core.sendToNative('exploreMode', { currentExploreMode: view.currentExploreMode });
 },
 ```
 
@@ -30,10 +31,12 @@ v.addEventListener('exploremodechanged', function (event) {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setExploreMode(String mode) => _call('setExploreMode', [mode]);
+// lib/features/explore-mode/explore_mode_bridge.dart
+extension ExploreModeBridge on VisioOneController {
+  Future<void> setExploreMode(String mode) => send('setExploreMode', [mode]);
 
-Future<void> getExploreMode() => _run('window.MapBridge.getExploreMode()');
+  Future<void> getExploreMode() => send('getExploreMode');
+}
 ```
 
 `mode` is one of the 3 exact, case-sensitive `ExploreMode` string values the SDK accepts: `'global'`, `'building'`, `'floor'` (type `ExploreMode` in the `@visioglobe/visioone` typings). `getExploreMode()` is fire-and-forget on the Dart side; its result arrives asynchronously as an `exploreMode` message (`{currentExploreMode}`) on `VisioOneController.messages`. Live changes — from this call or from any other source — arrive the same way as an `exploreModeChanged` message with the same shape.

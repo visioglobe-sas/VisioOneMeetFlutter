@@ -13,32 +13,41 @@ This feature depends directly on `simulated-position`: locking the camera onto a
 The toggle sets the property; the SDK then reports every lock change (including the ones it makes by itself) through three view events, which the bridge relays so the UI always mirrors the SDK state:
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
-setCameraLockOnPosition: function (locked) {
-  if (!view) return;
-  view.lockCameraPositionOnTracking = !!locked;
-},
+// assets/www/features/camera-lock-on-position.js (`core` = window.MapCore)
+core.register({
+  setCameraLockOnPosition: function (locked) {
+    var view = core.view;
+    if (!view) return;
+    view.lockCameraPositionOnTracking = !!locked;
+  },
+});
 
-// Subscribed once, right after createView():
-function forwardCameraLock() {
-  // The events carry no value: read the property inside the handler.
-  sendToNative('cameraLockChanged', { locked: !!v.lockCameraPositionOnTracking });
-}
-v.addEventListener('trackingon', forwardCameraLock);
-v.addEventListener('trackingoff', forwardCameraLock);
-v.addEventListener('trackingchanged', forwardCameraLock);
+// Called for every view created, right after createView():
+core.onViewCreated(function (view) {
+  function forwardCameraLock() {
+    // The events carry no value: read the property inside the handler.
+    core.sendToNative('cameraLockChanged', { locked: !!view.lockCameraPositionOnTracking });
+  }
+  view.addEventListener('trackingon', forwardCameraLock);
+  view.addEventListener('trackingoff', forwardCameraLock);
+  view.addEventListener('trackingchanged', forwardCameraLock);
+});
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setCameraLockOnPosition(bool locked) =>
-    _call('setCameraLockOnPosition', [locked]);
-
-// In the JS -> Dart message handler: the toggle's value only comes from here.
-if (parsed.type == 'cameraLockChanged') {
-  final locked = parsed.data is Map ? (parsed.data as Map)['locked'] : null;
-  if (locked is bool) simulatedPosition.onCameraLockChanged(locked);
+// lib/features/camera-lock-on-position/camera_lock_on_position_bridge.dart
+extension CameraLockOnPositionBridge on VisioOneController {
+  Future<void> setCameraLockOnPosition(bool locked) => send('setCameraLockOnPosition', [locked]);
 }
+
+// lib/features/simulated-position/simulated_position_session.dart: the toggle's
+// value only comes from this message, even while the panel is closed.
+_subscription = _controller.messages.listen((message) {
+  if (message.type != 'cameraLockChanged') return;
+  final data = message.data;
+  final locked = data is Map ? data['locked'] : null;
+  if (locked is bool) onCameraLockChanged(locked);
+});
 ```
 
 ## Things to know

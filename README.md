@@ -45,7 +45,7 @@ The first load can take 20–30 seconds while the device downloads the map data 
 |---|---|---|
 | Spinner for more than two minutes | No network, or wrong map hash | Check the device's connection, then the hash in `lib/demo_map.dart` |
 | "Could not load the VisioOne map" with a network message | No network, or invalid hash | Same as above; the screen's Retry button reloads the map |
-| Black screen, no spinner | `assets/www/map.html` or `visioone.umd.cjs` missing from the assets | Check `assets: - assets/www/` in `pubspec.yaml`, then `flutter clean && flutter pub get` |
+| Black screen, no spinner | `assets/www/map.html`, its scripts or `visioone.umd.cjs` missing from the assets | Check that `pubspec.yaml` lists `assets/www/`, `assets/www/bridge/` and `assets/www/features/`, then `flutter clean && flutter pub get` |
 | iOS build fails with a CocoaPods error | Pods not installed or out of date | `cd ios && pod install && cd ..` |
 | Android toolchain errors in `flutter doctor` | Missing SDK or licences | `flutter doctor --android-licenses` |
 
@@ -62,7 +62,7 @@ cp package/dist/visioone.umd.cjs assets/www/visioone.umd.cjs
 rm -rf package visioglobe-visioone-*.tgz
 ```
 
-The bundle currently vendored is `@visioglobe/visioone@1.1.0`. No Dart code changes are needed for a minor SDK bump — only if the bundle's public surface (`window.MapBridge` calls, `view` events, `loadVenue` options) changes, which would also require editing `assets/www/map.html`. For example, the map hash is passed to `loadVenue` as `vg_maphash`: a `hash` key, used by older SDK releases, is silently ignored and the map fails to load.
+The bundle currently vendored is `@visioglobe/visioone@1.1.0`. No Dart code changes are needed for a minor SDK bump — only if the bundle's public surface (`window.MapBridge` calls, `view` events, `loadVenue` options) changes, which would also require editing the JS bridge (`assets/www/bridge/core.js` and the `assets/www/features/*.js` scripts). For example, the map hash is passed to `loadVenue` as `vg_maphash`: a `hash` key, used by older SDK releases, is silently ignored and the map fails to load.
 
 ## Features
 
@@ -104,7 +104,7 @@ Each item below links to a dedicated doc describing the SDK call it demonstrates
 The VisioOne SDK (`@visioglobe/visioone` on npm) is a **JS/WebGL** SDK — there is no native Dart port. The app embeds it as:
 
 - the SDK's **UMD** bundle (`assets/www/visioone.umd.cjs`, vendored from npm — see "Refresh the vendored SDK bundle" above to update it),
-- a host page (`assets/www/map.html`) that loads that bundle via a classic `<script>` tag and exposes a JS bridge (`window.MapBridge`),
+- a host page (`assets/www/map.html`) that loads that bundle, then the JS side of the bridge (`window.MapBridge`) as classic `<script>` tags: `assets/www/bridge/core.js` (map loading, message channel, shared helpers) and one `assets/www/features/<slug>.js` per feature,
 - displayed full-screen in a `WebView` via the [`webview_flutter`](https://pub.dev/packages/webview_flutter) package.
 
 The **UMD** build is used deliberately, instead of the ESM build (`visioone.js`) (see `docs/ARCHITECTURE.md`): a module's dynamic `import()` calls fail under WebKit's `file://` CORS restrictions, while a classic `<script>` tag works identically whether the WebView serves the page over `file://` (iOS) or an internal origin (Android, via `loadFlutterAsset`).
@@ -113,10 +113,36 @@ Native code talks to the SDK through a bidirectional bridge:
 
 | Direction | Mechanism | Details |
 |---|---|---|
-| Native → JS | `WebViewController.runJavaScript()` calling `window.MapBridge.<method>(...)` | [`lib/visio_one/visio_one_controller.dart`](lib/visio_one/visio_one_controller.dart) |
+| Native → JS | `WebViewController.runJavaScript()` calling `window.MapBridge.<method>(...)` | `send()` / `request()` in [`lib/visio_one/visio_one_controller.dart`](lib/visio_one/visio_one_controller.dart); each feature's commands in `lib/features/<slug>/<feature>_bridge.dart` |
 | JS → Native | a single `JavaScriptChannel` (`VisioOneBridge`), envelope `{type, data}` | [`lib/visio_one/visio_one_message.dart`](lib/visio_one/visio_one_message.dart) |
 
 See [`docs/COMMUNICATION_GUIDE.md`](docs/COMMUNICATION_GUIDE.md) for the full bridge contract and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the overall picture.
+
+## Where is the code of feature X?
+
+Every feature uses the same slug (e.g. `goto-poi`) in three places:
+
+| What | Where |
+|---|---|
+| The SDK calls (`venue.*`, `view.*`, event listeners) | `assets/www/features/<slug>.js` |
+| The Dart commands that call them (`window.MapBridge.<method>`) | `lib/features/<slug>/<feature>_bridge.dart`, an `extension` on `VisioOneController` with the same method names |
+| The panel (native UI) and any state that outlives it | `lib/features/<slug>/<feature>_overlay.dart`, plus `<feature>_session.dart` for loops and SDK-state mirrors |
+| The developer doc | `docs/features/<slug>.md` |
+
+The menu entry (title, description, map options) is one `FeatureSpec` in `lib/features/feature.dart`. Code shared by several features stays in one place: map loading and the POI position helpers in `assets/www/bridge/core.js`, the bridge core in `lib/visio_one/`, and the From/To form, color chip and error texts in `lib/features/shared/`.
+
+A few features reuse another one's code instead of duplicating it:
+
+| Feature | Reuses |
+|---|---|
+| `accessible-mode`, `custom-navigation-trace` | `compute-navigation` (`startItinerary`) |
+| `camera-lock-on-position`, `geofencing`, `accuracy-circle-style` | `simulated-position` (panel and `SimulatedPositionSession`) |
+| `native-ui-replacement` | `floor-selector` (panel) and `ui-part-visibility` (`setUIPartVisible`) |
+| `3d-icon-marker`, `custom-text-label`, `html-overlay-marker` | `goto-poi` (`goToPOI`, to show the floor of the placed object) |
+| `add-locale` | `runtime-locale` (`setCurrentLocale`) |
+| `custom-base-url` | no JS file: the `baseURL` option is handled by `setup` in `assets/www/bridge/core.js` |
+
+To add a feature: create `assets/www/features/<slug>.js` (register its commands with `MapCore.register({...})`) and add its `<script>` tag to `assets/www/map.html`, create `lib/features/<slug>/` with its bridge extension and panel, then add its `FeatureSpec` to `kFeatures`.
 
 ## Repo structure
 
@@ -126,24 +152,24 @@ lib/
   demo_map.dart                      demo map hash + POI ids used as field defaults (replace with your own)
   l10n/                              UI strings (app_en.arb, app_fr.arb; Dart code generated by `flutter gen-l10n`)
   features/
-    feature.dart                     catalogue of demonstrated features (slug, title, panel)
+    feature.dart                     FeatureSpec table: one entry per feature (slug, title, panel, map options, session)
     feature_menu_screen.dart         home screen listing all features
     feature_screen.dart              full-screen host for one feature's map + panel
-    <feature>_overlay.dart           per-feature panel shown in the bottom sheet
-    auth_token_screen.dart           auth-token text screen (no map)
-    auth_token_sample.dart           auth-token code sample (placeholder values)
+    <slug>/                          one folder per feature, e.g. goto-poi/:
+      <feature>_bridge.dart            its Native -> JS commands (extension on VisioOneController)
+      <feature>_overlay.dart           its panel, shown in the bottom sheet
+      <feature>_session.dart           (some features) state that outlives the panel: loops, SDK-state mirrors
     shared/                          From/To navigation form, color chip, bridge error texts
   visio_one/
     visio_one_map_shell.dart         shared map screen: loads the SDK, loading/ready/error states, panel
-    visio_one_controller.dart        typed Native <-> WebView/SDK bridge, per-screen feature state
+    visio_one_controller.dart        bridge core: WebView, setup(), send(), request(), panel state, session
     visio_one_message.dart           JSON envelope for the JS -> Native channel
+    feature_session.dart             base class of per-screen feature sessions
     panel_state.dart                 values typed in a panel, kept while the screen is open
-    simulated_position_session.dart  simulated tracked position loop (+ geofencing zone)
-    occupancy_simulation_session.dart  simulated occupancy loop
-    camera_carousel_session.dart     camera showcase state
-    geofence_utils.dart              point-in-polygon test for geofencing
 assets/www/
-  map.html                           host page + window.MapBridge (JS side of the bridge)
+  map.html                           host page: <div> + <script> tags only
+  bridge/core.js                     MapBridge.setup, {type, data} channel, shared POI helpers, MapCore registration API
+  features/<slug>.js                 one file per feature: its MapBridge commands and view listeners
   visioone.umd.cjs                   vendored VisioOne SDK (UMD build, from npm)
 docs/
   ARCHITECTURE.md                    why UMD, asset loading, app structure, lifecycle

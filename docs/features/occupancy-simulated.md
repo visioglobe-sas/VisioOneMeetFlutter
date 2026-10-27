@@ -7,7 +7,8 @@ Dynamically colors a POI's surface to reflect an occupancy status (free / soon o
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/occupancy-simulated.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 updateOccupancy: function (occupancy) {
   if (!venue) return;
   occupancy.forEach(function (entry) {
@@ -21,9 +22,10 @@ updateOccupancy: function (occupancy) {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) =>
-    _call('updateOccupancy', [occupancy]);
+// lib/features/occupancy-simulated/occupancy_simulated_bridge.dart
+extension OccupancySimulatedBridge on VisioOneController {
+  Future<void> updateOccupancy(List<Map<String, Object?>> occupancy) => send('updateOccupancy', [occupancy]);
+}
 ```
 
 `occupancy` is a list of `{planId, color}` entries — `planId` is a POI's Place ID, `color` a CSS-style color value applied to every surface of that POI.

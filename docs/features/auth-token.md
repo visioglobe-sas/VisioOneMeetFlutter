@@ -6,7 +6,7 @@ Loads a map that is protected by an authorization token, via the `authorizationT
 
 **This feature is a code sample only.** This demo has no protected map to ship, so every value in the repo is a **placeholder you must replace** with your own:
 
-| Constant (`lib/features/auth_token_sample.dart`) | Placeholder value | Replace with |
+| Constant (`lib/features/auth-token/auth_token_sample.dart`) | Placeholder value | Replace with |
 |---|---|---|
 | `kProtectedMapHash` | `YOUR_PROTECTED_MAP_HASH` | the hash of your protected map |
 | `kProtectedMapServerBaseUrl` | `https://mapserver-auth.visioglobe.com/` | keep as is (protected map server) |
@@ -19,7 +19,7 @@ The "Protected map (token)" screen in the app only shows a short explanation. It
 Native side (Dart). The sample widget passes the three values to the map shell, which forwards them to the bridge:
 
 ```dart
-// lib/features/auth_token_sample.dart
+// lib/features/auth-token/auth_token_sample.dart
 const String kProtectedMapHash = 'YOUR_PROTECTED_MAP_HASH';
 const String kProtectedMapServerBaseUrl = 'https://mapserver-auth.visioglobe.com/';
 // Must be issued by YOUR OWN backend (Visioglobe provides the signing secret
@@ -36,17 +36,23 @@ Future<void> refreshAuthorizationToken(VisioOneController controller, String fre
 ```dart
 // lib/visio_one/visio_one_controller.dart
 Future<void> setup(String hash, {String? baseURL, Map<String, Object>? viewOptions, String? authorizationToken}) =>
-    _call('setup', [hash, baseURL, viewOptions, authorizationToken]);
+    send('setup', [hash, baseURL, viewOptions, authorizationToken]);
 
-Future<void> setAuthorizationToken(String freshToken) => _call('setAuthorizationToken', [freshToken]);
+// lib/features/auth-token/auth_token_bridge.dart
+extension AuthTokenBridge on VisioOneController {
+  Future<void> setAuthorizationToken(String freshToken) => send('setAuthorizationToken', [freshToken]);
+}
+
+// lib/visio_one/visio_one_controller.dart
 
 // true when an `error` message comes from the SDK's UnauthorizedError
 static bool isUnauthorizedError(VisioOneMessage message) => ...; // data['unauthorized'] == true
 ```
 
-JS side (`assets/www/map.html`, `window.MapBridge`). This is the code that calls the real SDK methods:
+JS side (`window.MapBridge`). This is the code that calls the real SDK methods:
 
 ```js
+// assets/www/bridge/core.js
 setup: function (hash, baseURL, viewOptions, authorizationToken) {
   var loadOptions = { vg_maphash: hash };
   if (baseURL) loadOptions.baseURL = baseURL;                       // 'https://mapserver-auth.visioglobe.com/'
@@ -59,11 +65,12 @@ setup: function (hash, baseURL, viewOptions, authorizationToken) {
     });
 },
 
+// assets/www/features/auth-token.js, inside core.register({ ... })
 setAuthorizationToken: function (freshToken) {
-  venue.setAuthorizationToken(freshToken);   // used by every later map request
+  core.venue.setAuthorizationToken(freshToken);   // used by every later map request
 },
 
-// UnauthorizedError is not exported by the UMD bundle: identify it by its
+// assets/www/bridge/core.js — UnauthorizedError is not exported by the UMD bundle: identify it by its
 // constructor name, with a fallback on its message.
 function isUnauthorizedError(error) {
   if (!error) return false;

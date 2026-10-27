@@ -22,7 +22,7 @@ This guide covers the **communication bridge** between the Dart code and the Vis
 
 ## 1. Two runtimes that share nothing
 
-The app runs two isolated environments side by side: the Dart VM (`lib/`) and the WebView's JavaScript engine (`assets/www/map.html` + the SDK). They share no memory: every exchange goes through the `webview_flutter` API.
+The app runs two isolated environments side by side: the Dart VM (`lib/`) and the WebView's JavaScript engine (`assets/www/map.html`, its scripts `bridge/core.js` and `features/*.js`, and the SDK). They share no memory: every exchange goes through the `webview_flutter` API.
 
 ```mermaid
 graph LR
@@ -34,7 +34,7 @@ graph LR
     P2["JavaScriptChannel<br/>(JS -> Dart, any time)"]
   end
   subgraph Web["WebView JS engine"]
-    J["map.html + VisioOne SDK"]
+    J["map.html (core.js + features/*.js) + VisioOne SDK"]
   end
 
   C --> P1 --> J
@@ -50,13 +50,46 @@ graph LR
 | Dart → JS | `WebViewController.runJavaScript(script)` | calling `window.MapBridge.<method>(...)` |
 | JS → Dart | `WebViewController.addJavaScriptChannel('VisioOneBridge', onMessageReceived: ...)` | receiving SDK events and command results as `{type, data}` messages |
 
-Commands are fire-and-forget. When a command has a result, it comes back as a JS → Dart message; when several requests of the same kind can be in flight, the command takes a `requestId` that the response echoes back.
+Commands are fire-and-forget (`VisioOneController.send`). When a command has a result, it comes back as a JS → Dart message; when several requests of the same kind can be in flight, the command takes a `requestId` as first argument that the response echoes back — `VisioOneController.request` generates it, waits for the matching message and returns its `data` (or `null` after 5 s).
 
 ## 3. Message contract
 
-### Native → JS (`window.MapBridge`, in `assets/www/map.html`)
+### Native → JS (`window.MapBridge`)
 
-Arguments are JSON-encoded on the Dart side (see [section 4](#4-reading-the-existing-code)).
+Arguments are JSON-encoded on the Dart side (see [section 4](#4-reading-the-existing-code)). `setup` is defined in `assets/www/bridge/core.js`; every other method lives in its feature's script, `assets/www/features/<slug>.js`, and its typed Dart caller (same name, minus the `requestId`, which `request()` adds) in `lib/features/<slug>/<feature>_bridge.dart`:
+
+| Feature (slug) | Methods |
+|---|---|
+| core (`bridge/core.js`, `VisioOneController`) | `setup` |
+| `reset-view` | `goToGlobal` |
+| `goto-poi` | `goToPOI`, `clearSelection` |
+| `floor-selector` | `goToFloor`, `getVenueLayout` (+ `floorChanged` listener) |
+| `explore-mode` | `setExploreMode`, `getExploreMode` (+ `exploreModeChanged` listener) |
+| `poi-click` | — (`poiSelected` listener only) |
+| `compute-navigation` | `startItinerary` (also used by `accessible-mode` and `custom-navigation-trace`) |
+| `navigation-exclude-modalities` | `startItineraryExcludingModalities` |
+| `custom-navigation-trace` | `updateNavigationTrace` |
+| `ui-part-visibility` | `setUIPartVisible` (also used by `native-ui-replacement`) |
+| `occupancy-simulated` | `updateOccupancy` |
+| `clickable-surface` | `setSurfaceInteractive` |
+| `simulated-position` | `resolvePoiPosition`, `injectTrackedPosition`, `stopTrackedPosition` |
+| `camera-lock-on-position` | `setCameraLockOnPosition` (+ `cameraLockChanged` listeners) |
+| `geofencing` | `resolvePoiZone`, `setZoneAlert` |
+| `accuracy-circle-style` | `updatePositionTrackerGraphicOptions` |
+| `custom-data` | `loadCustomData` |
+| `category-highlight` | `getCategories`, `highlightCategory`, `clearCategoryHighlight` |
+| `dynamic-poi-crud` | `createDynamicPOI`, `updateDynamicPoiLabelText`, `removeDynamicPOI` |
+| `3d-icon-marker` | `placeIconImage`, `updateIconImageOrientation`, `removeIconImage` |
+| `custom-text-label` | `placeTextLabel`, `updateTextLabel`, `rotateTextLabel`, `removeTextLabel` |
+| `html-overlay-marker` | `placeHtmlBadge`, `updateHtmlBadgeText`, `setHtmlBadgeVisible`, `removeHtmlBadge` (+ `htmlBadgeTapped`) |
+| `runtime-locale` | `getLocales`, `setCurrentLocale` (also used by `add-locale`) |
+| `add-locale` | `addSpanishLocale` |
+| `custom-theme` | `getThemes`, `setTheme`, `setAccentColors` |
+| `camera-projection-toggle` | `setCameraProjection` |
+| `camera-showcase-carousel` | `startCarousel`, `stopCarousel` |
+| `auth-token` | `setAuthorizationToken` |
+
+`custom-base-url` and `native-ui-replacement` have no script of their own; `accessible-mode` only passes `isAccessible: true` to `startItinerary`.
 
 | Method | Arguments | What it does (SDK call) | Response |
 |---|---|---|---|
@@ -110,13 +143,13 @@ Arguments are JSON-encoded on the Dart side (see [section 4](#4-reading-the-exis
 | `startCarousel(poiIds)` | `List<String>` | Camera tour: `view.goToFloor` then `view.goToPOI` for each stop, in a loop; pauses on touch, resumes after 10 s. | `carouselState` |
 | `stopCarousel()` | — | Stops the tour (the current animation finishes). | `carouselState` |
 
-**POI display position.** A `POI` has no latitude/longitude of its own. Every command that needs a point for a POI (`resolvePoiPosition`, and the anchor of `createDynamicPOI`, `placeIconImage`, `placeTextLabel`, `placeHtmlBadge`) uses one helper, `poiDisplayPosition`, with this priority:
+**POI display position.** A `POI` has no latitude/longitude of its own. Every command that needs a point for a POI (`resolvePoiPosition`, and the anchor of `createDynamicPOI`, `placeIconImage`, `placeTextLabel`, `placeHtmlBadge`) uses one helper, `MapCore.poiDisplayPosition` in `assets/www/bridge/core.js` (through `MapCore.resolveAnchor` for anchors), with this priority:
 
 1. `poi.labels[0].position`
 2. `poi.images[0].position`, else `poi.markers[0].position`
 3. the centre (average of the vertices) of `poi.surfaces[0].positions`
 
-Objects created by the demos themselves are never used as a source.
+Objects created by the demos themselves (declared with `MapCore.registerCreatedObjects`) are never used as a source.
 
 ### JS → Native (`VisioOneBridge.postMessage`, envelope `{type, data}`)
 
@@ -163,11 +196,13 @@ Error codes are translated into the user's language on the Dart side; `message` 
 ### Dart → JS, with JSON encoding
 
 ```dart
+// lib/features/goto-poi/goto_poi_bridge.dart
+extension GotoPoiBridge on VisioOneController {
+  Future<void> goToPOI(String poiId) => send('goToPOI', [poiId]);
+}
+
 // lib/visio_one/visio_one_controller.dart
-
-Future<void> goToPOI(String poiId) => _call('goToPOI', [poiId]);
-
-Future<void> _call(String method, List<Object?> args) {
+Future<void> send(String method, [List<Object?> args = const []]) {
   final encodedArgs = args.map(jsonEncode).join(', ');
   return _run('window.MapBridge.$method($encodedArgs)');
 }
@@ -176,6 +211,15 @@ Future<void> _call(String method, List<Object?> args) {
 `jsonEncode('B3-UL00-ID0076')` produces the text `"B3-UL00-ID0076"` (quotes and escaping included), so the generated script is `window.MapBridge.goToPOI("B3-UL00-ID0076")`. A value containing a quote or `");alert(1);(` can never break out of the script.
 
 > **Do not `JSON.parse` on the JS side.** The JSON text is *evaluated as JavaScript code* by `runJavaScript`: the JS function receives a real string, boolean or object, not JSON text. Calling `JSON.parse(hash)` on a map hash throws a `SyntaxError` and `setup()` never answers.
+
+### Request/response
+
+```dart
+// lib/features/custom-data/custom_data_bridge.dart
+Future<Map<String, Object?>?> loadCustomData(String poiId) => request('loadCustomData', [poiId]);
+```
+
+`request()` calls `window.MapBridge.loadCustomData("<requestId>", "<poiId>")` and completes with the `data` of the first message carrying that `requestId` (here `customDataLoaded`), or `null` after 5 s. Once the screen is left, the future never completes.
 
 ### JS → Dart, typed reception
 
@@ -188,10 +232,10 @@ await _webViewController.addJavaScriptChannel(
 );
 ```
 
-`_handleRawMessage` parses the envelope with `VisioOneMessage.tryParse` and publishes it on `controller.messages` (a broadcast stream). Feature panels listen to that stream; state that must survive the panel being closed is updated by the controller itself.
+`_handleRawMessage` parses the envelope with `VisioOneMessage.tryParse`, completes the pending `request()` whose `requestId` it carries, and publishes it on `controller.messages` (a broadcast stream). Feature panels listen to that stream; state that must survive the panel being closed is updated by the screen's `FeatureSession`, which listens to the same stream.
 
 ```javascript
-// assets/www/map.html
+// assets/www/bridge/core.js (exposed to feature scripts as MapCore.sendToNative)
 
 function sendToNative(type, data) {
   var bridge = window.VisioOneBridge;
@@ -204,37 +248,50 @@ The `if (!bridge)` guard lets you open `map.html` in a desktop browser while ite
 
 ## 5. Adding a Native → JS command
 
-1. Add a row to the Native → JS table above.
-2. Add the method to `window.MapBridge` in `assets/www/map.html`:
+1. Add a row to the Native → JS tables above.
+2. Register the method in the feature's script, `assets/www/features/<slug>.js` (a new script also needs its `<script src>` tag in `assets/www/map.html`):
 
    ```javascript
-   myCommand: function (arg) {
-     // `arg` is already a real JS value: no JSON.parse here.
-     if (!view) return;
-     // ... use venue / view ...
-   },
+   (function (core) {
+     core.register({
+       myCommand: function (arg) {
+         // `arg` is already a real JS value: no JSON.parse here.
+         var view = core.view;
+         if (!view) return;
+         // ... use core.venue / view ...
+       },
+     });
+   })(window.MapCore);
    ```
 
-3. Add a typed Dart method to `VisioOneController`:
+   If the feature keeps SDK objects between calls, clear them in `core.onReset(function () { ... })`: it runs before every map (re)load.
+
+3. Add a typed Dart method to the feature's extension, `lib/features/<slug>/<feature>_bridge.dart`:
 
    ```dart
-   Future<void> myCommand(String arg) => _call('myCommand', [arg]);
+   extension MyFeatureBridge on VisioOneController {
+     Future<void> myCommand(String arg) => send('myCommand', [arg]);
+   }
    ```
+
+   For a command with a response, take `requestId` as the first JS parameter, echo it in the response message, and use `request('myCommand', [arg])` on the Dart side.
 
 4. Test it in the real WebView ([section 9](#9-debugging-the-bridge)): a wrong method or argument name fails silently (`_run` logs and carries on rather than crashing the app).
 
 ## 6. Adding a JS → Native event
 
 1. Add a row to the JS → Native table above.
-2. Emit it from `map.html`, usually from a `view.addEventListener(...)` in `forwardViewEvents` (the SDK's event list is in its typings, `EventType.d.ts`):
+2. Emit it from the feature's script, usually from a view listener installed with `core.onViewCreated` (called for every new view; the SDK's event list is in its typings, `EventType.d.ts`):
 
    ```javascript
-   v.addEventListener('selectedpoischange', function (event) {
-     sendToNative('selectionChanged', { count: event.pois.length });
+   core.onViewCreated(function (view) {
+     view.addEventListener('selectedpoischange', function (event) {
+       core.sendToNative('selectionChanged', { count: event.pois.length });
+     });
    });
    ```
 
-3. Listen to it on the Dart side, from the feature's panel (`controller.messages.listen(...)`) or, if the value must outlive the panel, in `VisioOneController._handleRawMessage`.
+3. Listen to it on the Dart side, from the feature's panel (`controller.messages.listen(...)`) or, if the value must outlive the panel, in the feature's `FeatureSession` (created by `FeatureSpec.createSession`).
 
 ## 7. Threading
 
@@ -244,7 +301,7 @@ The `if (!bridge)` guard lets you open `map.html` in a desktop browser while ite
 
 ## 8. Security
 
-- The `JavaScriptChannel` is only registered on the WebView that loads `assets/www/map.html`. Do not reuse that `WebViewController` to show untrusted content.
+- The `JavaScriptChannel` is only registered on the WebView that loads `assets/www/map.html` and its bundled scripts. Do not reuse that `WebViewController` to show untrusted content.
 - Always JSON-encode Dart → JS arguments; never go back to raw string interpolation such as `'window.MapBridge.goToPOI(\'$poiId\')'`.
 - Keep the bridge minimal: any script running in that WebView can call every `window.MapBridge` method.
 

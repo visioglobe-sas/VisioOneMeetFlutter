@@ -9,7 +9,8 @@ This feature intentionally coexists with the SDK's own built-in floor selector (
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/floor-selector.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 goToFloor: function (buildingId, floorId) {
   if (!venue || !view) return;
   var building = venue.venueLayout.buildings.find(function (b) { return b.id === buildingId; });
@@ -24,7 +25,7 @@ goToFloor: function (buildingId, floorId) {
 
 getVenueLayout: function () {
   if (!venue || !view) return;
-  sendToNative('venueLayout', {
+  core.sendToNative('venueLayout', {
     currentBuildingId: view.currentBuilding ? view.currentBuilding.id : null,
     currentFloorId: view.currentFloor ? view.currentFloor.id : null,
     buildings: venue.venueLayout.buildings.map(function (building) {
@@ -42,11 +43,13 @@ getVenueLayout: function () {
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> goToFloor({required String buildingId, String? floorId}) =>
-    _call('goToFloor', [buildingId, floorId]);
+// lib/features/floor-selector/floor_selector_bridge.dart
+extension FloorSelectorBridge on VisioOneController {
+  Future<void> goToFloor({required String buildingId, String? floorId}) =>
+      send('goToFloor', [buildingId, floorId]);
 
-Future<void> getVenueLayout() => _run('window.MapBridge.getVenueLayout()');
+  Future<void> getVenueLayout() => send('getVenueLayout');
+}
 ```
 
 `getVenueLayout()` is fire-and-forget on the Dart side; its result arrives asynchronously as a `venueLayout` message on `VisioOneController.messages` (`{currentBuildingId, currentFloorId, buildings: [{id, defaultFloorId, floors: [{id, levelIndex}]}]}`) — the same request/response pattern used by `startItinerary`/`itineraryComputed` (see `compute-navigation`).
