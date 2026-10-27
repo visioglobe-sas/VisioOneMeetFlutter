@@ -8,6 +8,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import 'camera_carousel_session.dart';
+import 'feature_session.dart';
 import 'occupancy_simulation_session.dart';
 import 'panel_state.dart';
 import 'simulated_position_session.dart';
@@ -77,7 +78,61 @@ class VisioOneController {
   /// derniers résultats), conservées entre deux ouvertures du bottom sheet.
   final PanelState panel = PanelState();
 
+  /// État de la feature affichée qui doit vivre aussi longtemps que l'écran
+  /// (boucle, minuteur, miroir d'un état SDK), voir [attachSession].
+  FeatureSession? _session;
+
+  /// Requêtes en attente de réponse ([request]), par `requestId`.
+  final Map<String, Completer<Map<String, Object?>?>> _pending = {};
+  int _requestCounter = 0;
+
   bool _disposed = false;
+
+  /// Délai au-delà duquel [request] abandonne et renvoie `null`.
+  static const Duration kRequestTimeout = Duration(seconds: 5);
+
+  /// Attache la session de la feature affichée (une seule par écran), créée
+  /// par `VisioOneMapShell` juste après ce contrôleur, avant le chargement
+  /// de la carte : elle reçoit donc tous les messages, y compris le premier
+  /// `ready`, et survit à la fermeture du panneau. Libérée par [dispose].
+  void attachSession(FeatureSession session) {
+    assert(_session == null, 'une seule session par écran');
+    _session = session;
+  }
+
+  /// Session attachée par [attachSession], du type attendu par la feature.
+  T session<T extends FeatureSession>() => _session! as T;
+
+  /// Commande Native -> JS sans réponse : `window.MapBridge.<method>(...)`,
+  /// chaque argument encodé en JSON ([jsonEncode]) — jamais de
+  /// concaténation de texte brut (voir `docs/COMMUNICATION_GUIDE.md`).
+  Future<void> send(String method, [List<Object?> args = const []]) {
+    final encodedArgs = args.map(jsonEncode).join(', ');
+    return _run('window.MapBridge.$method($encodedArgs)');
+  }
+
+  /// Commande Native -> JS avec réponse : appelle
+  /// `window.MapBridge.<method>(requestId, ...args)` et attend le message JS
+  /// -> Native qui renvoie ce même `requestId` (quel que soit son `type`),
+  /// dont il rend les `data`. Renvoie `null` si aucune réponse n'arrive dans
+  /// [timeout]. Après [dispose], la future ne se termine jamais : le code
+  /// qui l'attend (souvent un panneau fermé entre-temps) ne s'exécute pas
+  /// sur un écran détruit.
+  Future<Map<String, Object?>?> request(
+    String method, [
+    List<Object?> args = const [],
+    Duration timeout = kRequestTimeout,
+  ]) {
+    final requestId = '$method-${_requestCounter++}';
+    final completer = Completer<Map<String, Object?>?>();
+    _pending[requestId] = completer;
+    Timer(timeout, () {
+      if (_disposed) return;
+      if (_pending.remove(requestId) != null) completer.complete(null);
+    });
+    send(method, [requestId, ...args]);
+    return completer.future;
+  }
 
   /// Crée le contrôleur et son [WebViewController] sous-jacent.
   ///
@@ -762,10 +817,7 @@ class VisioOneController {
   /// (s'il y en a une) va à son terme.
   Future<void> stopCarousel() => _run('window.MapBridge.stopCarousel()');
 
-  Future<void> _call(String method, List<Object?> args) {
-    final encodedArgs = args.map(jsonEncode).join(', ');
-    return _run('window.MapBridge.$method($encodedArgs)');
-  }
+  Future<void> _call(String method, List<Object?> args) => send(method, args);
 
   Future<void> _run(String script) async {
     try {
@@ -786,6 +838,11 @@ class VisioOneController {
     if (parsed == null) {
       debugPrint('VisioOneController: message JS illisible: ${message.message}');
       return;
+    }
+    final data = parsed.data;
+    if (data is Map && data['requestId'] is String) {
+      final completer = _pending.remove(data['requestId']);
+      completer?.complete(data.map((key, value) => MapEntry(key.toString(), value)));
     }
     if (parsed.type == 'loading') cameraProjection.value = null;
     if (parsed.type == 'ready') {
@@ -812,6 +869,8 @@ class VisioOneController {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _pending.clear();
+    _session?.dispose();
     simulatedPosition.dispose();
     cameraCarousel.dispose();
     occupancy.dispose();
