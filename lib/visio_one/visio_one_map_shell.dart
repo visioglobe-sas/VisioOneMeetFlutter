@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../l10n/app_localizations.dart';
 
+import 'feature_session.dart';
 import 'visio_one_controller.dart';
 import 'visio_one_message.dart';
 
@@ -24,7 +25,8 @@ enum _MapLoadState { loading, ready, error }
 ///
 /// Cycle de vie (voir docs/COMMUNICATION_GUIDE.md pour le détail) :
 /// 1. [VisioOneController.create] configure la WebView (JS, canal, debug).
-/// 2. [VisioOneController.loadMapPage] charge `assets/www/map.html`.
+/// 2. [VisioOneController.loadMapPage] charge `assets/www/map.html` (et ses
+///    scripts `bridge/core.js` + `features/*.js`).
 /// 3. `onPageFinished` déclenche [VisioOneController.setup] avec [hash].
 /// 4. Le message JS `ready`/`error` fait sortir l'écran de l'état "loading".
 class VisioOneMapShell extends StatefulWidget {
@@ -34,6 +36,7 @@ class VisioOneMapShell extends StatefulWidget {
     this.baseURL,
     this.viewOptions,
     this.authorizationToken,
+    this.createSession,
     required this.overlayBuilder,
     this.mapOverlayBuilder,
     this.onMessage,
@@ -63,17 +66,20 @@ class VisioOneMapShell extends StatefulWidget {
   /// `lib/features/auth_token_sample.dart` et `docs/features/auth-token.md`.
   final String? authorizationToken;
 
+  /// Crée la session de la feature (voir [FeatureSession]) juste après le
+  /// contrôleur, avant le chargement de la carte, ou `null` si la feature
+  /// n'en a pas besoin. Libérée avec le contrôleur.
+  final FeatureSession Function(VisioOneController controller)? createSession;
+
   /// Construit l'overlay spécifique à la feature une fois la carte prête.
   final Widget Function(BuildContext context, VisioOneController controller) overlayBuilder;
 
   /// Overlay optionnel affiché directement au-dessus de la carte (pas dans le
   /// bottom sheet ouvert par le FAB) une fois celle-ci prête. Peut renvoyer
   /// `null` (aucun overlay pour la feature affichée) même quand ce champ
-  /// lui-même n'est pas `null` — [FeatureScreen] branche toujours
-  /// `Feature.buildMapOverlay`, qui ne renvoie un widget que pour
-  /// `native-ui-replacement`, pour que son sélecteur d'étage natif soit
-  /// visible sans action du visiteur — voir
-  /// `lib/features/native_ui_replacement_overlay.dart`.
+  /// lui-même n'est pas `null`. Seule `native-ui-replacement` en a un
+  /// (`FeatureSpec.mapOverlay`), pour que son sélecteur d'étage natif soit
+  /// visible sans action du visiteur.
   final Widget? Function(BuildContext context, VisioOneController controller)? mapOverlayBuilder;
 
   /// Callback optionnel pour les messages JS -> Native que ce squelette
@@ -81,7 +87,7 @@ class VisioOneMapShell extends StatefulWidget {
   /// `poiSelected`, `floorChanged`...). Laissé à `null` par défaut : seule la
   /// feature concernée (ex. `poi-click`) le renseigne, pour ne pas faire
   /// réagir les autres écrans de feature à un événement qui ne les concerne
-  /// pas alors que `map.html` émet les mêmes événements sur toutes les cartes.
+  /// pas alors que la page émet les mêmes événements sur toutes les cartes.
   final void Function(BuildContext context, VisioOneMessage message)? onMessage;
 
   /// `true` pour garder le FAB accessible même en état d'erreur, en plus de
@@ -117,6 +123,8 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       controller.dispose();
       return;
     }
+    final createSession = widget.createSession;
+    if (createSession != null) controller.attachSession(createSession(controller));
     _subscription = controller.messages.listen(_onMessage);
     await controller.webViewController.setNavigationDelegate(
       NavigationDelegate(
@@ -164,7 +172,7 @@ class _VisioOneMapShellState extends State<VisioOneMapShell> {
       default:
         // Les autres types (poiSelected, floorChanged, itineraryComputed...)
         // sont routés vers l'UI native de l'app hôte via [onMessage], propre
-        // à la feature affichée (voir `lib/features/poi_click_overlay.dart`
+        // à la feature affichée (voir `lib/features/poi-click/poi_click_overlay.dart`
         // pour `poiSelected`) — ce squelette partagé n'a pas à les connaître
         // individuellement.
         widget.onMessage?.call(context, message);

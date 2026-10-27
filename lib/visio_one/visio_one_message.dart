@@ -2,7 +2,7 @@ import 'dart:convert';
 
 /// Enveloppe JSON générique utilisée par le pont JS -> Native.
 ///
-/// Contrat : `{"type": "...", "data": ...}`. Voir `assets/www/map.html`
+/// Contrat : `{"type": "...", "data": ...}`. Voir `assets/www/bridge/core.js`
 /// (fonction `sendToNative`) côté JS et `docs/COMMUNICATION_GUIDE.md` pour
 /// la liste des `type` émis par le SDK VisioOne.
 class VisioOneMessage {
