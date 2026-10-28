@@ -22,10 +22,10 @@ class FeatureMenuScreen extends StatelessWidget {
         ),
       ),
       body: ListView.separated(
-        itemCount: Feature.values.length,
+        itemCount: kFeatures.length,
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
-          final feature = Feature.values[index];
+          final feature = kFeatures[index];
           return ListTile(
             title: Text(feature.title(l10n)),
             subtitle: Text(feature.description(l10n)),

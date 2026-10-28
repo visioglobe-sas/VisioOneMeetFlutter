@@ -23,22 +23,40 @@ The same JS runs unchanged on Android and iOS, so the UMD bundle is the one choi
 
 ```mermaid
 graph LR
-  A["assets/www/map.html<br/>assets/www/visioone.umd.cjs"] -->|declared in pubspec.yaml| B["Flutter asset bundle"]
+  A["assets/www/map.html<br/>assets/www/visioone.umd.cjs<br/>assets/www/bridge/core.js<br/>assets/www/features/*.js"] -->|declared in pubspec.yaml| B["Flutter asset bundle"]
   B -->|WebViewController.loadFlutterAsset| C["WebView (Android: internal origin<br/>iOS: sandboxed file://)"]
   C --> D["VisioOneMapShell"]
 ```
 
-`map.html` and `visioone.umd.cjs` must stay in the **same folder** (`assets/www/`): the page loads the bundle by relative path (`<script src="visioone.umd.cjs">`). Flutter does not include asset sub-folders recursively: a new sub-folder must be added to `pubspec.yaml`.
+`map.html` loads everything by relative path, as classic `<script src>` tags run in document order:
+
+1. `visioone.umd.cjs` — the SDK;
+2. `bridge/core.js` — `window.MapBridge.setup` (load/reload of the venue and view), the `{type, data}` channel to Dart, the shared helpers (`findPoi`, `poiDisplayPosition`, `resolveAnchor`, `offsetPosition`, `errorMessage`) and the `window.MapCore` registration API;
+3. `features/<slug>.js` — one file per feature, in any order.
+
+No `type="module"`: like the ESM SDK build, ES module imports fail under `file://` in WKWebView. All scripts have run before `onPageFinished` fires on the Dart side, so before the first `setup` call. Flutter does not include asset sub-folders recursively: `assets/www/bridge/` and `assets/www/features/` are listed in `pubspec.yaml`, and a new sub-folder must be added there too.
+
+### One JS file per feature
+
+A feature file is an IIFE that receives `window.MapCore` and:
+
+- adds its commands to `window.MapBridge` with `MapCore.register({ goToPOI: function (poiId) { ... } })` (a name registered twice is logged as an error);
+- reads the current SDK objects through `MapCore.venue` / `MapCore.view` (`null` while the map is not ready or reloading);
+- installs its view listeners with `MapCore.onViewCreated(function (view) { ... })`, called for every new view just before the `ready` message;
+- clears the SDK objects it created with `MapCore.onReset(function () { ... })`, called at the start of every `setup` (first load, `camera-projection-toggle` reload): without it, a reload would keep stale `Label`/`Marker`/`Image` references from the old venue;
+- declares the objects it attaches to an existing POI with `MapCore.registerCreatedObjects(fn)`, so `resolveAnchor` never uses them as that POI's position.
+
+Page-level listeners (the carousel's pointer listeners on `#container`, `window.onerror`) are registered once, at script load.
 
 ## 4. The bridge
 
 ```mermaid
 graph LR
   subgraph Native["Dart (VisioOneController)"]
-    N1["runJavaScript()<br/>calls window.MapBridge.*"]
+    N1["send() / request()<br/>runJavaScript: window.MapBridge.*<br/>(feature extensions: lib/features/&lt;slug&gt;/*_bridge.dart)"]
     N2["JavaScriptChannel 'VisioOneBridge'<br/>receives {type, data}"]
   end
-  subgraph Web["JS (map.html)"]
+  subgraph Web["JS (bridge/core.js + features/*.js)"]
     J1["window.MapBridge = { setup, goToPOI, ... }"]
     J2["sendToNative(type, data)"]
     SDK["VisioOne SDK<br/>(venue, view)"]
@@ -48,21 +66,22 @@ graph LR
   SDK -->|addEventListener| J2 --> N2
 ```
 
-- **Native → JS**: `window.MapBridge`, one method per command. Dart never touches `venue`/`view` directly. Every argument is JSON-encoded (`jsonEncode`) before being interpolated into the script, never concatenated as raw text.
+- **Native → JS**: `window.MapBridge`, one method per command. Dart never touches `venue`/`view` directly. Every argument is JSON-encoded (`jsonEncode`) before being interpolated into the script, never concatenated as raw text. `VisioOneController` only has the generic `send(method, args)` and `request(method, args)`; each feature's typed commands are an `extension` on it in `lib/features/<slug>/<feature>_bridge.dart`, named like the `MapBridge` method they call.
+- **Request/response**: `request()` adds a fresh `requestId` as first argument and completes with the `data` of the message that echoes it (whatever its `type`), or `null` after 5 s. After the screen is left, the future never completes, so code awaiting it never runs on a disposed screen.
 - **JS → Native**: a single `JavaScriptChannel` (`VisioOneBridge`) with a `{type, data}` envelope. Adding an event means adding a message type, not a new channel.
 
 The full contract (every command and message) is in [`COMMUNICATION_GUIDE.md`](COMMUNICATION_GUIDE.md).
 
 ## 5. App structure
 
-- `FeatureMenuScreen` lists the features (`Feature` enum in `lib/features/feature.dart`).
+- `lib/features/feature.dart` holds `kFeatures`, one `FeatureSpec` per feature: slug, localized title and description, panel builder, optional map overlay, map hash, `createView` options, session factory, message handler, or a custom screen (`custom-base-url`, `auth-token`). The menu and the feature screen read nothing else.
+- `FeatureMenuScreen` lists `kFeatures`.
 - `FeatureScreen` opens one feature: a fresh `VisioOneMapShell` (new WebView, new map) per screen. Nothing is shared between two screens.
-- `VisioOneMapShell` owns the `VisioOneController`, shows the loading spinner and the error screen, and opens the feature's panel (a modal bottom sheet) from the floating action button.
-- The panel is rebuilt each time it is opened. Anything that must survive closing it lives on the controller, which lives as long as the screen:
-  - long-running loops: `SimulatedPositionSession`, `OccupancySimulationSession`, `CameraCarouselSession`;
-  - SDK state mirrored for the panel (placed label/badge/icon, current theme, highlighted category...): `ValueNotifier`s on `VisioOneController`;
-  - values typed in the panel (fields, switches, last result): `PanelState` (`controller.panel`).
-- Leaving the screen disposes the controller, which stops every loop.
+- `VisioOneMapShell` creates the `VisioOneController`, attaches the feature's session, loads the page, shows the loading spinner and the error screen, and opens the feature's panel (a modal bottom sheet) from the floating action button.
+- The panel is rebuilt each time it is opened. Anything that must survive closing it lives as long as the screen:
+  - values typed in the panel and SDK state mirrored for it (fields, switches, last result, placed label/icon, current theme, highlighted category...): `PanelState` (`controller.panel`), keyed by `<slug>.<name>`;
+  - long-running loops and SDK state reported while the panel is closed: the screen's `FeatureSession` (`SimulatedPositionSession`, `OccupancySimulationSession`, `CameraCarouselSession`, `CameraProjectionSession`, `HtmlOverlayMarkerSession`), created by `FeatureSpec.createSession` before the map loads and listening to `controller.messages` itself.
+- Leaving the screen disposes the controller, which disposes the session (stopping its loop) and the panel state.
 
 ## 6. Map display lifecycle
 
@@ -71,18 +90,20 @@ sequenceDiagram
   participant UI as VisioOneMapShell
   participant Ctrl as VisioOneController
   participant WV as WebView
-  participant JS as map.html
+  participant JS as map.html (core.js + features)
   participant SDK as VisioOne SDK
 
   UI->>Ctrl: VisioOneController.create()
+  UI->>Ctrl: attachSession(FeatureSpec.createSession(controller))
   Ctrl->>WV: setJavaScriptMode, addJavaScriptChannel, setInspectable (debug)
   UI->>Ctrl: loadMapPage()
   Ctrl->>WV: loadFlutterAsset('assets/www/map.html')
-  WV->>JS: loads map.html + visioone.umd.cjs
+  WV->>JS: loads map.html, visioone.umd.cjs, bridge/core.js, features/*.js
   WV->>UI: onPageFinished
   UI->>Ctrl: setup(hash)
   Ctrl->>JS: runJavaScript('window.MapBridge.setup("...")')
   JS->>SDK: createVisioOne() / loadVenue({vg_maphash}) / createView(container, venue)
+  JS->>JS: onViewCreated hooks (features add their view listeners)
   SDK-->>JS: promise resolved (map ready)
   JS->>WV: VisioOneBridge.postMessage('{"type":"ready"}')
   WV->>Ctrl: JavaScriptChannel.onMessageReceived

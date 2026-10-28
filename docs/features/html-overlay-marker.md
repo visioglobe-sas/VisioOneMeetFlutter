@@ -7,17 +7,17 @@ Pins an HTML element (here a small badge, e.g. `Open now · 12:00–14:00`) on t
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> placeHtmlBadge(String requestId, {required String anchorId, required String text}) =>
-    _call('placeHtmlBadge', [requestId, anchorId, text]);
+// lib/features/html-overlay-marker/html_overlay_marker_bridge.dart
+extension HtmlOverlayMarkerBridge on VisioOneController {
+  Future<Map<String, Object?>?> placeHtmlBadge({required String anchorId, required String text}) =>
+      request('placeHtmlBadge', [anchorId, text]);
 
-Future<void> updateHtmlBadgeText(String requestId, String text) =>
-    _call('updateHtmlBadgeText', [requestId, text]);
+  Future<Map<String, Object?>?> updateHtmlBadgeText(String text) => request('updateHtmlBadgeText', [text]);
 
-Future<void> setHtmlBadgeVisible(String requestId, bool visible) =>
-    _call('setHtmlBadgeVisible', [requestId, visible]);
+  Future<Map<String, Object?>?> setHtmlBadgeVisible(bool visible) => request('setHtmlBadgeVisible', [visible]);
 
-Future<void> removeHtmlBadge(String requestId) => _call('removeHtmlBadge', [requestId]);
+  Future<Map<String, Object?>?> removeHtmlBadge() => request('removeHtmlBadge');
+}
 ```
 
 Each call is a `requestId`-correlated request/response round trip, answered by an `htmlBadgePlaced` / `htmlBadgeUpdated` / `htmlBadgeRemoved` message with `success` and, on failure, an `error` code (`textRequired`, `notFound`, `noPosition`, `noBadge`, or `sdk` with the SDK's own `message`). Taps on the badge arrive unsolicited as `htmlBadgeTapped` messages carrying a running `count`:
@@ -32,10 +32,12 @@ controller.messages.where((m) => m.type == 'htmlBadgeTapped').listen((m) {
 The SDK's `Marker` object and its DOM element can't cross the bridge, so the JS side keeps them:
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/html-overlay-marker.js — the feature's own state, cleared in core.onReset(...)
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 var htmlBadge = null;
 var htmlBadgeTapCount = 0;
 
+// Shared helpers, in assets/www/bridge/core.js (core.poiDisplayPosition / core.resolveAnchor).
 // Display position of a POI, same priority everywhere in this repo: first label,
 // else first image or marker, else the centre of its first surface.
 // `ignored`: objects created by the demos themselves, never used as a source.
@@ -55,15 +57,17 @@ function poiDisplayPosition(poi, ignored) {
 function resolveAnchor(anchorId) {
   var poi = venue.pois.find(function (p) { return p.id === anchorId; });
   if (!poi) return { error: 'notFound' };
-  var position = poiDisplayPosition(poi, demoCreatedObjects()); // our own label/badge/icon/dynamic label
+  var position = poiDisplayPosition(poi, demoCreatedObjects()); // objects declared with core.registerCreatedObjects
   if (!position) return { poi: poi, error: 'noPosition' };
   return { poi: poi, position: position };
 }
 
+// The feature's commands, in assets/www/features/html-overlay-marker.js, inside core.register({ ... }):
+
 placeHtmlBadge: function (requestId, anchorId, text) {
   // 1. Validate everything first: a failed placement leaves the current badge untouched.
   if (!text || !String(text).trim()) { /* reply error: 'textRequired' */ return; }
-  var anchor = resolveAnchor(anchorId);   // error: 'notFound' | 'noPosition'
+  var anchor = core.resolveAnchor(anchorId);   // error: 'notFound' | 'noPosition'
   // ... report anchor.error
   var position = {
     latitude: anchor.position.latitude + 0.00004,   // ~4 m offset, so the badge doesn't
@@ -88,7 +92,7 @@ placeHtmlBadge: function (requestId, anchorId, text) {
   element.addEventListener('click', function (event) {
     event.stopPropagation();                       // don't let the tap reach the map
     htmlBadgeTapCount += 1;
-    sendToNative('htmlBadgeTapped', { count: htmlBadgeTapCount });
+    core.sendToNative('htmlBadgeTapped', { count: htmlBadgeTapCount });
   });
   htmlBadge = marker;
   htmlBadgeTapCount = 0;

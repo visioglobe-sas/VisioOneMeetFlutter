@@ -7,13 +7,16 @@ Makes a POI's surface(s) interactive via `venue.updateSurface(surface, { isInter
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setSurfaceInteractive(String placeId, bool interactive) =>
-    _call('setSurfaceInteractive', [placeId, interactive]);
+// lib/features/clickable-surface/clickable_surface_bridge.dart
+extension ClickableSurfaceBridge on VisioOneController {
+  Future<void> setSurfaceInteractive(String placeId, bool interactive) =>
+      send('setSurfaceInteractive', [placeId, interactive]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/clickable-surface.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 setSurfaceInteractive: function (placeId, interactive) {
   if (!venue) return;
   var poi = venue.pois.find(function (p) { return p.id === placeId; });

@@ -7,25 +7,23 @@ Switches the language of POI names and labels displayed on the map at runtime �
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-final ValueNotifier<String?> currentLocale = ValueNotifier<String?>(null);
+// lib/features/runtime-locale/runtime_locale_bridge.dart
+extension RuntimeLocaleBridge on VisioOneController {
+  Future<Map<String, Object?>?> getLocales() => request('getLocales');
 
-Future<void> getLocales(String requestId) => _call('getLocales', [requestId]);
-
-Future<void> setCurrentLocale(String locale) {
-  currentLocale.value = locale;
-  return _call('setCurrentLocale', [locale]);
+  Future<void> setCurrentLocale(String locale) => send('setCurrentLocale', [locale]);
 }
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/runtime-locale.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 getLocales: function (requestId) {
   if (!venue) {
-    sendToNative('localesLoaded', { requestId: requestId, currentLocale: null, allLocales: [] });
+    core.sendToNative('localesLoaded', { requestId: requestId, currentLocale: null, allLocales: [] });
     return;
   }
-  sendToNative('localesLoaded', {
+  core.sendToNative('localesLoaded', {
     requestId: requestId,
     currentLocale: venue.currentLocale,
     allLocales: venue.translator.allLocales,
@@ -68,7 +66,7 @@ interface Translator {
 }
 ```
 
-`getLocales` is a request/response round trip (same `requestId`-correlated pattern as `category-highlight`'s `getCategories` / `categoriesLoaded`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously with a `localesLoaded` message carrying the same `requestId`, the venue's `currentLocale`, and its full `allLocales` list. `setCurrentLocale` is a plain fire-and-forget one-way call — no response message is needed, since the effect (POI/label text changing) is directly observable on the map once the underlying `Promise` resolves.
+`getLocales` is a request/response round trip (`VisioOneController.request()` adds a fresh `requestId` as first JS argument and completes with the data of the response carrying it (or `null` after 5 s)): the JS side reports back with a `localesLoaded` message carrying the same `requestId`, the venue's `currentLocale`, and its full `allLocales` list. `setCurrentLocale` is a plain fire-and-forget one-way call — no response message is needed, since the effect (POI/label text changing) is directly observable on the map once the underlying `Promise` resolves.
 
 ## Things to know
 

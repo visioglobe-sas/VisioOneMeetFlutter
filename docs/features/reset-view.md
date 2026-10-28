@@ -7,12 +7,15 @@ Recenters the camera on the venue's global overview via `view.goToGlobal()` — 
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> goToGlobal() => _run('window.MapBridge.goToGlobal()');
+// lib/features/reset-view/reset_view_bridge.dart
+extension ResetViewBridge on VisioOneController {
+  Future<void> goToGlobal() => send('goToGlobal');
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/reset-view.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 goToGlobal: function () {
   if (view) view.goToGlobal();
 },

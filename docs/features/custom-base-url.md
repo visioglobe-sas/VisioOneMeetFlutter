@@ -10,12 +10,26 @@ Points the SDK at a different map server than the default Visioglobe SaaS, via `
 
 ```dart
 // lib/visio_one/visio_one_controller.dart
-Future<void> setup(String hash, {String? baseURL}) => _call('setup', [hash, baseURL]);
+Future<void> setup(String hash, {String? baseURL, Map<String, Object>? viewOptions, String? authorizationToken}) =>
+    send('setup', [hash, baseURL, viewOptions, authorizationToken]);
+
+// lib/features/custom-base-url/custom_base_url_screen.dart: a new baseURL remounts the
+// whole map shell (new controller, new setup call), keyed by the URL.
+VisioOneMapShell(
+  key: ValueKey(_baseUrl),
+  hash: widget.feature.mapHash,
+  baseURL: _baseUrl,
+  showControlsOnError: true, // keep the panel reachable after a failed load
+  overlayBuilder: (context, controller) => CustomBaseUrlOverlay(
+    currentBaseUrl: _baseUrl,
+    onReload: (value) => setState(() => _baseUrl = value),
+  ),
+)
 ```
 
 ```js
-// window.MapBridge.setup, JS side (assets/www/map.html)
-setup: function (hash, baseURL) {
+// window.MapBridge.setup, in assets/www/bridge/core.js (no feature script: setup handles baseURL)
+setup: function (hash, baseURL, viewOptions, authorizationToken) {
   // ...
   visioOne
     .loadVenue(baseURL ? { vg_maphash: hash, baseURL: baseURL } : { vg_maphash: hash }, container)

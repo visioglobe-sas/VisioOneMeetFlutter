@@ -7,16 +7,18 @@ Reads business `CustomData` — free-form key/value strings (price, opening hour
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> loadCustomData(String requestId, String poiId) =>
-    _call('loadCustomData', [requestId, poiId]);
+// lib/features/custom-data/custom_data_bridge.dart
+extension CustomDataBridge on VisioOneController {
+  Future<Map<String, Object?>?> loadCustomData(String poiId) => request('loadCustomData', [poiId]);
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/custom-data.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 loadCustomData: function (requestId, poiId) {
   if (!venue) {
-    sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
+    core.sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
     return;
   }
   venue
@@ -29,10 +31,10 @@ loadCustomData: function (requestId, poiId) {
     .then(function () {
       var poi = venue.pois.find(function (p) { return p.id === poiId; });
       if (!poi) {
-        sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
+        core.sendToNative('customDataLoaded', { requestId: requestId, poiId: poiId, found: false, customData: null });
         return;
       }
-      sendToNative('customDataLoaded', {
+      core.sendToNative('customDataLoaded', {
         requestId: requestId,
         poiId: poiId,
         found: true,
@@ -42,7 +44,7 @@ loadCustomData: function (requestId, poiId) {
 },
 ```
 
-This is a request/response round trip (same `requestId` pattern as `resolvePoiPosition` / `poiPositionResolved`, used by `simulated-position`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously on the bridge with a `customDataLoaded` message carrying the same `requestId`, `found` (whether `poiId` resolved to a POI), and `customData`.
+This is a request/response round trip: `VisioOneController.request()` adds a fresh `requestId` as first JS argument and completes with the data of the response carrying it (or `null` after 5 s). The JS side answers with a `customDataLoaded` message carrying the same `requestId`, `found` (whether `poiId` resolved to a POI), and `customData`.
 
 The two real SDK calls involved, both on `Venue` (`Venue.d.ts` in the SDK's typings):
 

@@ -2,210 +2,309 @@ import 'package:flutter/material.dart';
 
 import '../demo_map.dart';
 import '../l10n/app_localizations.dart';
+import '../visio_one/feature_session.dart';
 import '../visio_one/visio_one_controller.dart';
 import '../visio_one/visio_one_message.dart';
-import 'accessible_mode_overlay.dart';
-import 'accuracy_circle_style_overlay.dart';
-import 'add_locale_overlay.dart';
-import 'camera_lock_on_position_overlay.dart';
-import 'camera_projection_toggle_overlay.dart';
-import 'camera_showcase_carousel_overlay.dart';
-import 'category_highlight_overlay.dart';
-import 'clickable_surface_overlay.dart';
-import 'compute_navigation_overlay.dart';
-import 'custom_data_overlay.dart';
-import 'custom_navigation_trace_overlay.dart';
-import 'custom_text_label_overlay.dart';
-import 'custom_theme_overlay.dart';
-import 'dynamic_poi_crud_overlay.dart';
-import 'explore_mode_overlay.dart';
-import 'floor_selector_overlay.dart';
-import 'geofencing_overlay.dart';
-import 'goto_poi_overlay.dart';
-import 'html_overlay_marker_overlay.dart';
-import 'icon_marker_overlay.dart';
-import 'native_ui_replacement_overlay.dart';
-import 'navigation_exclude_modalities_overlay.dart';
-import 'occupancy_simulation_overlay.dart';
-import 'poi_click_overlay.dart';
-import 'reset_view_overlay.dart';
-import 'runtime_locale_overlay.dart';
-import 'simulated_position_overlay.dart';
-import 'ui_part_visibility_overlay.dart';
+import '3d-icon-marker/icon_marker_overlay.dart';
+import 'accessible-mode/accessible_mode_overlay.dart';
+import 'accuracy-circle-style/accuracy_circle_style_overlay.dart';
+import 'add-locale/add_locale_overlay.dart';
+import 'auth-token/auth_token_screen.dart';
+import 'camera-lock-on-position/camera_lock_on_position_overlay.dart';
+import 'camera-projection-toggle/camera_projection_session.dart';
+import 'camera-projection-toggle/camera_projection_toggle_overlay.dart';
+import 'camera-showcase-carousel/camera_carousel_session.dart';
+import 'camera-showcase-carousel/camera_showcase_carousel_overlay.dart';
+import 'category-highlight/category_highlight_overlay.dart';
+import 'clickable-surface/clickable_surface_overlay.dart';
+import 'compute-navigation/compute_navigation_overlay.dart';
+import 'custom-base-url/custom_base_url_screen.dart';
+import 'custom-data/custom_data_overlay.dart';
+import 'custom-navigation-trace/custom_navigation_trace_overlay.dart';
+import 'custom-text-label/custom_text_label_overlay.dart';
+import 'custom-theme/custom_theme_overlay.dart';
+import 'dynamic-poi-crud/dynamic_poi_crud_overlay.dart';
+import 'explore-mode/explore_mode_overlay.dart';
+import 'floor-selector/floor_selector_overlay.dart';
+import 'geofencing/geofencing_overlay.dart';
+import 'goto-poi/goto_poi_overlay.dart';
+import 'html-overlay-marker/html_overlay_marker_overlay.dart';
+import 'html-overlay-marker/html_overlay_marker_session.dart';
+import 'native-ui-replacement/native_ui_replacement_overlay.dart';
+import 'navigation-exclude-modalities/navigation_exclude_modalities_overlay.dart';
+import 'occupancy-simulated/occupancy_simulation_overlay.dart';
+import 'occupancy-simulated/occupancy_simulation_session.dart';
+import 'poi-click/poi_click_overlay.dart';
+import 'reset-view/reset_view_overlay.dart';
+import 'runtime-locale/runtime_locale_overlay.dart';
+import 'simulated-position/simulated_position_overlay.dart';
+import 'simulated-position/simulated_position_session.dart';
+import 'ui-part-visibility/ui_part_visibility_overlay.dart';
 
-/// Catalogue des features démontrées par l'app — source unique de vérité
-/// pour la liste du menu et la résolution de l'overlay associé.
+typedef FeatureWidgetBuilder = Widget Function(BuildContext context, VisioOneController controller);
+
+/// Tout ce que l'app sait d'une feature, en un seul endroit : le menu
+/// (`FeatureMenuScreen`) et l'écran (`FeatureScreen`) ne lisent que ça.
 ///
-/// `slug` est l'identifiant kebab-case de la feature, identique au nom de sa
-/// doc (`docs/features/<slug>.md`), ex. `reset-view`.
-enum Feature {
-  resetView('reset-view'),
-  occupancySimulated('occupancy-simulated'),
-  poiClick('poi-click'),
-  gotoPoi('goto-poi'),
-  floorSelector('floor-selector'),
-  computeNavigation('compute-navigation'),
-  uiPartVisibility('ui-part-visibility'),
-  simulatedPosition('simulated-position'),
-  cameraLockOnPosition('camera-lock-on-position'),
-  clickableSurface('clickable-surface'),
-  customData('custom-data'),
-  categoryHighlight('category-highlight'),
-  dynamicPoiCrud('dynamic-poi-crud'),
-  runtimeLocale('runtime-locale'),
-  nativeUiReplacement('native-ui-replacement'),
-  exploreMode('explore-mode'),
-  addLocale('add-locale'),
-  geofencing('geofencing'),
-  customBaseUrl('custom-base-url'),
-  customNavigationTrace('custom-navigation-trace'),
-  navigationExcludeModalities('navigation-exclude-modalities'),
-  accessibleMode('accessible-mode'),
-  iconMarker('3d-icon-marker'),
-  customTextLabel('custom-text-label'),
-  htmlOverlayMarker('html-overlay-marker'),
-  customTheme('custom-theme'),
-  accuracyCircleStyle('accuracy-circle-style'),
-  cameraProjectionToggle('camera-projection-toggle'),
-  cameraShowcaseCarousel('camera-showcase-carousel'),
-  authToken('auth-token');
+/// Le code de la feature elle-même vit dans `lib/features/<slug>/` (panneau,
+/// commandes du pont, session éventuelle) et `assets/www/features/<slug>.js`
+/// (appels SDK) ; sa doc dans `docs/features/<slug>.md`.
+class FeatureSpec {
+  const FeatureSpec({
+    required this.slug,
+    required this.title,
+    required this.description,
+    this.panel,
+    this.mapOverlay,
+    this.mapHash = kDefaultMapHash,
+    this.viewOptions,
+    this.createSession,
+    this.onMapMessage,
+    this.screen,
+  }) : assert((panel == null) != (screen == null), 'panel ou screen, exactement un des deux');
 
-  const Feature(this.slug);
-
+  /// Identifiant kebab-case, identique au dossier `lib/features/<slug>/`, au
+  /// script `assets/www/features/<slug>.js` et à la doc `docs/features/<slug>.md`.
   final String slug;
 
-  String title(AppLocalizations l10n) => switch (this) {
-    Feature.resetView => l10n.resetViewTitle,
-    Feature.occupancySimulated => l10n.occupancySimulatedTitle,
-    Feature.poiClick => l10n.poiClickTitle,
-    Feature.gotoPoi => l10n.gotoPoiTitle,
-    Feature.floorSelector => l10n.floorSelectorTitle,
-    Feature.computeNavigation => l10n.computeNavigationTitle,
-    Feature.uiPartVisibility => l10n.uiPartVisibilityTitle,
-    Feature.simulatedPosition => l10n.simulatedPositionTitle,
-    Feature.cameraLockOnPosition => l10n.cameraLockOnPositionTitle,
-    Feature.clickableSurface => l10n.clickableSurfaceTitle,
-    Feature.customData => l10n.customDataTitle,
-    Feature.categoryHighlight => l10n.categoryHighlightTitle,
-    Feature.dynamicPoiCrud => l10n.dynamicPoiCrudTitle,
-    Feature.runtimeLocale => l10n.runtimeLocaleTitle,
-    Feature.nativeUiReplacement => l10n.nativeUiReplacementTitle,
-    Feature.exploreMode => l10n.exploreModeTitle,
-    Feature.addLocale => l10n.addLocaleTitle,
-    Feature.geofencing => l10n.geofencingTitle,
-    Feature.customBaseUrl => l10n.customBaseUrlTitle,
-    Feature.customNavigationTrace => l10n.customNavigationTraceTitle,
-    Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesTitle,
-    Feature.accessibleMode => l10n.accessibleModeTitle,
-    Feature.iconMarker => l10n.iconMarkerTitle,
-    Feature.customTextLabel => l10n.customTextLabelTitle,
-    Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerTitle,
-    Feature.customTheme => l10n.customThemeTitle,
-    Feature.accuracyCircleStyle => l10n.accuracyCircleStyleTitle,
-    Feature.cameraProjectionToggle => l10n.cameraProjectionTitle,
-    Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselTitle,
-    Feature.authToken => l10n.authTokenTitle,
-  };
+  /// Titre et description du menu, traduits (`lib/l10n/app_*.arb`).
+  final String Function(AppLocalizations l10n) title;
+  final String Function(AppLocalizations l10n) description;
 
-  String description(AppLocalizations l10n) => switch (this) {
-    Feature.resetView => l10n.resetViewDescription,
-    Feature.occupancySimulated => l10n.occupancySimulatedDescription,
-    Feature.poiClick => l10n.poiClickDescription,
-    Feature.gotoPoi => l10n.gotoPoiDescription,
-    Feature.floorSelector => l10n.floorSelectorDescription,
-    Feature.computeNavigation => l10n.computeNavigationDescription,
-    Feature.uiPartVisibility => l10n.uiPartVisibilityDescription,
-    Feature.simulatedPosition => l10n.simulatedPositionDescription,
-    Feature.cameraLockOnPosition => l10n.cameraLockOnPositionDescription,
-    Feature.clickableSurface => l10n.clickableSurfaceDescription,
-    Feature.customData => l10n.customDataDescription,
-    Feature.categoryHighlight => l10n.categoryHighlightDescription,
-    Feature.dynamicPoiCrud => l10n.dynamicPoiCrudDescription,
-    Feature.runtimeLocale => l10n.runtimeLocaleDescription,
-    Feature.nativeUiReplacement => l10n.nativeUiReplacementDescription,
-    Feature.exploreMode => l10n.exploreModeDescription,
-    Feature.addLocale => l10n.addLocaleDescription,
-    Feature.geofencing => l10n.geofencingDescription,
-    Feature.customBaseUrl => l10n.customBaseUrlDescription,
-    Feature.customNavigationTrace => l10n.customNavigationTraceDescription,
-    Feature.navigationExcludeModalities => l10n.navigationExcludeModalitiesDescription,
-    Feature.accessibleMode => l10n.accessibleModeDescription,
-    Feature.iconMarker => l10n.iconMarkerDescription,
-    Feature.customTextLabel => l10n.customTextLabelDescription,
-    Feature.htmlOverlayMarker => l10n.htmlOverlayMarkerDescription,
-    Feature.customTheme => l10n.customThemeDescription,
-    Feature.accuracyCircleStyle => l10n.accuracyCircleStyleDescription,
-    Feature.cameraProjectionToggle => l10n.cameraProjectionDescription,
-    Feature.cameraShowcaseCarousel => l10n.cameraShowcaseCarouselDescription,
-    Feature.authToken => l10n.authTokenDescription,
-  };
+  /// Contenu du bottom sheet ouvert par le FAB, reconstruit à chaque
+  /// ouverture (l'état durable vit dans `controller.panel` ou la session).
+  final FeatureWidgetBuilder? panel;
 
-  Widget buildOverlay(BuildContext context, VisioOneController controller) => switch (this) {
-    Feature.resetView => ResetViewOverlay(controller: controller),
-    Feature.occupancySimulated => OccupancySimulationOverlay(controller: controller),
-    Feature.poiClick => const PoiClickOverlay(),
-    Feature.gotoPoi => GotoPoiOverlay(controller: controller),
-    Feature.floorSelector => FloorSelectorOverlay(controller: controller),
-    Feature.computeNavigation => ComputeNavigationOverlay(controller: controller),
-    Feature.uiPartVisibility => UiPartVisibilityOverlay(controller: controller),
-    Feature.simulatedPosition => SimulatedPositionOverlay(
-        controller: controller,
-        initialOriginId: DemoMap.trackingFrom,
-        initialDestinationId: DemoMap.trackingTo,
-      ),
-    Feature.cameraLockOnPosition => CameraLockOnPositionOverlay(controller: controller),
-    Feature.clickableSurface => ClickableSurfaceOverlay(controller: controller),
-    Feature.customData => CustomDataOverlay(controller: controller),
-    Feature.categoryHighlight => CategoryHighlightOverlay(controller: controller),
-    Feature.dynamicPoiCrud => DynamicPoiCrudOverlay(controller: controller),
-    Feature.runtimeLocale => RuntimeLocaleOverlay(controller: controller),
-    Feature.nativeUiReplacement => NativeUiReplacementOverlay(controller: controller),
-    Feature.exploreMode => ExploreModeOverlay(controller: controller),
-    Feature.addLocale => AddLocaleOverlay(controller: controller),
-    Feature.geofencing => GeofencingOverlay(controller: controller),
-    Feature.customNavigationTrace => CustomNavigationTraceOverlay(controller: controller),
-    Feature.navigationExcludeModalities => NavigationExcludeModalitiesOverlay(controller: controller),
-    Feature.accessibleMode => AccessibleModeOverlay(controller: controller),
-    Feature.iconMarker => IconMarkerOverlay(controller: controller),
-    Feature.customTextLabel => CustomTextLabelOverlay(controller: controller),
-    Feature.htmlOverlayMarker => HtmlOverlayMarkerOverlay(controller: controller),
-    Feature.customTheme => CustomThemeOverlay(controller: controller),
-    Feature.accuracyCircleStyle => AccuracyCircleStyleOverlay(controller: controller),
-    Feature.cameraProjectionToggle => CameraProjectionToggleOverlay(controller: controller),
-    Feature.cameraShowcaseCarousel => CameraShowcaseCarouselOverlay(controller: controller),
-    // Jamais réellement appelé : `baseURL` n'est pas une propriété de
-    // `controller`, elle doit être passée à `VisioOneMapShell` avant que la
-    // venue ne charge -- `FeatureScreen` construit `CustomBaseUrlOverlay`
-    // lui-même, avec son propre état de `baseURL` et un callback de reload,
-    // plutôt que d'appeler `buildOverlay` pour cette feature.
-    Feature.customBaseUrl => throw UnsupportedError(
-      'custom-base-url: overlay construit directement par FeatureScreen',
-    ),
-    // Jamais appelé non plus : `auth-token` est un exemple de code sans
-    // carte -- `FeatureScreen` affiche directement [AuthTokenScreen] (page
-    // de texte), sans `VisioOneMapShell`. Voir `auth_token_sample.dart`.
-    Feature.authToken => throw UnsupportedError(
-      'auth-token: écran de texte construit directement par FeatureScreen',
-    ),
-  };
+  /// Widget affiché directement sur la carte une fois prête (pas dans le
+  /// bottom sheet), ou `null` s'il n'y en a pas.
+  final FeatureWidgetBuilder? mapOverlay;
 
-  /// Overlay affiché directement sur la carte (pas dans le bottom sheet du
-  /// FAB), pour les rares features qui en ont besoin — seule
-  /// `native-ui-replacement` aujourd'hui : son panneau de sélection d'étage
-  /// natif doit être visible dès l'arrivée sur l'écran, sans que le visiteur
-  /// n'ait à ouvrir le FAB pour le découvrir (voir
-  /// [NativeUiReplacementMapPanel]). `null` pour toutes les autres features.
-  Widget? buildMapOverlay(BuildContext context, VisioOneController controller) => switch (this) {
-    Feature.nativeUiReplacement => NativeUiReplacementMapPanel(controller: controller),
-    _ => null,
-  };
+  /// Carte chargée pour cet écran.
+  final String mapHash;
 
-  /// Réagit à un message JS -> Native que `VisioOneMapShell` ne gère pas
-  /// lui-même (voir son `onMessage`). Seule `poi-click` s'en sert
-  /// (`poiSelected` -> panneau d'info du POI tapé) ; les autres features
-  /// écoutent `controller.messages` directement depuis leur overlay, ou via
-  /// l'état porté par `VisioOneController`.
-  void onMapMessage(BuildContext context, VisioOneMessage message) {
-    if (this == Feature.poiClick) handlePoiSelectedMessage(context, message);
-  }
+  /// 3e argument de `createView` (`null` = aucune option).
+  final Map<String, Object>? viewOptions;
+
+  /// Crée la [FeatureSession] de l'écran (boucle, minuteur, miroir d'état
+  /// SDK), juste après son `VisioOneController`, avant le chargement de la
+  /// carte ; libérée en quittant l'écran.
+  final FeatureSession Function(VisioOneController controller)? createSession;
+
+  /// Réagit aux messages JS -> Native que `VisioOneMapShell` ne gère pas
+  /// lui-même, même panneau fermé (ex. `poiSelected` pour `poi-click`).
+  final void Function(BuildContext context, VisioOneMessage message)? onMapMessage;
+
+  /// Écran complet remplaçant l'écran carte standard, pour les features
+  /// qui n'entrent pas dans ce moule : `custom-base-url` (recharge toute la
+  /// carte avec une autre `baseURL`) et `auth-token` (exemple de code, sans
+  /// carte).
+  final Widget Function(BuildContext context, FeatureSpec feature)? screen;
 }
+
+/// Catalogue des features démontrées, dans l'ordre du menu.
+final List<FeatureSpec> kFeatures = [
+  FeatureSpec(
+    slug: 'reset-view',
+    title: (l10n) => l10n.resetViewTitle,
+    description: (l10n) => l10n.resetViewDescription,
+    panel: (context, controller) => ResetViewOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'occupancy-simulated',
+    title: (l10n) => l10n.occupancySimulatedTitle,
+    description: (l10n) => l10n.occupancySimulatedDescription,
+    panel: (context, controller) => OccupancySimulationOverlay(controller: controller),
+    createSession: OccupancySimulationSession.new,
+  ),
+  FeatureSpec(
+    slug: 'poi-click',
+    title: (l10n) => l10n.poiClickTitle,
+    description: (l10n) => l10n.poiClickDescription,
+    panel: (context, controller) => const PoiClickOverlay(),
+    onMapMessage: handlePoiSelectedMessage,
+  ),
+  FeatureSpec(
+    slug: 'goto-poi',
+    title: (l10n) => l10n.gotoPoiTitle,
+    description: (l10n) => l10n.gotoPoiDescription,
+    panel: (context, controller) => GotoPoiOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'floor-selector',
+    title: (l10n) => l10n.floorSelectorTitle,
+    description: (l10n) => l10n.floorSelectorDescription,
+    panel: (context, controller) => FloorSelectorOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'compute-navigation',
+    title: (l10n) => l10n.computeNavigationTitle,
+    description: (l10n) => l10n.computeNavigationDescription,
+    panel: (context, controller) => ComputeNavigationOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'ui-part-visibility',
+    title: (l10n) => l10n.uiPartVisibilityTitle,
+    description: (l10n) => l10n.uiPartVisibilityDescription,
+    panel: (context, controller) => UiPartVisibilityOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'simulated-position',
+    title: (l10n) => l10n.simulatedPositionTitle,
+    description: (l10n) => l10n.simulatedPositionDescription,
+    panel: (context, controller) => SimulatedPositionOverlay(
+      controller: controller,
+      initialOriginId: DemoMap.trackingFrom,
+      initialDestinationId: DemoMap.trackingTo,
+    ),
+    createSession: SimulatedPositionSession.new,
+  ),
+  FeatureSpec(
+    slug: 'camera-lock-on-position',
+    title: (l10n) => l10n.cameraLockOnPositionTitle,
+    description: (l10n) => l10n.cameraLockOnPositionDescription,
+    panel: (context, controller) => CameraLockOnPositionOverlay(controller: controller),
+    createSession: SimulatedPositionSession.new,
+  ),
+  FeatureSpec(
+    slug: 'clickable-surface',
+    title: (l10n) => l10n.clickableSurfaceTitle,
+    description: (l10n) => l10n.clickableSurfaceDescription,
+    panel: (context, controller) => ClickableSurfaceOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'custom-data',
+    title: (l10n) => l10n.customDataTitle,
+    description: (l10n) => l10n.customDataDescription,
+    panel: (context, controller) => CustomDataOverlay(controller: controller),
+    // La carte de démo partagée n'a aucune `CustomData` publiée (voir
+    // `docs/features/custom-data.md`).
+    mapHash: kCustomDataMapHash,
+  ),
+  FeatureSpec(
+    slug: 'category-highlight',
+    title: (l10n) => l10n.categoryHighlightTitle,
+    description: (l10n) => l10n.categoryHighlightDescription,
+    panel: (context, controller) => CategoryHighlightOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'dynamic-poi-crud',
+    title: (l10n) => l10n.dynamicPoiCrudTitle,
+    description: (l10n) => l10n.dynamicPoiCrudDescription,
+    panel: (context, controller) => DynamicPoiCrudOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'runtime-locale',
+    title: (l10n) => l10n.runtimeLocaleTitle,
+    description: (l10n) => l10n.runtimeLocaleDescription,
+    panel: (context, controller) => RuntimeLocaleOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'native-ui-replacement',
+    title: (l10n) => l10n.nativeUiReplacementTitle,
+    description: (l10n) => l10n.nativeUiReplacementDescription,
+    panel: (context, controller) => NativeUiReplacementOverlay(controller: controller),
+    // Le sélecteur d'étage natif doit être visible dès l'arrivée sur
+    // l'écran, sans ouvrir le FAB.
+    mapOverlay: (context, controller) => NativeUiReplacementMapPanel(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'explore-mode',
+    title: (l10n) => l10n.exploreModeTitle,
+    description: (l10n) => l10n.exploreModeDescription,
+    panel: (context, controller) => ExploreModeOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'add-locale',
+    title: (l10n) => l10n.addLocaleTitle,
+    description: (l10n) => l10n.addLocaleDescription,
+    panel: (context, controller) => AddLocaleOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'geofencing',
+    title: (l10n) => l10n.geofencingTitle,
+    description: (l10n) => l10n.geofencingDescription,
+    panel: (context, controller) => GeofencingOverlay(controller: controller),
+    createSession: SimulatedPositionSession.new,
+  ),
+  FeatureSpec(
+    slug: 'custom-base-url',
+    title: (l10n) => l10n.customBaseUrlTitle,
+    description: (l10n) => l10n.customBaseUrlDescription,
+    screen: (context, feature) => CustomBaseUrlScreen(feature: feature),
+  ),
+  FeatureSpec(
+    slug: 'custom-navigation-trace',
+    title: (l10n) => l10n.customNavigationTraceTitle,
+    description: (l10n) => l10n.customNavigationTraceDescription,
+    panel: (context, controller) => CustomNavigationTraceOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'navigation-exclude-modalities',
+    title: (l10n) => l10n.navigationExcludeModalitiesTitle,
+    description: (l10n) => l10n.navigationExcludeModalitiesDescription,
+    panel: (context, controller) => NavigationExcludeModalitiesOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'accessible-mode',
+    title: (l10n) => l10n.accessibleModeTitle,
+    description: (l10n) => l10n.accessibleModeDescription,
+    panel: (context, controller) => AccessibleModeOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: '3d-icon-marker',
+    title: (l10n) => l10n.iconMarkerTitle,
+    description: (l10n) => l10n.iconMarkerDescription,
+    panel: (context, controller) => IconMarkerOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'custom-text-label',
+    title: (l10n) => l10n.customTextLabelTitle,
+    description: (l10n) => l10n.customTextLabelDescription,
+    panel: (context, controller) => CustomTextLabelOverlay(controller: controller),
+  ),
+  FeatureSpec(
+    slug: 'html-overlay-marker',
+    title: (l10n) => l10n.htmlOverlayMarkerTitle,
+    description: (l10n) => l10n.htmlOverlayMarkerDescription,
+    panel: (context, controller) => HtmlOverlayMarkerOverlay(controller: controller),
+    createSession: HtmlOverlayMarkerSession.new,
+  ),
+  FeatureSpec(
+    slug: 'custom-theme',
+    title: (l10n) => l10n.customThemeTitle,
+    description: (l10n) => l10n.customThemeDescription,
+    panel: (context, controller) => CustomThemeOverlay(controller: controller),
+    // Sans `enableShadows`, `view.setTheme` n'a aucun effet visible (voir
+    // `docs/features/custom-theme.md`).
+    viewOptions: const {'enableShadows': true},
+  ),
+  FeatureSpec(
+    slug: 'accuracy-circle-style',
+    title: (l10n) => l10n.accuracyCircleStyleTitle,
+    description: (l10n) => l10n.accuracyCircleStyleDescription,
+    panel: (context, controller) => AccuracyCircleStyleOverlay(controller: controller),
+    createSession: SimulatedPositionSession.new,
+  ),
+  FeatureSpec(
+    slug: 'camera-projection-toggle',
+    title: (l10n) => l10n.cameraProjectionTitle,
+    description: (l10n) => l10n.cameraProjectionDescription,
+    panel: (context, controller) => CameraProjectionToggleOverlay(controller: controller),
+    createSession: CameraProjectionSession.new,
+  ),
+  FeatureSpec(
+    slug: 'camera-showcase-carousel',
+    title: (l10n) => l10n.cameraShowcaseCarouselTitle,
+    description: (l10n) => l10n.cameraShowcaseCarouselDescription,
+    panel: (context, controller) => CameraShowcaseCarouselOverlay(controller: controller),
+    createSession: CameraCarouselSession.new,
+  ),
+  FeatureSpec(
+    slug: 'auth-token',
+    title: (l10n) => l10n.authTokenTitle,
+    description: (l10n) => l10n.authTokenDescription,
+    // Exemple de code uniquement, aucune carte protégée à charger : page de
+    // texte (voir `auth-token/auth_token_sample.dart`).
+    screen: (context, feature) => AuthTokenScreen(title: feature.title(AppLocalizations.of(context)!)),
+  ),
+];

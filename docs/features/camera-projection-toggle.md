@@ -11,22 +11,25 @@ Because the projection can only be chosen when the view is created, switching it
 Native side — a single bridge call; the answer comes back as the usual `loading` then `ready` / `error` bridge messages, with `ready` now carrying the projection reported by the SDK:
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> setCameraProjection(String projection) =>
-    _call('setCameraProjection', [projection]); // 'perspective' | 'orthographic'
-
-// 'ready' message data: { cameraProjection: 'perspective' | 'orthographic' }
+// lib/features/camera-projection-toggle/camera_projection_toggle_bridge.dart
+extension CameraProjectionToggleBridge on VisioOneController {
+  Future<void> setCameraProjection(String projection) => send('setCameraProjection', [projection]);
+}
 ```
 
-JS side (`assets/www/map.html`) — the bridge replays the map setup with the same map hash / `baseURL` / view options, plus `cameraProjection`, using this exact sequence:
+JS side — `assets/www/features/camera-projection-toggle.js` replays the map setup (`MapBridge.setup`, in `assets/www/bridge/core.js`) with the same map hash / `baseURL` / view options, plus `cameraProjection`; `setup` uses this exact sequence:
 
 ```js
+// assets/www/features/camera-projection-toggle.js
 setCameraProjection: function (projection) {
-  var options = Object.assign({}, lastSetup.viewOptions || {}, { cameraProjection: projection });
-  window.MapBridge.setup(lastSetup.hash, lastSetup.baseURL, options);
+  var last = core.lastSetup;
+  if (!last) return;
+  var options = Object.assign({}, last.viewOptions || {}, { cameraProjection: projection });
+  window.MapBridge.setup(last.hash, last.baseURL, options, last.authorizationToken);
 },
 
-// inside setup(hash, baseURL, viewOptions):
+// assets/www/bridge/core.js, inside setup(hash, baseURL, viewOptions, authorizationToken):
+runHooks(resetHooks); // every feature forgets the SDK objects it created (core.onReset)
 Promise.resolve()
   .then(function () { if (oldView) return visioOne.destroyView(oldView); })   // 1. destroy the view
   .then(function () { if (oldVenue) return visioOne.unloadVenue(oldVenue); }) // 2. unload the venue
@@ -37,7 +40,7 @@ Promise.resolve()
   })
   .then(function (createdView) {
     view = createdView;
-    forwardViewEvents(view); // re-register every view listener (poiclick, currentfloorchanged, ...)
+    runHooks(viewCreatedHooks, view); // features re-register their view listeners (core.onViewCreated)
     sendToNative('ready', { cameraProjection: view.cameraProjection });
   });
 ```

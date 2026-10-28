@@ -7,33 +7,35 @@ Creates, updates, and removes a POI at runtime, without republishing the map in 
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> createDynamicPOI(
-  String requestId, {
-  required String newId,
-  required String anchorId,
-  required String labelText,
-}) => _call('createDynamicPOI', [requestId, newId, anchorId, labelText]);
+// lib/features/dynamic-poi-crud/dynamic_poi_crud_bridge.dart
+extension DynamicPoiCrudBridge on VisioOneController {
+  Future<Map<String, Object?>?> createDynamicPOI({
+    required String newId,
+    required String anchorId,
+    required String labelText,
+  }) => request('createDynamicPOI', [newId, anchorId, labelText]);
 
-Future<void> updateDynamicPoiLabelText(String requestId, String text) =>
-    _call('updateDynamicPoiLabelText', [requestId, text]);
+  Future<Map<String, Object?>?> updateDynamicPoiLabelText(String text) =>
+      request('updateDynamicPoiLabelText', [text]);
 
-Future<void> removeDynamicPOI(String requestId) => _call('removeDynamicPOI', [requestId]);
+  Future<Map<String, Object?>?> removeDynamicPOI() => request('removeDynamicPOI');
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/dynamic-poi-crud.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 createDynamicPOI: function (requestId, newId, anchorId, labelText) {
   if (!venue) {
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'notReady' });
+    core.sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'notReady' });
     return;
   }
 
-  // resolveAnchor(): venue.pois.find(p => p.id === anchorId), then its display
+  // core.resolveAnchor(): venue.pois.find(p => p.id === anchorId), then its display
   // position — first label, else image/marker, else surface centre.
-  var anchor = resolveAnchor(anchorId);
+  var anchor = core.resolveAnchor(anchorId);
   if (anchor.error) {   // 'notFound' | 'noPosition'
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: anchor.error });
+    core.sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: anchor.error });
     return;
   }
 
@@ -42,7 +44,7 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
     poi = venue.createPOI({ id: newId });
   } catch (error) {
     // POIAlreadyExistsError — a normal, demoable state, not a crash.
-    sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'alreadyExists', message: error.message });
+    core.sendToNative('dynamicPoiCreated', { requestId: requestId, success: false, error: 'alreadyExists', message: error.message });
     return;
   }
 
@@ -50,31 +52,31 @@ createDynamicPOI: function (requestId, newId, anchorId, labelText) {
 
   dynamicPoi = poi;
   dynamicPoiLabel = label;
-  sendToNative('dynamicPoiCreated', { requestId: requestId, success: true, poiId: newId, text: labelText });
+  core.sendToNative('dynamicPoiCreated', { requestId: requestId, success: true, poiId: newId, text: labelText });
 },
 
 updateDynamicPoiLabelText: function (requestId, text) {
   if (!dynamicPoiLabel) {
-    sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, error: 'noPoi' });
+    core.sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: false, error: 'noPoi' });
     return;
   }
   venue.updateLabel(dynamicPoiLabel, { text: text });
-  sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: true, text: text });
+  core.sendToNative('dynamicPoiLabelUpdated', { requestId: requestId, success: true, text: text });
 },
 
 removeDynamicPOI: function (requestId) {
   if (!dynamicPoi) {
-    sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, error: 'noPoi' });
+    core.sendToNative('dynamicPoiRemoved', { requestId: requestId, success: false, error: 'noPoi' });
     return;
   }
   venue.removePOI(dynamicPoi);
   dynamicPoi = null;
   dynamicPoiLabel = null;
-  sendToNative('dynamicPoiRemoved', { requestId: requestId, success: true });
+  core.sendToNative('dynamicPoiRemoved', { requestId: requestId, success: true });
 },
 ```
 
-Each action is a request/response round trip (same `requestId`-correlated pattern as `custom-data`'s `loadCustomData` / `customDataLoaded`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously with `dynamicPoiCreated` / `dynamicPoiLabelUpdated` / `dynamicPoiRemoved`, each carrying the same `requestId` and a `success` boolean, plus a `message` explaining any failure.
+Each action is a request/response round trip (`VisioOneController.request()` adds a fresh `requestId` as first JS argument and completes with the data of the response carrying it (or `null` after 5 s)): the JS side reports back with `dynamicPoiCreated` / `dynamicPoiLabelUpdated` / `dynamicPoiRemoved`, each carrying the same `requestId` and a `success` boolean, plus a `message` explaining any failure.
 
 The real SDK surface involved, from the SDK's typings (`Venue.d.ts`, `POI.d.ts`, `Label.d.ts`):
 

@@ -7,7 +7,8 @@ Computes a route the same way as [`compute-navigation`](./compute-navigation.md)
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/navigation-exclude-modalities.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 startItineraryExcludingModalities: function (args) {
   if (!venue || !view) return;
   var navigation = venue.computeNavigation({
@@ -21,26 +22,28 @@ startItineraryExcludingModalities: function (args) {
   });
   var trace = venue.createNavigationTrace(navigation);
   view.setCurrentNavigationTrace(trace);
-  sendToNative('itineraryComputed', { instructions: navigation.instructions });
+  core.sendToNative('itineraryComputed', { instructions: navigation.instructions });
 },
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> startItineraryExcludingModalities({
-  required String origin,
-  required String destination,
-  bool isAccessible = false,
-  List<String> excludedAttributes = const [],
-}) {
-  return _call('startItineraryExcludingModalities', [
-    {
-      'origin': origin,
-      'destination': destination,
-      'isAccessible': isAccessible,
-      'excludedAttributes': excludedAttributes,
-    },
-  ]);
+// lib/features/navigation-exclude-modalities/navigation_exclude_modalities_bridge.dart
+extension NavigationExcludeModalitiesBridge on VisioOneController {
+  Future<void> startItineraryExcludingModalities({
+    required String origin,
+    required String destination,
+    bool isAccessible = false,
+    List<String> excludedAttributes = const [],
+  }) {
+    return send('startItineraryExcludingModalities', [
+      {
+        'origin': origin,
+        'destination': destination,
+        'isAccessible': isAccessible,
+        'excludedAttributes': excludedAttributes,
+      },
+    ]);
+  }
 }
 ```
 

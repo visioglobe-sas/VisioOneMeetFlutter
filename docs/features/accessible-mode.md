@@ -7,7 +7,8 @@ Computes a route the same way as [`compute-navigation`](./compute-navigation.md)
 ## SDK usage
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html) — already existing, unchanged
+// assets/www/features/compute-navigation.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 startItinerary: function (args) {
   if (!venue || !view) return;
   var navigation = venue.computeNavigation({
@@ -20,20 +21,18 @@ startItinerary: function (args) {
   });
   var trace = venue.createNavigationTrace(navigation);
   view.setCurrentNavigationTrace(trace);
-  sendToNative('itineraryComputed', { instructions: navigation.instructions });
+  core.sendToNative('itineraryComputed', { instructions: navigation.instructions });
 },
 ```
 
 ```dart
-// lib/visio_one/visio_one_controller.dart — already existing, unchanged
-Future<void> startItinerary({
-  required String origin,
-  required String destination,
-  bool isAccessible = false,
-}) {
-  return _call('startItinerary', [
-    {'origin': origin, 'destination': destination, 'isAccessible': isAccessible},
-  ]);
+// lib/features/compute-navigation/compute_navigation_bridge.dart
+extension ComputeNavigationBridge on VisioOneController {
+  Future<void> startItinerary({required String origin, required String destination, bool isAccessible = false}) {
+    return send('startItinerary', [
+      {'origin': origin, 'destination': destination, 'isAccessible': isAccessible},
+    ]);
+  }
 }
 ```
 

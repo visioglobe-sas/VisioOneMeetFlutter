@@ -7,13 +7,17 @@ Centers the camera on a given POI (by ID) and selects it visually, via `view.goT
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> goToPOI(String poiId) => _call('goToPOI', [poiId]);
-Future<void> clearSelection() => _run('window.MapBridge.clearSelection()');
+// lib/features/goto-poi/goto_poi_bridge.dart
+extension GotoPoiBridge on VisioOneController {
+  Future<void> goToPOI(String poiId) => send('goToPOI', [poiId]);
+
+  Future<void> clearSelection() => send('clearSelection');
+}
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/goto-poi.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 goToPOI: function (poiId) {
   if (!venue || !view) return;
   var poi = venue.pois.find(function (p) { return p.id === poiId; });

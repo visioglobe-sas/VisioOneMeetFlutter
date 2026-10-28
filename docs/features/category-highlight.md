@@ -7,36 +7,33 @@ Highlights every POI belonging to a chosen category in one action (e.g. all rest
 ## SDK usage
 
 ```dart
-// lib/visio_one/visio_one_controller.dart
-Future<void> getCategories(String requestId) => _call('getCategories', [requestId]);
-
-Future<void> highlightCategory(String categoryId) async {
-  final previous = highlightedCategoryId.value;
-  if (previous == categoryId) return;
-  if (previous != null) {
-    await _call('clearCategoryHighlight', [previous]);
+// lib/features/category-highlight/category_highlight_bridge.dart
+extension CategoryHighlightBridge on VisioOneController {
+  Future<List<({String id, String label})>?> getCategories() async {
+    final raw = (await request('getCategories'))?['categories'];
+    if (raw is! List) return null;
+    return [
+      for (final category in raw.whereType<Map>())
+        (id: category['id'].toString(), label: category['label'].toString()),
+    ];
   }
-  highlightedCategoryId.value = categoryId;
-  await _call('highlightCategory', [categoryId]);
-}
 
-Future<void> clearCategoryHighlight() async {
-  final current = highlightedCategoryId.value;
-  if (current == null) return;
-  highlightedCategoryId.value = null;
-  await _call('clearCategoryHighlight', [current]);
+  Future<void> highlightCategory(String categoryId) => send('highlightCategory', [categoryId]);
+
+  Future<void> clearCategoryHighlight(String categoryId) => send('clearCategoryHighlight', [categoryId]);
 }
 ```
 
 ```js
-// window.MapBridge, JS side (assets/www/map.html)
+// assets/www/features/category-highlight.js, inside core.register({ ... })
+// (`core` = window.MapCore; `venue` / `view` = core.venue / core.view)
 getCategories: function (requestId) {
   if (!venue) {
-    sendToNative('categoriesLoaded', { requestId: requestId, categories: [] });
+    core.sendToNative('categoriesLoaded', { requestId: requestId, categories: [] });
     return;
   }
   var locale = venue.currentLocale;
-  sendToNative('categoriesLoaded', {
+  core.sendToNative('categoriesLoaded', {
     requestId: requestId,
     categories: venue.categories.map(function (c) {
       var translated = venue.translator.translateCategory(c, locale);
@@ -91,11 +88,24 @@ interface POI {
 }
 ```
 
-`getCategories` is a request/response round trip (same `requestId`-correlated pattern as `custom-data`'s `loadCustomData` / `customDataLoaded`): the Native → JS call is fire-and-forget, and the JS side reports back asynchronously with a `categoriesLoaded` message carrying the same `requestId` and a `categories` array of `{ id, label }` pairs — `id` is `Category.id` (used for filtering/highlighting), `label` is the name resolved via `venue.translator.translateCategory()` (used for display only, see "Things to know"). `highlightCategory`/`clearCategoryHighlight` are plain fire-and-forget one-way calls — no response needed, since the result is directly observable on the map.
+`getCategories` is a request/response round trip (`VisioOneController.request()` adds a fresh `requestId` as first JS argument and completes with the data of the response carrying it (or `null` after 5 s)): the JS side reports back with a `categoriesLoaded` message carrying the same `requestId` and a `categories` array of `{ id, label }` pairs — `id` is `Category.id` (used for filtering/highlighting), `label` is the name resolved via `venue.translator.translateCategory()` (used for display only, see "Things to know"). `highlightCategory`/`clearCategoryHighlight` are plain fire-and-forget one-way calls — no response needed, since the result is directly observable on the map.
 
 Matching POIs are found with `venue.pois.filter(poi => poi.categories.some(c => c.id === categoryId))` — `poi.categories` is an array because a POI can belong to more than one category, so `.some(...)` is required rather than a direct equality check. For each matched POI, `poi.surfaces.forEach(surface => venue.updateSurface(surface, { color }))` applies (or reverts) the highlight color, one call per surface, exactly like `clickable-surface`/`occupancy-simulated`.
 
-The SDK has no "highlight a category" call and no notion of a highlighted category: to keep only one highlighted at a time, remember the current one yourself and revert it (`clearCategoryHighlight`) before highlighting the next (`VisioOneController.highlightCategory` does this).
+The SDK has no "highlight a category" call and no notion of a highlighted category: to keep only one highlighted at a time, remember the current one yourself and revert it (`clearCategoryHighlight`) before highlighting the next. This demo does it in its panel (`_toggle` in `lib/features/category-highlight/category_highlight_overlay.dart`), keeping the current category in `controller.panel` so it survives closing the panel:
+
+```dart
+Future<void> _toggle(String categoryId) async {
+  final previous = _selected.value;
+  if (previous != null) {
+    _selected.value = null;
+    await _c.clearCategoryHighlight(previous);
+  }
+  if (previous == categoryId) return; // tapping the highlighted category clears it
+  _selected.value = categoryId;
+  await _c.highlightCategory(categoryId);
+}
+```
 
 ## Things to know
 

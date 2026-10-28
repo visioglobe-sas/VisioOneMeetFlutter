@@ -11,8 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:visio_one_meet_flutter/features/shared/color_chip.dart';
 import 'package:visio_one_meet_flutter/visio_one/panel_state.dart';
-import 'package:visio_one_meet_flutter/visio_one/geofence_utils.dart';
-import 'package:visio_one_meet_flutter/visio_one/simulated_position_session.dart';
+import 'package:visio_one_meet_flutter/features/geofencing/geofence_utils.dart';
+import 'package:visio_one_meet_flutter/features/simulated-position/simulated_position_bridge.dart';
 import 'package:visio_one_meet_flutter/visio_one/visio_one_message.dart';
 
 void main() {

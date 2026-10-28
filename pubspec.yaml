@@ -72,6 +72,10 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/www/
+    # Flutter n'inclut pas les sous-dossiers d'un dossier d'assets : chacun
+    # doit être listé (voir assets/www/map.html pour l'ordre de chargement).
+    - assets/www/bridge/
+    - assets/www/features/
     - assets/icon/
 
   # An image asset can refer to one or more resolution-specific "variants", see
